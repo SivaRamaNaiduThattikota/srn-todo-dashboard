@@ -1,6 +1,6 @@
 -- ============================================================
 -- SUPABASE SETUP: Run this in Supabase SQL Editor
--- Project: Claude Command Center — To-Do Dashboard
+-- Project: SRN Command Center — To-Do Dashboard
 -- ============================================================
 
 -- 1. Create the todos table
@@ -50,11 +50,11 @@ CREATE INDEX idx_todos_updated_at ON todos(updated_at DESC);
 
 -- 7. Seed some sample data
 INSERT INTO todos (title, status, priority, assigned_agent) VALUES
-  ('Set up CI/CD pipeline',        'in_progress', 'high',     'claude'),
+  ('Set up CI/CD pipeline',        'in_progress', 'high',     'agent'),
   ('Write unit tests for auth',    'pending',     'critical',  'developer'),
   ('Design dashboard mockup',      'done',        'medium',    'designer'),
-  ('Review PR #42',                'pending',     'high',      'claude'),
+  ('Review PR #42',                'pending',     'high',      'agent'),
   ('Update API documentation',     'in_progress', 'medium',    'developer'),
   ('Fix login redirect bug',       'blocked',     'critical',  'developer'),
   ('Deploy staging environment',   'pending',     'low',       'devops'),
-  ('Research vector DB options',   'in_progress', 'high',      'claude');
+  ('Research vector DB options',   'in_progress', 'high',      'agent');

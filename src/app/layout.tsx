@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Command Center — Live Todos",
+  title: "SRN Command Center — Live Todos",
   description: "Real-time task dashboard powered by Supabase",
 };
 

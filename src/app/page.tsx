@@ -51,7 +51,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
-              Command Center
+              SRN Command Center
             </h1>
             <span className="flex items-center gap-1.5 text-xs font-mono text-accent bg-accent-muted px-2 py-0.5 rounded-full">
               <span className="live-dot w-1.5 h-1.5 rounded-full bg-accent inline-block" />
