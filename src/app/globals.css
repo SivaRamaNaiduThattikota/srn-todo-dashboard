@@ -42,7 +42,7 @@ body {
   background-attachment: fixed;
 }
 
-/* ── Scrollbar ── */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -53,7 +53,7 @@ body {
   background: rgba(255,255,255,0.2);
 }
 
-/* ── Glass Card Base ── */
+/* Glass Card Base */
 .glass {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -83,7 +83,7 @@ body {
   box-shadow: var(--glass-shadow-lg);
 }
 
-/* ── Liquid Glass Effect ── */
+/* Liquid Glass Effect */
 .liquid-glass {
   background: var(--liquid-gradient);
   backdrop-filter: blur(24px) saturate(1.4);
@@ -113,7 +113,7 @@ body {
   left: 100%;
 }
 
-/* ── Depth / Skeuomorphic ── */
+/* Depth Skeuomorphic */
 .skeuo-inset {
   box-shadow:
     inset 0 2px 4px rgba(0,0,0,0.3),
@@ -129,7 +129,7 @@ body {
   border: 1px solid rgba(255,255,255,0.06);
 }
 
-/* ── Animations ── */
+/* Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -216,7 +216,7 @@ body {
   animation: livePulse 2s ease-in-out infinite;
 }
 
-/* ── Interactive States ── */
+/* Interactive States */
 .hover-lift {
   transition: all 0.3s var(--spring-snappy);
 }
@@ -238,7 +238,7 @@ body {
     0 0 20px rgba(110, 231, 183, 0.08);
 }
 
-/* ── Status Colors with Glow ── */
+/* Status Colors with Glow */
 .status-glow-pending {
   box-shadow: 0 0 12px rgba(251, 191, 36, 0.15), inset 0 0 12px rgba(251, 191, 36, 0.05);
 }
@@ -252,13 +252,13 @@ body {
   box-shadow: 0 0 12px rgba(248, 113, 113, 0.15), inset 0 0 12px rgba(248, 113, 113, 0.05);
 }
 
-/* ── Badge Shine ── */
+/* Badge Shine */
 .badge-shine {
   background-size: 200% auto;
   animation: shimmer 3s linear infinite;
 }
 
-/* ── Row flash on realtime update ── */
+/* Row flash on realtime update */
 @keyframes rowFlash {
   0% {
     background-color: rgba(110, 231, 183, 0.12);
@@ -273,7 +273,7 @@ body {
   animation: rowFlash 2s ease-out;
 }
 
-/* ── Select Styling ── */
+/* Select Styling */
 select {
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -281,7 +281,7 @@ select {
   padding-right: 24px !important;
 }
 
-/* ── Global smooth transitions ── */
+/* Global smooth transitions */
 * {
   transition-property: background-color, border-color, box-shadow, opacity;
   transition-duration: 0.2s;
@@ -291,3 +291,7 @@ select {
 input, select, button, a {
   transition-property: all;
 }
+
+/* SRN Command Center v2 — Premium Glass UI */
+/* SRN Command Center v2 — Premium Glass UI */
+/* SRN Command Center v2 — Premium Glass UI */
