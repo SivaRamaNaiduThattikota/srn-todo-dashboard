@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Google Calendar Live Sync — Smart Version
+// Google Calendar Sync — Honest Version
 //
-// How to add (one time):
-//   Google Calendar → Settings → Add calendar → From URL →
-//   https://srn-todo-dashboard.vercel.app/api/export-calendar
+// Tasks are DATE-only (no time picker in dashboard), so they stay as all-day events.
+// Smart features: overdue markers, priority in title, reminders, status tracking.
 //
-// Features:
-// - Tasks show at 9 AM IST (not all-day, so they don't clutter)
-// - 1-hour duration blocks for each task
-// - Critical/blocked tasks get ALARM reminders (30 min before)
-// - Overdue tasks show with ⚠ prefix
-// - Done tasks are marked COMPLETED and show ✓
-// - Priority shown as color label
-// - Refreshes every 2 hours
-// - Description includes clickable link back to dashboard
+// Two ways to use:
+// 1. SUBSCRIBE: Google Calendar → From URL → paste this endpoint URL (auto-refreshes)
+// 2. INSTANT:   GET /api/export-calendar?download=true → downloads .ics for manual import
 
 export async function GET(req: NextRequest) {
+  const download = req.nextUrl.searchParams.get("download") === "true";
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -31,8 +26,6 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
   const stamp = now.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-
-  // Dashboard URL for linking back
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://srn-todo-dashboard.vercel.app";
 
   let ics = [
@@ -43,123 +36,83 @@ export async function GET(req: NextRequest) {
     "METHOD:PUBLISH",
     "X-WR-CALNAME:SRN Tasks",
     "X-WR-TIMEZONE:Asia/Kolkata",
-    // Refresh every 2 hours for faster sync
-    "REFRESH-INTERVAL;VALUE=DURATION:PT2H",
-    "X-PUBLISHED-TTL:PT2H",
-    // Timezone definition for IST
-    "BEGIN:VTIMEZONE",
-    "TZID:Asia/Kolkata",
-    "BEGIN:STANDARD",
-    "DTSTART:19700101T000000",
-    "TZOFFSETFROM:+0530",
-    "TZOFFSETTO:+0530",
-    "TZNAME:IST",
-    "END:STANDARD",
-    "END:VTIMEZONE",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT4H",
+    "X-PUBLISHED-TTL:PT4H",
   ];
 
   if (todos && todos.length > 0) {
-    // Sort: overdue first, then by priority, then by due date
-    const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-    const sorted = [...todos].sort((a, b) => {
-      const aOverdue = new Date(a.due_date!) < now && a.status !== "done" ? -1 : 0;
-      const bOverdue = new Date(b.due_date!) < now && b.status !== "done" ? -1 : 0;
-      if (aOverdue !== bOverdue) return aOverdue - bOverdue;
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
-    });
-
-    // Assign time slots — stagger tasks across the day so they don't all stack at 9 AM
-    // Critical: 9 AM, High: 10 AM, Medium: 11 AM, Low: 2 PM
-    const timeSlots: Record<string, { hour: number; min: number }> = {
-      critical: { hour: 9, min: 0 },
-      high: { hour: 10, min: 0 },
-      medium: { hour: 11, min: 0 },
-      low: { hour: 14, min: 0 },
-    };
-
-    // Track how many tasks per day per priority to offset times
-    const daySlotCounter: Record<string, number> = {};
-
-    for (const todo of sorted) {
+    for (const todo of todos) {
       const due = new Date(todo.due_date!);
       const isDone = todo.status === "done";
       const isOverdue = due < now && !isDone;
       const isBlocked = todo.status === "blocked";
       const isToday = due.toDateString() === now.toDateString();
-
-      // Get time slot
-      const slot = timeSlots[todo.priority] || { hour: 11, min: 0 };
-      const dayKey = `${todo.due_date}-${todo.priority}`;
-      const offset = daySlotCounter[dayKey] || 0;
-      daySlotCounter[dayKey] = offset + 1;
-
-      // Adjust time by 30-min increments for multiple tasks on same day
-      const startHour = slot.hour + Math.floor((slot.min + offset * 30) / 60);
-      const startMin = (slot.min + offset * 30) % 60;
-
-      // Format datetime in IST
       const dueDate = todo.due_date!.replace(/-/g, "");
-      const startTime = `${dueDate}T${String(startHour).padStart(2, "0")}${String(startMin).padStart(2, "0")}00`;
-      const endHour = startHour + (todo.priority === "critical" ? 1 : 0);
-      const endMin = startMin + 30;
-      const endTime = `${dueDate}T${String(endHour + Math.floor(endMin / 60)).padStart(2, "0")}${String(endMin % 60).padStart(2, "0")}00`;
 
-      // Build title with status indicators
+      // Next day for all-day event end (iCal spec: DTEND is exclusive)
+      const nextDay = new Date(due);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const endDate = nextDay.toISOString().slice(0, 10).replace(/-/g, "");
+
+      // Smart title
       let title = "";
       if (isDone) title += "✓ ";
-      else if (isOverdue) title += "⚠ OVERDUE: ";
-      else if (isBlocked) title += "⛔ BLOCKED: ";
-      else if (isToday) title += "📌 TODAY: ";
+      else if (isOverdue) title += "⚠ OVERDUE — ";
+      else if (isBlocked) title += "⛔ BLOCKED — ";
+      else if (isToday) title += "📌 ";
 
       title += todo.title;
-      if (!isDone && !isOverdue) title += ` [${todo.priority.toUpperCase()}]`;
 
-      // Build rich description
-      const descParts = [
+      // Priority indicator (visible in calendar list view)
+      if (!isDone) {
+        const dots: Record<string, string> = { critical: "🔴", high: "🟠", medium: "🟡", low: "⚪" };
+        title += ` ${dots[todo.priority] || ""}`;
+      }
+
+      // Description
+      const desc = [
         `Priority: ${todo.priority.toUpperCase()}`,
         `Status: ${todo.status.replace("_", " ")}`,
         `Agent: @${todo.assigned_agent}`,
-      ];
-      if (todo.description) descParts.push("", todo.description);
-      descParts.push("", `Dashboard: ${baseUrl}`);
-
-      const description = descParts.join("\\n");
+        ...(todo.description ? ["", todo.description] : []),
+        "",
+        `Open dashboard: ${baseUrl}`,
+      ].join("\\n");
 
       ics.push(
         "BEGIN:VEVENT",
         `UID:${todo.id}@srn-command-center`,
         `DTSTAMP:${stamp}`,
-        `DTSTART;TZID=Asia/Kolkata:${startTime}`,
-        `DTEND;TZID=Asia/Kolkata:${endTime}`,
+        `DTSTART;VALUE=DATE:${dueDate}`,
+        `DTEND;VALUE=DATE:${endDate}`,
         `SUMMARY:${title}`,
-        `DESCRIPTION:${description}`,
+        `DESCRIPTION:${desc}`,
         `URL:${baseUrl}`,
-        `STATUS:${isDone ? "COMPLETED" : isBlocked ? "CANCELLED" : "CONFIRMED"}`,
-        `CATEGORIES:${todo.priority},${todo.status}`,
-        // Transparency: overdue/critical = busy (blocks time), others = free
-        `TRANSP:${todo.priority === "critical" || isOverdue ? "OPAQUE" : "TRANSPARENT"}`,
+        `STATUS:${isDone ? "COMPLETED" : "CONFIRMED"}`,
+        `TRANSP:TRANSPARENT`,
       );
 
-      // Add reminder for critical, high, overdue, or due-today tasks (not done)
-      if (!isDone && (todo.priority === "critical" || todo.priority === "high" || isOverdue || isToday)) {
+      // Reminders — morning of the due date at 8:30 AM IST
+      if (!isDone) {
+        // Reminder at 8:30 AM on the due date
         ics.push(
           "BEGIN:VALARM",
-          "TRIGGER:-PT30M",
+          "TRIGGER;VALUE=DATE-TIME:" + `${dueDate}T030000Z`,
           "ACTION:DISPLAY",
-          `DESCRIPTION:Task due: ${todo.title}`,
+          `DESCRIPTION:Task due today: ${todo.title} [${todo.priority}]`,
           "END:VALARM",
         );
-      }
 
-      // Extra reminder for critical tasks — 1 hour before AND at event time
-      if (!isDone && todo.priority === "critical") {
-        ics.push(
-          "BEGIN:VALARM",
-          "TRIGGER:-PT60M",
-          "ACTION:DISPLAY",
-          `DESCRIPTION:CRITICAL task approaching: ${todo.title}`,
-          "END:VALARM",
-        );
+        // Critical + overdue get a day-before reminder too
+        if (todo.priority === "critical" || isOverdue) {
+          ics.push(
+            "BEGIN:VALARM",
+            "TRIGGER:-P1D",
+            "ACTION:DISPLAY",
+            `DESCRIPTION:Task due tomorrow: ${todo.title} [CRITICAL]`,
+            "END:VALARM",
+          );
+        }
       }
 
       ics.push("END:VEVENT");
@@ -168,11 +121,16 @@ export async function GET(req: NextRequest) {
 
   ics.push("END:VCALENDAR");
 
-  return new NextResponse(ics.join("\r\n"), {
-    headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "text/calendar; charset=utf-8",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Access-Control-Allow-Origin": "*",
+  };
+
+  // If download=true, add Content-Disposition to trigger file download
+  if (download) {
+    headers["Content-Disposition"] = `attachment; filename="srn-tasks-${now.toISOString().slice(0, 10)}.ics"`;
+  }
+
+  return new NextResponse(ics.join("\r\n"), { headers });
 }

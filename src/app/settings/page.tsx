@@ -39,6 +39,7 @@ export default function SettingsPage() {
   };
 
   const calendarUrl = typeof window !== "undefined" ? `${window.location.origin}/api/export-calendar` : "";
+  const downloadUrl = typeof window !== "undefined" ? `${window.location.origin}/api/export-calendar?download=true` : "";
 
   const copyCalendarUrl = () => {
     navigator.clipboard.writeText(calendarUrl);
@@ -73,23 +74,50 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Google Calendar Live Sync */}
+        {/* Google Calendar Sync */}
         <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
-          <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>Google Calendar sync</h2>
-          <p className="text-xs font-mono mb-3" style={{ color: "var(--text-muted)" }}>
-            Add this URL to Google Calendar once. It auto-refreshes every 4 hours with your latest tasks and due dates.
+          <h2 className="text-sm font-medium mb-2" style={{ color: "var(--text-primary)" }}>Google Calendar</h2>
+          <p className="text-xs font-mono mb-4" style={{ color: "var(--text-muted)" }}>
+            Tasks with due dates appear as all-day events. Priority shown as colored dots. Reminders set for critical and high tasks.
           </p>
-          <div className="flex gap-2">
-            <input type="text" readOnly value={calendarUrl} className="flex-1 rounded-xl px-3 py-2 text-[10px] sm:text-xs font-mono focus:outline-none"
-              style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }} />
-            <button onClick={copyCalendarUrl} className="px-3 py-2 text-xs font-mono rounded-xl transition-all"
-              style={{ background: calendarCopied ? "rgba(110,231,183,0.15)" : "var(--accent-muted)", color: calendarCopied ? "#6ee7b7" : "var(--accent)" }}>
-              {calendarCopied ? "Copied!" : "Copy"}
-            </button>
+
+          {/* Option 1: Auto-sync */}
+          <div className="p-3 rounded-xl mb-3" style={{ background: "var(--bg-card)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Auto-sync (subscribe once)</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ background: "rgba(110,231,183,0.1)", color: "#6ee7b7" }}>Recommended</span>
+            </div>
+            <p className="text-[10px] font-mono mb-2" style={{ color: "var(--text-muted)" }}>
+              Google Calendar auto-refreshes every few hours. Add this URL once and forget.
+            </p>
+            <div className="flex gap-2">
+              <input type="text" readOnly value={calendarUrl} className="flex-1 rounded-lg px-3 py-1.5 text-[10px] font-mono focus:outline-none"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }} />
+              <button onClick={copyCalendarUrl} className="px-3 py-1.5 text-[10px] font-mono rounded-lg shrink-0 transition-all"
+                style={{ background: calendarCopied ? "rgba(110,231,183,0.15)" : "var(--accent-muted)", color: calendarCopied ? "#6ee7b7" : "var(--accent)" }}>
+                {calendarCopied ? "Copied!" : "Copy URL"}
+              </button>
+            </div>
+            <p className="text-[9px] font-mono mt-1.5" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+              Google Calendar → Settings → Add calendar → From URL
+            </p>
           </div>
-          <p className="text-[10px] font-mono mt-2" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
-            Google Calendar → Settings → Add calendar → From URL → paste the link above
-          </p>
+
+          {/* Option 2: Instant download */}
+          <div className="p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Instant sync</span>
+                <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  Download .ics and open in Google Calendar to update now
+                </p>
+              </div>
+              <a href={downloadUrl} className="px-3 py-1.5 text-[10px] font-mono rounded-lg shrink-0 transition-all"
+                style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+                Download .ics
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Task Templates */}
@@ -140,7 +168,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => handleUseTemplate(t)} className="px-2 py-1 text-[10px] font-mono rounded-lg" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>Use</button>
-                    <button onClick={() => deleteTemplate(t.id).then(() => setTemplates((prev) => prev.filter((x) => x.id !== t.id)))} className="px-2 py-1 text-[10px] font-mono rounded-lg" style={{ color: "var(--text-muted)" }}>×</button>
+                    <button onClick={() => deleteTemplate(t.id).then(() => setTemplates((prev) => prev.filter((x) => x.id !== t.id)))} className="px-2 py-1 text-[10px] font-mono rounded-lg" style={{ color: "var(--text-muted)" }}>x</button>
                   </div>
                 </div>
               ))}
@@ -148,14 +176,14 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* API & Integrations */}
+        {/* API */}
         <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
           <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>API</h2>
           <div className="p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Webhook API</span>
-                <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>POST /api/webhooks — create, update, list, delete tasks externally</p>
+                <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>POST /api/webhooks — create, update, list, delete</p>
               </div>
               <span className="text-[10px] font-mono px-2 py-1 rounded-lg" style={{ background: "rgba(110,231,183,0.1)", color: "#6ee7b7" }}>Active</span>
             </div>
@@ -175,7 +203,7 @@ export default function SettingsPage() {
           <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
             <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>About</h3>
             <div className="space-y-2 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
-              {[["Version","4.0"],["DB","Supabase"],["Host","Vercel"],["Realtime","WebSocket"],["Offline","Service Worker"],["By","SRN"]].map(([l,v]) => (
+              {[["Version","4.1"],["DB","Supabase"],["Host","Vercel"],["Realtime","WebSocket"],["Offline","Service Worker"],["By","SRN"]].map(([l,v]) => (
                 <div key={l} className="flex justify-between"><span>{l}</span><span style={{ color: l === "By" ? "var(--accent)" : "var(--text-primary)" }}>{v}</span></div>
               ))}
             </div>
