@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase, fetchTodos, type Todo } from "@/lib/supabase";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { playAddSound, playDoneSound, playDeleteSound } from "@/lib/sounds";
 
 export function useRealtimeTodos() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -38,15 +39,17 @@ export function useRealtimeTodos() {
             const t = payload.new as Todo;
             setTodos((prev) => [t, ...prev]);
             setLastEvent(`[${ts}] + New: "${t.title}"`);
-            // Dispatch toast event
+            playAddSound();
             window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `New task: ${t.title}`, type: "success" } }));
           }
 
           if (payload.eventType === "UPDATE") {
             const t = payload.new as Todo;
+            const old = payload.old as Todo;
             setTodos((prev) => prev.map((x) => (x.id === t.id ? t : x)));
             setLastEvent(`[${ts}] ~ "${t.title}" → ${t.status}`);
-            if (t.status === "done") {
+            if (t.status === "done" && old.status !== "done") {
+              playDoneSound();
               window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Completed: ${t.title}`, type: "success" } }));
             }
           }
@@ -55,6 +58,7 @@ export function useRealtimeTodos() {
             const t = payload.old as Todo;
             setTodos((prev) => prev.filter((x) => x.id !== t.id));
             setLastEvent(`[${ts}] − Removed task`);
+            playDeleteSound();
           }
         }
       )

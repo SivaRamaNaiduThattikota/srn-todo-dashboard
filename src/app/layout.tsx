@@ -11,45 +11,27 @@ export const metadata: Metadata = {
   title: "SRN Command Center",
   description: "Real-time task dashboard with glassmorphism UI",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "SRN Command",
-  },
+  icons: { icon: "/favicon.svg", apple: "/icon.svg" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "SRN Command" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0b",
+  themeColor: "#0d0d10",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark" data-theme="green">
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-      </head>
+    <html lang="en" className="dark" data-theme="green" data-mode="dark">
       <body className="min-h-screen flex">
         <ThemeProvider>
           <ParticleBackground />
-          {/* Desktop sidebar — hidden on mobile */}
-          <div className="hidden md:block">
-            <Sidebar />
-          </div>
-          <main className="flex-1 md:ml-16 lg:ml-64 min-h-screen pb-20 md:pb-0">
-            {children}
-          </main>
-          {/* Mobile bottom nav — hidden on desktop */}
-          <div className="md:hidden">
-            <MobileNav />
-          </div>
+          <div className="hidden md:block"><Sidebar /></div>
+          <main className="flex-1 md:ml-16 lg:ml-64 min-h-screen pb-20 md:pb-0">{children}</main>
+          <div className="md:hidden"><MobileNav /></div>
           <ToastProvider />
           <KeyboardShortcuts />
         </ThemeProvider>

@@ -196,3 +196,4 @@ select {
 * { transition-property: background-color, border-color, box-shadow, color; transition-duration: 0.2s; transition-timing-function: ease; }
 input, select, button, a { transition-property: all; }
 /* v2.1 final */
+/* v3.0 */
