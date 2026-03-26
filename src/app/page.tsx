@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
 import { addTodo, updateTodo, deleteTodo, type TodoStatus, type TodoPriority } from "@/lib/supabase";
 import { TodoCard } from "@/components/TodoCard";
@@ -23,6 +23,18 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<TodoStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+
+  // Listen for keyboard shortcut events
+  useEffect(() => {
+    const handleNewTask = () => setShowAdd(true);
+    const handleEscape = () => setShowAdd(false);
+    window.addEventListener("srn:new-task", handleNewTask);
+    window.addEventListener("srn:escape", handleEscape);
+    return () => {
+      window.removeEventListener("srn:new-task", handleNewTask);
+      window.removeEventListener("srn:escape", handleEscape);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return todos.filter((t) => {
@@ -54,12 +66,12 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="mb-10 animate-fade-in-up">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
             <h1 className="text-3xl font-semibold tracking-tight text-white">
-              SRN Command Center
+              Tasks
             </h1>
             <span className="flex items-center gap-2 text-xs font-mono text-accent bg-accent/10 border border-accent/20 px-3 py-1 rounded-full skeuo-raised">
               <span className="live-dot w-2 h-2 rounded-full bg-accent inline-block" />
@@ -75,6 +87,7 @@ export default function DashboardPage() {
                 <path d="M12 5v14M5 12h14" />
               </svg>
               New Task
+              <span className="text-[10px] text-text-muted ml-1 font-mono">N</span>
             </span>
           </button>
         </div>
@@ -83,12 +96,12 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      {/* ── Stats ── */}
+      {/* Stats */}
       <div className="animate-fade-in-up" style={{ animationDelay: "80ms" }}>
         <StatsBar todos={todos} />
       </div>
 
-      {/* ── Filters & Search ── */}
+      {/* Filters & Search */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6 animate-fade-in-up" style={{ animationDelay: "160ms" }}>
         <div className="flex gap-1 glass rounded-xl p-1.5">
           {STATUS_FILTERS.map((s) => (
@@ -112,18 +125,17 @@ export default function DashboardPage() {
           </svg>
           <input
             type="text"
-            placeholder="Search tasks or agents..."
+            placeholder="Search tasks or agents...  ( / )"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full glass rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-text-muted focus:outline-none focus:border-accent/30 font-mono transition-all duration-300 focus:shadow-[0_0_20px_rgba(110,231,183,0.08)]"
+            className="w-full glass rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-text-muted/50 focus:outline-none focus:border-accent/30 font-mono transition-all duration-300 focus:shadow-[0_0_20px_rgba(110,231,183,0.08)]"
           />
         </div>
       </div>
 
-      {/* ── Event Log ── */}
       <EventLog lastEvent={lastEvent} />
 
-      {/* ── Todo Grid ── */}
+      {/* Todo Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <div className="glass-heavy rounded-2xl px-8 py-6 flex items-center gap-4 animate-float-in">
@@ -167,12 +179,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Count ── */}
       <div className="mt-8 text-xs text-text-muted font-mono text-center animate-fade-in" style={{ animationDelay: "300ms" }}>
         {filtered.length} of {todos.length} tasks shown
       </div>
 
-      {/* ── Add Modal ── */}
       {showAdd && (
         <AddTodoModal onAdd={handleAdd} onClose={() => setShowAdd(false)} />
       )}

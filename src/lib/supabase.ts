@@ -4,11 +4,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
+  realtime: { params: { eventsPerSecond: 10 } },
 });
 
 // ── Types ──────────────────────────────────────────────────
@@ -18,14 +14,35 @@ export type TodoPriority = "critical" | "high" | "medium" | "low";
 export interface Todo {
   id: string;
   title: string;
+  description: string;
   status: TodoStatus;
   priority: TodoPriority;
   assigned_agent: string;
+  due_date: string | null;
+  completed_at: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
 
-// ── CRUD helpers ───────────────────────────────────────────
+export interface Subtask {
+  id: string;
+  todo_id: string;
+  title: string;
+  is_done: boolean;
+  created_at: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  todo_id: string | null;
+  action: "created" | "status_changed" | "completed" | "deleted";
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
+}
+
+// ── Todo CRUD ──────────────────────────────────────────────
 export async function fetchTodos() {
   const { data, error } = await supabase
     .from("todos")
@@ -59,4 +76,51 @@ export async function updateTodo(id: string, updates: Partial<Todo>) {
 export async function deleteTodo(id: string) {
   const { error } = await supabase.from("todos").delete().eq("id", id);
   if (error) throw error;
+}
+
+// ── Subtask CRUD ───────────────────────────────────────────
+export async function fetchSubtasks(todoId: string) {
+  const { data, error } = await supabase
+    .from("subtasks")
+    .select("*")
+    .eq("todo_id", todoId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data as Subtask[];
+}
+
+export async function addSubtask(todoId: string, title: string) {
+  const { data, error } = await supabase
+    .from("subtasks")
+    .insert({ todo_id: todoId, title })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Subtask;
+}
+
+export async function toggleSubtask(id: string, isDone: boolean) {
+  const { error } = await supabase
+    .from("subtasks")
+    .update({ is_done: isDone })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteSubtask(id: string) {
+  const { error } = await supabase.from("subtasks").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ── Analytics ──────────────────────────────────────────────
+export async function fetchActivityLog(days: number = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("*")
+    .gte("created_at", since.toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as ActivityLog[];
 }
