@@ -13,31 +13,14 @@ export type TodoPriority = "critical" | "high" | "medium" | "low";
 export type TodoCategory = "learning" | "project" | "interview-prep" | "work" | "personal" | "general";
 export type ResourceLinkType = "article" | "video" | "github" | "doc" | "tool" | "course" | "other";
 
-export interface ResourceLink {
-  title: string;
-  url:   string;
-  type:  ResourceLinkType;
-}
+export interface ResourceLink { title: string; url: string; type: ResourceLinkType; }
 
 export interface Todo {
-  id: string;
-  title: string;
-  description: string;
-  status: TodoStatus;
-  priority: TodoPriority;
-  assigned_agent: string;
-  due_date: string | null;
-  completed_at: string | null;
-  sort_order: number;
-  category: TodoCategory;
-  // v8 additions
-  resource_links:  ResourceLink[];
-  tags:            string[];
-  estimated_mins:  number | null;
-  created_at: string;
-  updated_at: string;
+  id: string; title: string; description: string; status: TodoStatus; priority: TodoPriority;
+  assigned_agent: string; due_date: string | null; completed_at: string | null; sort_order: number;
+  category: TodoCategory; resource_links: ResourceLink[]; tags: string[]; estimated_mins: number | null;
+  created_at: string; updated_at: string;
 }
-
 export interface Subtask { id: string; todo_id: string; title: string; is_done: boolean; created_at: string; }
 export interface ActivityLog { id: string; todo_id: string | null; action: "created" | "status_changed" | "completed" | "deleted"; old_value: string | null; new_value: string | null; created_at: string; }
 export interface TaskTemplate { id: string; title: string; description: string; priority: TodoPriority; assigned_agent: string; recurrence: "daily" | "weekly" | "monthly" | null; is_active: boolean; last_created_at: string | null; created_at: string; }
@@ -46,11 +29,13 @@ export interface HabitLog { id: string; habit_id: string; completed_date: string
 export interface Note { id: string; title: string; content: string; tags: string[]; is_pinned: boolean; created_at: string; updated_at: string; }
 export interface FocusSession { id: string; todo_id: string | null; duration_minutes: number; completed: boolean; started_at: string; ended_at: string | null; }
 export interface WeeklyReview { id: string; week_start: string; tasks_completed: number; focus_minutes: number; streak_days: number; reflection: string; goals_next_week: string; created_at: string; }
-export interface Project {
-  id: string; title: string; description: string; category: string;
-  tech: string[]; status: "planning" | "in-progress" | "completed" | "deployed";
-  progress: number; github_url: string; live_url: string; highlights: string[];
-  start_date: string | null; end_date: string | null; sort_order: number;
+export interface Project { id: string; title: string; description: string; category: string; tech: string[]; status: "planning" | "in-progress" | "completed" | "deployed"; progress: number; github_url: string; live_url: string; highlights: string[]; start_date: string | null; end_date: string | null; sort_order: number; created_at: string; updated_at: string; }
+
+export interface Decision {
+  id: string; decision: string; reasoning: string; expected_outcome: string;
+  category: "career" | "technical" | "learning" | "financial" | "personal" | "project";
+  status: "active" | "reviewed" | "reversed" | "validated";
+  review_date: string; review_notes: string;
   created_at: string; updated_at: string;
 }
 
@@ -58,36 +43,11 @@ export interface Project {
 export async function fetchTodos() {
   const { data, error } = await supabase.from("todos").select("*").order("updated_at", { ascending: false });
   if (error) throw error;
-  return (data as Todo[]).map((t) => ({
-    ...t,
-    resource_links: t.resource_links ?? [],
-    tags:           t.tags           ?? [],
-    estimated_mins: t.estimated_mins ?? null,
-  }));
+  return (data as Todo[]).map((t) => ({ ...t, resource_links: t.resource_links ?? [], tags: t.tags ?? [], estimated_mins: t.estimated_mins ?? null }));
 }
-
-export async function addTodo(todo: Partial<Todo>) {
-  const payload = {
-    ...todo,
-    resource_links: todo.resource_links ?? [],
-    tags:           todo.tags           ?? [],
-    estimated_mins: todo.estimated_mins ?? null,
-  };
-  const { data, error } = await supabase.from("todos").insert(payload).select().single();
-  if (error) throw error;
-  return data as Todo;
-}
-
-export async function updateTodo(id: string, updates: Partial<Todo>) {
-  const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single();
-  if (error) throw error;
-  return data as Todo;
-}
-
-export async function deleteTodo(id: string) {
-  const { error } = await supabase.from("todos").delete().eq("id", id);
-  if (error) throw error;
-}
+export async function addTodo(todo: Partial<Todo>) { const payload = { ...todo, resource_links: todo.resource_links ?? [], tags: todo.tags ?? [], estimated_mins: todo.estimated_mins ?? null }; const { data, error } = await supabase.from("todos").insert(payload).select().single(); if (error) throw error; return data as Todo; }
+export async function updateTodo(id: string, updates: Partial<Todo>) { const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single(); if (error) throw error; return data as Todo; }
+export async function deleteTodo(id: string) { const { error } = await supabase.from("todos").delete().eq("id", id); if (error) throw error; }
 
 // ── Subtasks ───────────────────────────────────────────────
 export async function fetchSubtasks(todoId: string) { const { data, error } = await supabase.from("subtasks").select("*").eq("todo_id", todoId).order("created_at", { ascending: true }); if (error) throw error; return data as Subtask[]; }
@@ -128,6 +88,12 @@ export async function fetchProjects() { const { data, error } = await supabase.f
 export async function addProject(project: Partial<Project>) { const { data, error } = await supabase.from("projects").insert(project).select().single(); if (error) throw error; return data as Project; }
 export async function updateProject(id: string, updates: Partial<Project>) { const { data, error } = await supabase.from("projects").update(updates).eq("id", id).select().single(); if (error) throw error; return data as Project; }
 export async function deleteProject(id: string) { await supabase.from("projects").delete().eq("id", id); }
+
+// ── Decisions ──────────────────────────────────────────────
+export async function fetchDecisions() { const { data, error } = await supabase.from("decisions").select("*").order("created_at", { ascending: false }); if (error) throw error; return data as Decision[]; }
+export async function addDecision(decision: Partial<Decision>) { const { data, error } = await supabase.from("decisions").insert(decision).select().single(); if (error) throw error; return data as Decision; }
+export async function updateDecision(id: string, updates: Partial<Decision>) { const { data, error } = await supabase.from("decisions").update(updates).eq("id", id).select().single(); if (error) throw error; return data as Decision; }
+export async function deleteDecision(id: string) { await supabase.from("decisions").delete().eq("id", id); }
 
 // ── Analytics ──────────────────────────────────────────────
 export async function fetchActivityLog(days: number = 30) { const since = new Date(); since.setDate(since.getDate() - days); const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", since.toISOString()).order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
