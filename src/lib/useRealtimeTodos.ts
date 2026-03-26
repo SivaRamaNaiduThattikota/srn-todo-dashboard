@@ -26,43 +26,41 @@ export function useRealtimeTodos() {
   useEffect(() => {
     load();
 
-    // Subscribe to realtime changes on the todos table
     const channel = supabase
       .channel("todos-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "todos" },
         (payload: RealtimePostgresChangesPayload<Todo>) => {
-          const timestamp = new Date().toLocaleTimeString();
+          const ts = new Date().toLocaleTimeString();
 
           if (payload.eventType === "INSERT") {
-            const newTodo = payload.new as Todo;
-            setTodos((prev) => [newTodo, ...prev]);
-            setLastEvent(`[${timestamp}] + New task: "${newTodo.title}"`);
+            const t = payload.new as Todo;
+            setTodos((prev) => [t, ...prev]);
+            setLastEvent(`[${ts}] + New: "${t.title}"`);
+            // Dispatch toast event
+            window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `New task: ${t.title}`, type: "success" } }));
           }
 
           if (payload.eventType === "UPDATE") {
-            const updated = payload.new as Todo;
-            setTodos((prev) =>
-              prev.map((t) => (t.id === updated.id ? updated : t))
-            );
-            setLastEvent(
-              `[${timestamp}] ~ Updated: "${updated.title}" -> ${updated.status}`
-            );
+            const t = payload.new as Todo;
+            setTodos((prev) => prev.map((x) => (x.id === t.id ? t : x)));
+            setLastEvent(`[${ts}] ~ "${t.title}" → ${t.status}`);
+            if (t.status === "done") {
+              window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Completed: ${t.title}`, type: "success" } }));
+            }
           }
 
           if (payload.eventType === "DELETE") {
-            const deleted = payload.old as Todo;
-            setTodos((prev) => prev.filter((t) => t.id !== deleted.id));
-            setLastEvent(`[${timestamp}] x Removed task`);
+            const t = payload.old as Todo;
+            setTodos((prev) => prev.filter((x) => x.id !== t.id));
+            setLastEvent(`[${ts}] − Removed task`);
           }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [load]);
 
   return { todos, loading, error, lastEvent, refetch: load };

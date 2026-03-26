@@ -1,6 +1,5 @@
 -- ============================================================
--- SUPABASE UPGRADE: Run this in SQL Editor (after initial setup)
--- Adds: due dates, descriptions, subtasks, completion tracking
+-- SUPABASE UPGRADE v2 — Safe to re-run (handles existing objects)
 -- ============================================================
 
 -- Add new columns to todos table
@@ -10,7 +9,7 @@ ALTER TABLE todos
   ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
 
--- Create subtasks table
+-- Create subtasks table (if not exists)
 CREATE TABLE IF NOT EXISTS subtasks (
   id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   todo_id     UUID NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
@@ -20,10 +19,19 @@ CREATE TABLE IF NOT EXISTS subtasks (
 );
 
 ALTER TABLE subtasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on subtasks" ON subtasks FOR ALL USING (true) WITH CHECK (true);
-ALTER PUBLICATION supabase_realtime ADD TABLE subtasks;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subtasks' AND policyname = 'Allow all on subtasks') THEN
+    CREATE POLICY "Allow all on subtasks" ON subtasks FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
--- Create activity log for analytics
+-- Safely add subtasks to realtime (ignore if already added)
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE subtasks;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Create activity log table
 CREATE TABLE IF NOT EXISTS activity_log (
   id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   todo_id     UUID REFERENCES todos(id) ON DELETE SET NULL,
@@ -34,7 +42,11 @@ CREATE TABLE IF NOT EXISTS activity_log (
 );
 
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on activity_log" ON activity_log FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'activity_log' AND policyname = 'Allow all on activity_log') THEN
+    CREATE POLICY "Allow all on activity_log" ON activity_log FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Auto-log status changes
 CREATE OR REPLACE FUNCTION log_todo_changes()
@@ -62,7 +74,7 @@ CREATE TRIGGER log_todo_changes_trigger
   FOR EACH ROW
   EXECUTE FUNCTION log_todo_changes();
 
--- Index for analytics queries
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_action ON activity_log(action);
 CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due_date);

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { useState, useEffect, useCallback, ReactNode } from "react";
 
 interface Toast {
   id: string;
@@ -8,44 +8,44 @@ interface Toast {
   type: "success" | "info" | "warning" | "error";
 }
 
-const ToastContext = createContext<{
-  addToast: (message: string, type?: Toast["type"]) => void;
-}>({ addToast: () => {} });
-
-export const useToast = () => useContext(ToastContext);
-
 export function ToastProvider({ children }: { children?: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((message: string, type: Toast["type"] = "info") => {
     const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    setToasts((prev) => [...prev.slice(-4), { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  const typeStyles: Record<Toast["type"], string> = {
-    success: "border-status-done/30 text-status-done",
-    info: "border-status-in_progress/30 text-status-in_progress",
-    warning: "border-status-pending/30 text-status-pending",
-    error: "border-status-blocked/30 text-status-blocked",
+  // Listen for custom toast events from anywhere in the app
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.message) addToast(detail.message, detail.type || "info");
+    };
+    window.addEventListener("srn:toast", handler);
+    return () => window.removeEventListener("srn:toast", handler);
+  }, [addToast]);
+
+  const colors: Record<Toast["type"], { border: string; text: string }> = {
+    success: { border: "rgba(110,231,183,0.3)", text: "#6ee7b7" },
+    info: { border: "rgba(96,165,250,0.3)", text: "#60a5fa" },
+    warning: { border: "rgba(251,191,36,0.3)", text: "#fbbf24" },
+    error: { border: "rgba(248,113,113,0.3)", text: "#f87171" },
   };
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <>
       {children}
-      {/* Toast container */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none" style={{ maxWidth: "320px" }}>
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`glass-heavy rounded-2xl px-5 py-3 animate-slide-up pointer-events-auto border ${typeStyles[toast.type]}`}
-          >
-            <span className="text-sm font-mono">{toast.message}</span>
+          <div key={toast.id}
+            className="glass-heavy rounded-2xl px-4 py-3 animate-slide-up pointer-events-auto"
+            style={{ borderColor: colors[toast.type].border, borderWidth: "1px" }}>
+            <span className="text-xs font-mono" style={{ color: colors[toast.type].text }}>{toast.message}</span>
           </div>
         ))}
       </div>
-    </ToastContext.Provider>
+    </>
   );
 }
