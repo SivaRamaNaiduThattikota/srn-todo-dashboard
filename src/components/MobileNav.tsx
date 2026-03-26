@@ -4,29 +4,37 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Tasks", icon: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" },
-  { href: "/board", label: "Board", icon: "M3 3h5v18H3zM10 3h5v12h-5zM17 3h5v15h-5z" },
-  { href: "/calendar", label: "Calendar", icon: "M8 2v4M16 2v4M3 10h18M3 4h18a2 2 0 012 2v14a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2z" },
-  { href: "/analytics", label: "Stats", icon: "M3 3v18h18M7 16l4-8 4 4 5-9" },
-  { href: "/settings", label: "More", icon: "M12 12m-1 0a1 1 0 102 0 1 1 0 10-2 0M19 12m-1 0a1 1 0 102 0 1 1 0 10-2 0M5 12m-1 0a1 1 0 102 0 1 1 0 10-2 0" },
+  { href: "/today", label: "Today" },
+  { href: "/", label: "Tasks" },
+  { href: "/streaks", label: "Streaks" },
+  { href: "/focus", label: "Focus" },
+  { href: "/notes", label: "Notes" },
 ];
+
+const ICONS: Record<string, string> = {
+  "/today": "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 6v6l4 2",
+  "/": "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
+  "/streaks": "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+  "/focus": "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 8v4M12 16v0",
+  "/notes": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8",
+};
 
 export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="mobile-bottom-nav glass-heavy">
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="mobile-bottom-nav" style={{ background: "var(--bg-card)", borderTop: "1px solid var(--border-default)", backdropFilter: "blur(20px)" }}>
+      <div className="flex items-center justify-around px-1 py-1.5">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link key={item.href} href={item.href}
-              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 relative"
-              style={{ color: isActive ? "var(--accent)" : "var(--text-muted)", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d={item.icon} />
+              className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all duration-200"
+              style={{ color: isActive ? "var(--accent)" : "var(--text-muted)" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d={ICONS[item.href]} />
               </svg>
-              <span className="text-[9px] font-medium tracking-wide">{item.label}</span>
+              <span className="text-[9px] font-medium">{item.label}</span>
             </Link>
           );
         })}
