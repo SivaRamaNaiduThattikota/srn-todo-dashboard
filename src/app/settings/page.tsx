@@ -1,6 +1,8 @@
 "use client";
 
 import { useTheme } from "@/components/ThemeProvider";
+import { useState, useEffect } from "react";
+import { fetchTemplates, addTemplate, deleteTemplate, createTodoFromTemplate, type TaskTemplate, type TodoPriority } from "@/lib/supabase";
 
 const ACCENTS = [
   { id: "green" as const, label: "Emerald", color: "hsl(160, 70%, 68%)" },
@@ -13,93 +15,174 @@ const ACCENTS = [
 
 export default function SettingsPage() {
   const { accent, mode, setAccent, toggleMode } = useTheme();
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [showNewTemplate, setShowNewTemplate] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newPriority, setNewPriority] = useState<TodoPriority>("medium");
+  const [newRecurrence, setNewRecurrence] = useState<"daily" | "weekly" | "monthly" | "">("");
+  const [templateError, setTemplateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTemplates().then(setTemplates).catch(() => {});
+  }, []);
+
+  const handleAddTemplate = async () => {
+    if (!newTitle.trim()) return;
+    try {
+      const t = await addTemplate({ title: newTitle.trim(), priority: newPriority, recurrence: newRecurrence || null });
+      setTemplates((prev) => [t, ...prev]);
+      setNewTitle(""); setShowNewTemplate(false); setTemplateError(null);
+    } catch (err: any) {
+      setTemplateError(err.message);
+    }
+  };
+
+  const handleUseTemplate = async (t: TaskTemplate) => {
+    await createTodoFromTemplate(t);
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Created: ${t.title}`, type: "success" } }));
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    await deleteTemplate(id);
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
       <header className="mb-6 sm:mb-8 animate-fade-in-up">
         <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Settings</h1>
-        <p className="text-xs sm:text-sm font-mono mt-1" style={{ color: "var(--text-muted)" }}>Customize your command center</p>
+        <p className="text-xs sm:text-sm font-mono mt-1" style={{ color: "var(--text-muted)" }}>Customize, integrate, and configure</p>
       </header>
 
-      {/* Dark/Light Toggle */}
-      <div className="glass rounded-2xl p-5 sm:p-6 mb-4 animate-fade-in-up">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="space-y-4">
+        {/* Appearance */}
+        <div className="glass rounded-2xl p-5 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Appearance</h2>
-            <p className="text-xs font-mono mt-1" style={{ color: "var(--text-muted)" }}>
-              Currently: {mode === "dark" ? "Dark mode" : "Light mode"}
-            </p>
-          </div>
-          <button
-            onClick={toggleMode}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-            style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
-          >
-            {mode === "dark" ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
-                Switch to light
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-                Switch to dark
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Accent Color Picker */}
-      <div className="glass rounded-2xl p-5 sm:p-6 mb-4 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
-        <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>Accent color</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-          {ACCENTS.map((t) => (
-            <button key={t.id} onClick={() => setAccent(t.id)}
-              className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-xl transition-all duration-200"
-              style={{
-                background: accent === t.id ? "var(--bg-card-hover)" : "transparent",
-                border: accent === t.id ? "1px solid var(--border-hover)" : "1px solid transparent",
-              }}>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-200"
-                style={{
-                  backgroundColor: t.color,
-                  boxShadow: accent === t.id ? `0 0 16px ${t.color}40` : "none",
-                  transform: accent === t.id ? "scale(1.1)" : "scale(1)",
-                }} />
-              <span className="text-[10px] sm:text-xs font-mono" style={{ color: "var(--text-muted)" }}>{t.label}</span>
+            <button onClick={toggleMode} className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all"
+              style={{ background: "var(--bg-card-hover)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
+              {mode === "dark" ? "☀ Light" : "🌙 Dark"}
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
-          <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>Keyboard shortcuts</h3>
-          <div className="space-y-2.5 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
-            {[["New task", "N"], ["Search", "/"], ["Board view", "B"], ["Analytics", "A"], ["Tasks", "T"], ["AI assistant", "I"]].map(([label, key]) => (
-              <div key={label} className="flex justify-between items-center">
-                <span>{label}</span>
-                <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}>{key}</span>
-              </div>
+          </div>
+          <div className="grid grid-cols-6 gap-2">
+            {ACCENTS.map((t) => (
+              <button key={t.id} onClick={() => setAccent(t.id)} className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all"
+                style={{ background: accent === t.id ? "var(--bg-card-hover)" : "transparent", border: accent === t.id ? "1px solid var(--border-hover)" : "1px solid transparent" }}>
+                <div className="w-7 h-7 rounded-full" style={{ backgroundColor: t.color, boxShadow: accent === t.id ? `0 0 12px ${t.color}40` : "none" }} />
+                <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{t.label}</span>
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "180ms" }}>
-          <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>About</h3>
-          <div className="space-y-2.5 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
-            {[["Version", "2.0.0"], ["Database", "Supabase PostgreSQL"], ["Hosting", "Vercel"], ["Realtime", "WebSocket"], ["UI", "Glassmorphism"], ["Built by", "SRN"]].map(([label, val]) => (
-              <div key={label} className="flex justify-between">
-                <span>{label}</span>
-                <span style={{ color: label === "Built by" ? "var(--accent)" : "var(--text-primary)" }}>{val}</span>
+        {/* Task Templates */}
+        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Task templates</h2>
+            <button onClick={() => setShowNewTemplate(!showNewTemplate)} className="text-xs font-mono px-3 py-1.5 rounded-lg" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+              {showNewTemplate ? "Cancel" : "+ New"}
+            </button>
+          </div>
+
+          {showNewTemplate && (
+            <div className="mb-4 p-3 rounded-xl space-y-2" style={{ background: "var(--bg-input)" }}>
+              {templateError && <p className="text-xs font-mono" style={{ color: "#f87171" }}>{templateError}</p>}
+              <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Template title..."
+                className="w-full rounded-lg px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
+              <div className="flex gap-2">
+                <select value={newPriority} onChange={(e) => setNewPriority(e.target.value as TodoPriority)}
+                  className="flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
+                  <option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+                </select>
+                <select value={newRecurrence} onChange={(e) => setNewRecurrence(e.target.value as any)}
+                  className="flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
+                  <option value="">One-time</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+                </select>
+                <button onClick={handleAddTemplate} className="px-3 py-1.5 text-xs font-medium rounded-lg" style={{ background: "var(--accent)", color: "#0a0a0b" }}>Add</button>
               </div>
-            ))}
+            </div>
+          )}
+
+          {templates.length === 0 ? (
+            <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>No templates yet. Create one to quickly add recurring tasks.</p>
+          ) : (
+            <div className="space-y-2">
+              {templates.map((t) => (
+                <div key={t.id} className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+                  <div>
+                    <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{t.title}</span>
+                    <div className="flex gap-2 mt-0.5">
+                      <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{t.priority}</span>
+                      {t.recurrence && <span className="text-[10px] font-mono" style={{ color: "var(--accent)" }}>{t.recurrence}</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleUseTemplate(t)} className="px-2 py-1 text-[10px] font-mono rounded-lg" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>Use</button>
+                    <button onClick={() => handleDeleteTemplate(t.id)} className="px-2 py-1 text-[10px] font-mono rounded-lg" style={{ color: "var(--text-muted)" }}>×</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Integrations */}
+        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
+          <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>Integrations</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+              <div>
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Google Calendar</span>
+                <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>Export tasks with due dates as .ics file</p>
+              </div>
+              <a href="/api/export-calendar" className="px-3 py-1.5 text-[10px] font-mono rounded-lg" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+                Download .ics
+              </a>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+              <div>
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Email notifications</span>
+                <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>Add RESEND_API_KEY to .env.local</p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-1 rounded-lg" style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>Setup needed</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+              <div>
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Slack notifications</span>
+                <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>Add SLACK_WEBHOOK_URL to .env.local</p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-1 rounded-lg" style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>Setup needed</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+              <div>
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Webhook API</span>
+                <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>POST /api/webhooks — external automations</p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-1 rounded-lg" style={{ background: "rgba(110,231,183,0.1)", color: "#6ee7b7" }}>Active</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Keyboard shortcuts + About */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "180ms" }}>
+            <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>Shortcuts</h3>
+            <div className="space-y-2 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
+              {[["New task","N"],["Search","/"],["Board","B"],["Analytics","A"],["Tasks","T"],["AI","I"],["Close","Esc"]].map(([l,k]) => (
+                <div key={l} className="flex justify-between"><span>{l}</span><span className="px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}>{k}</span></div>
+              ))}
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "240ms" }}>
+            <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>About</h3>
+            <div className="space-y-2 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
+              {[["Version","3.0.0"],["DB","Supabase"],["Host","Vercel"],["Realtime","WebSocket"],["UI","Glassmorphism"],["By","SRN"]].map(([l,v]) => (
+                <div key={l} className="flex justify-between"><span>{l}</span><span style={{ color: l === "By" ? "var(--accent)" : "var(--text-primary)" }}>{v}</span></div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

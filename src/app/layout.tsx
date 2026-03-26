@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ToastProvider";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ParticleBackground } from "@/components/ParticleBackground";
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorker";
 
 export const metadata: Metadata = {
   title: "SRN Command Center",
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="md:hidden"><MobileNav /></div>
           <ToastProvider />
           <KeyboardShortcuts />
+          <ServiceWorkerRegistrar />
         </ThemeProvider>
       </body>
     </html>
