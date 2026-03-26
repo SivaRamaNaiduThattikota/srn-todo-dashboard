@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { fetchProjects, addProject, updateProject, deleteProject, type Project } from "@/lib/supabase";
 
 const STATUS_OPTIONS = [
@@ -10,14 +10,17 @@ const STATUS_OPTIONS = [
   { value: "deployed", label: "Deployed", color: "#a78bfa" },
 ];
 
+const CATEGORY_PRESETS = ["Healthcare ML", "NLP", "Computer Vision", "RecSys", "Time Series", "MLOps", "Data Engineering", "GenAI", "Other"];
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Form state
+  // Form
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -26,34 +29,65 @@ export default function ProjectsPage() {
   const [progress, setProgress] = useState(0);
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
+  const [highlightsInput, setHighlightsInput] = useState("");
 
   useEffect(() => { fetchProjects().then((d) => { setProjects(d); setLoading(false); }).catch(() => setLoading(false)); }, []);
-
   const reload = async () => setProjects(await fetchProjects());
 
-  const resetForm = () => { setTitle(""); setDescription(""); setCategory(""); setTechInput(""); setStatus("planning"); setProgress(0); setGithub(""); setLiveUrl(""); setShowAdd(false); setEditingId(null); };
+  const resetForm = () => {
+    setTitle(""); setDescription(""); setCategory(""); setTechInput(""); setStatus("planning");
+    setProgress(0); setGithub(""); setLiveUrl(""); setHighlightsInput("");
+    setShowForm(false); setEditingId(null); setSaving(false);
+  };
 
   const handleSave = async () => {
-    if (!title.trim()) return;
-    const tech = techInput.split(",").map((t) => t.trim()).filter(Boolean);
-    const data: Partial<Project> = { title: title.trim(), description: description.trim(), category: category.trim(), tech, status, progress, github_url: github.trim(), live_url: liveUrl.trim() };
-    if (editingId) { await updateProject(editingId, data); } else { await addProject(data); }
-    await reload(); resetForm();
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    try {
+      const tech = techInput.split(",").map((t) => t.trim()).filter(Boolean);
+      const highlights = highlightsInput.split("\n").map((h) => h.trim()).filter(Boolean);
+      const data: Partial<Project> = {
+        title: title.trim(), description: description.trim(), category: category.trim(),
+        tech, status, progress, github_url: github.trim(), live_url: liveUrl.trim(), highlights,
+      };
+      if (editingId) { await updateProject(editingId, data); }
+      else { await addProject(data); }
+      await reload();
+      resetForm();
+      window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: editingId ? "Project updated" : "Project added", type: "success" } }));
+    } catch (err: any) {
+      window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: err?.message || "Failed to save", type: "error" } }));
+      setSaving(false);
+    }
   };
 
   const handleEdit = (p: Project) => {
-    setEditingId(p.id); setTitle(p.title); setDescription(p.description); setCategory(p.category);
+    setEditingId(p.id); setTitle(p.title); setDescription(p.description || ""); setCategory(p.category || "");
     setTechInput(p.tech?.join(", ") || ""); setStatus(p.status); setProgress(p.progress);
-    setGithub(p.github_url || ""); setLiveUrl(p.live_url || ""); setShowAdd(true);
+    setGithub(p.github_url || ""); setLiveUrl(p.live_url || "");
+    setHighlightsInput(p.highlights?.join("\n") || "");
+    setShowForm(true); setExpandedId(null);
   };
 
-  const handleDelete = async (id: string) => { await deleteProject(id); await reload(); };
+  const handleDelete = async (id: string) => {
+    await deleteProject(id); await reload();
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Project deleted", type: "info" } }));
+  };
 
-  const handleProgressUpdate = async (id: string, newProgress: number, newStatus?: Project["status"]) => {
+  const handleProgressUpdate = async (id: string, newProgress: number) => {
     const updates: Partial<Project> = { progress: newProgress };
-    if (newStatus) updates.status = newStatus;
-    else if (newProgress === 100) updates.status = "completed";
-    else if (newProgress > 0 && newProgress < 100) updates.status = "in-progress";
+    if (newProgress === 100) updates.status = "completed";
+    else if (newProgress > 0) updates.status = "in-progress";
+    else updates.status = "planning";
+    await updateProject(id, updates);
+    await reload();
+  };
+
+  const handleStatusChange = async (id: string, newStatus: Project["status"]) => {
+    const updates: Partial<Project> = { status: newStatus };
+    if (newStatus === "completed") updates.progress = 100;
+    else if (newStatus === "deployed") updates.progress = 100;
+    else if (newStatus === "planning") updates.progress = 0;
     await updateProject(id, updates);
     await reload();
   };
@@ -63,58 +97,84 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <header className="mb-6 animate-fade-in-up">
+      <header className="mb-5 animate-fade-in-up">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>ML Portfolio</h1>
             <p className="text-xs font-mono mt-1" style={{ color: "var(--text-muted)" }}>{completed}/{projects.length} done · {totalProgress}% overall</p>
           </div>
-          <button onClick={() => { resetForm(); setShowAdd(true); }} className="px-4 py-2 text-xs font-medium rounded-xl"
-            style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>+ Add project</button>
+          {!showForm && (
+            <button onClick={() => { resetForm(); setShowForm(true); }} className="px-4 py-2 text-xs font-medium rounded-xl"
+              style={{ background: "var(--accent)", color: "#0a0a0b" }}>+ Add project</button>
+          )}
         </div>
       </header>
 
-      {/* Overall progress bar */}
-      <div className="glass rounded-2xl p-4 mb-5 animate-fade-in-up">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Portfolio completion</span>
-          <span className="text-xs font-mono" style={{ color: "var(--accent)" }}>{totalProgress}%</span>
+      {/* Overall progress */}
+      {projects.length > 0 && (
+        <div className="glass rounded-2xl p-4 mb-4 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Portfolio</span>
+            <span className="text-xs font-mono" style={{ color: "var(--accent)" }}>{totalProgress}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${totalProgress}%`, background: "var(--accent)" }} />
+          </div>
         </div>
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
-          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${totalProgress}%`, background: "var(--accent)" }} />
-        </div>
-      </div>
+      )}
 
-      {/* Add/Edit form */}
-      {showAdd && (
+      {/* Add/Edit Form */}
+      {showForm && (
         <div className="glass rounded-2xl p-5 mb-5 animate-slide-up">
-          <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>{editingId ? "Edit project" : "New project"}</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{editingId ? "Edit project" : "New project"}</h2>
+            <button onClick={resetForm} className="text-xs px-2 py-1 rounded-lg" style={{ color: "var(--text-muted)" }}>Cancel</button>
+          </div>
           <div className="space-y-3">
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Project title..."
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Project title *"
               className="w-full rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none"
               style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description..." rows={2}
+
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What does this project do?" rows={2}
               className="w-full rounded-xl px-4 py-2.5 text-xs font-mono focus:outline-none resize-none"
               style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
+
+            {/* Category presets */}
+            <div>
+              <span className="text-[10px] font-mono block mb-1.5" style={{ color: "var(--text-muted)" }}>Category</span>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {CATEGORY_PRESETS.map((c) => (
+                  <button key={c} onClick={() => setCategory(c)} className="px-2.5 py-1 text-[10px] font-mono rounded-lg transition-all"
+                    style={{ background: category === c ? "var(--accent-muted)" : "var(--bg-input)", color: category === c ? "var(--accent)" : "var(--text-muted)", border: `1px solid ${category === c ? "hsla(var(--accent-h),var(--accent-s),var(--accent-l),0.2)" : "var(--border-default)"}` }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Or type custom category..."
+                className="w-full rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
+            </div>
+
+            <input type="text" value={techInput} onChange={(e) => setTechInput(e.target.value)} placeholder="Tech stack (comma separated): Python, PyTorch, FastAPI..."
+              className="w-full rounded-xl px-4 py-2.5 text-xs font-mono focus:outline-none"
+              style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
+
+            <textarea value={highlightsInput} onChange={(e) => setHighlightsInput(e.target.value)} placeholder="Key deliverables (one per line):\nMulti-class classification\nSHAP explainability\nREST API deployment" rows={3}
+              className="w-full rounded-xl px-4 py-2.5 text-xs font-mono focus:outline-none resize-none"
+              style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
+
             <div className="grid grid-cols-2 gap-3">
-              <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category (e.g. NLP, CV)"
+              <input type="text" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="GitHub URL"
                 className="rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
                 style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
-              <input type="text" value={techInput} onChange={(e) => setTechInput(e.target.value)} placeholder="Tech (comma separated)"
+              <input type="text" value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} placeholder="Live demo URL"
                 className="rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
                 style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="text" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="GitHub URL (optional)"
-                className="rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
-                style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
-              <input type="text" value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} placeholder="Live demo URL (optional)"
-                className="rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
-                style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />
-            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-mono block mb-1" style={{ color: "var(--text-muted)" }}>Status</label>
+                <span className="text-[10px] font-mono block mb-1" style={{ color: "var(--text-muted)" }}>Status</span>
                 <select value={status} onChange={(e) => setStatus(e.target.value as Project["status"])}
                   className="w-full rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
                   style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
@@ -122,16 +182,16 @@ export default function ProjectsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-mono block mb-1" style={{ color: "var(--text-muted)" }}>Progress: {progress}%</label>
-                <input type="range" min="0" max="100" step="5" value={progress} onChange={(e) => setProgress(Number(e.target.value))}
-                  className="w-full" />
+                <span className="text-[10px] font-mono block mb-1" style={{ color: "var(--text-muted)" }}>Progress: {progress}%</span>
+                <input type="range" min="0" max="100" step="5" value={progress} onChange={(e) => setProgress(Number(e.target.value))} className="w-full" />
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={resetForm} className="px-4 py-2 text-xs rounded-xl" style={{ color: "var(--text-muted)" }}>Cancel</button>
-              <button onClick={handleSave} disabled={!title.trim()} className="px-5 py-2 text-xs font-medium rounded-xl disabled:opacity-30"
-                style={{ background: "var(--accent)", color: "#0a0a0b" }}>{editingId ? "Save" : "Add"}</button>
-            </div>
+
+            <button onClick={handleSave} disabled={!title.trim() || saving}
+              className="w-full py-2.5 text-xs font-medium rounded-xl transition-all disabled:opacity-30"
+              style={{ background: "var(--accent)", color: "#0a0a0b" }}>
+              {saving ? "Saving..." : editingId ? "Save changes" : "Add project"}
+            </button>
           </div>
         </div>
       )}
@@ -139,10 +199,11 @@ export default function ProjectsPage() {
       {/* Project cards */}
       {loading ? (
         <div className="text-center py-16"><span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Loading...</span></div>
-      ) : projects.length === 0 ? (
+      ) : projects.length === 0 && !showForm ? (
         <div className="text-center py-16 glass rounded-2xl">
-          <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No projects yet</p>
-          <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Click "Add project" to start tracking your ML portfolio</p>
+          <p className="text-sm font-medium mb-2" style={{ color: "var(--text-primary)" }}>No projects yet</p>
+          <p className="text-xs font-mono mb-4" style={{ color: "var(--text-muted)" }}>Start tracking your ML portfolio</p>
+          <button onClick={() => setShowForm(true)} className="px-5 py-2 text-xs font-medium rounded-xl" style={{ background: "var(--accent)", color: "#0a0a0b" }}>Add first project</button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -154,29 +215,25 @@ export default function ProjectsPage() {
                 <div className="p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : p.id)}>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
                         <h3 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.title}</h3>
                         <span className="text-[9px] font-mono px-2 py-0.5 rounded-lg" style={{ background: `${sc.color}15`, color: sc.color }}>{sc.label}</span>
+                        {p.category && <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{p.category}</span>}
                       </div>
-                      <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{p.category}</p>
-                      {p.description && <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--text-secondary)" }}>{p.description}</p>}
+                      {p.description && <p className="text-xs mt-0.5 line-clamp-2" style={{ color: "var(--text-secondary)" }}>{p.description}</p>}
                     </div>
-
-                    {/* Progress circle */}
-                    <div className="flex-shrink-0">
-                      <svg width="48" height="48" viewBox="0 0 48 48">
-                        <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3" style={{ stroke: "var(--border-default)" }} />
-                        <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3" strokeLinecap="round"
-                          strokeDasharray={2 * Math.PI * 20} strokeDashoffset={2 * Math.PI * 20 * (1 - p.progress / 100)}
-                          style={{ stroke: sc.color, transform: "rotate(-90deg)", transformOrigin: "center" }} />
-                        <text x="24" y="24" textAnchor="middle" dominantBaseline="central"
-                          style={{ fontSize: "11px", fontFamily: "monospace", fill: "var(--text-secondary)" }}>{p.progress}%</text>
-                      </svg>
-                    </div>
+                    <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
+                      <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3" style={{ stroke: "var(--border-default)" }} />
+                      <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3" strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 20} strokeDashoffset={2 * Math.PI * 20 * (1 - p.progress / 100)}
+                        style={{ stroke: sc.color, transform: "rotate(-90deg)", transformOrigin: "center" }} />
+                      <text x="24" y="24" textAnchor="middle" dominantBaseline="central"
+                        style={{ fontSize: "11px", fontFamily: "monospace", fill: "var(--text-secondary)" }}>{p.progress}%</text>
+                    </svg>
                   </div>
 
-                  {/* Quick progress slider */}
-                  <div className="mt-3 flex items-center gap-3">
+                  {/* Progress slider */}
+                  <div className="mt-2 flex items-center gap-3">
                     <input type="range" min="0" max="100" step="5" value={p.progress}
                       onChange={(e) => handleProgressUpdate(p.id, Number(e.target.value))}
                       className="flex-1" style={{ accentColor: sc.color }} />
@@ -192,15 +249,30 @@ export default function ProjectsPage() {
                     </div>
                   )}
 
-                  {/* Expanded: details + actions */}
+                  {/* Expanded */}
                   {isExpanded && (
-                    <div className="mt-4 pt-4 space-y-3" style={{ borderTop: "1px solid var(--border-default)" }}>
+                    <div className="mt-4 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-default)" }}>
+                      {/* Status quick-switch */}
+                      <div>
+                        <span className="text-[10px] font-mono block mb-1.5" style={{ color: "var(--text-muted)" }}>Change status</span>
+                        <div className="flex gap-1.5">
+                          {STATUS_OPTIONS.map((s) => (
+                            <button key={s.value} onClick={(e) => { e.stopPropagation(); handleStatusChange(p.id, s.value as Project["status"]); }}
+                              className="px-2.5 py-1 text-[10px] font-mono rounded-lg transition-all"
+                              style={{ background: p.status === s.value ? `${s.color}20` : "var(--bg-input)", color: p.status === s.value ? s.color : "var(--text-muted)", border: `1px solid ${p.status === s.value ? `${s.color}40` : "var(--border-default)"}` }}>
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Highlights */}
                       {p.highlights && p.highlights.length > 0 && (
                         <div>
-                          <span className="text-[10px] font-mono uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Deliverables</span>
+                          <span className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Deliverables</span>
                           {p.highlights.map((h, idx) => (
                             <div key={idx} className="flex items-center gap-2 mb-1">
-                              <span className="w-1 h-1 rounded-full" style={{ background: sc.color }} />
+                              <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: sc.color }} />
                               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{h}</span>
                             </div>
                           ))}
@@ -208,13 +280,15 @@ export default function ProjectsPage() {
                       )}
 
                       {/* Links */}
-                      <div className="flex gap-2 flex-wrap">
-                        {p.github_url && <a href={p.github_url} target="_blank" rel="noopener" className="text-[10px] font-mono px-3 py-1.5 rounded-lg" style={{ background: "var(--bg-input)", color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>GitHub →</a>}
-                        {p.live_url && <a href={p.live_url} target="_blank" rel="noopener" className="text-[10px] font-mono px-3 py-1.5 rounded-lg" style={{ background: "var(--accent-muted)", color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>Live Demo →</a>}
-                      </div>
+                      {(p.github_url || p.live_url) && (
+                        <div className="flex gap-2">
+                          {p.github_url && <a href={p.github_url} target="_blank" rel="noopener" className="text-[10px] font-mono px-3 py-1.5 rounded-lg" style={{ background: "var(--bg-input)", color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>GitHub →</a>}
+                          {p.live_url && <a href={p.live_url} target="_blank" rel="noopener" className="text-[10px] font-mono px-3 py-1.5 rounded-lg" style={{ background: "var(--accent-muted)", color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>Demo →</a>}
+                        </div>
+                      )}
 
                       {/* Edit / Delete */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 pt-1">
                         <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="px-3 py-1.5 text-[10px] font-mono rounded-lg" style={{ background: "var(--bg-input)", color: "var(--text-secondary)" }}>Edit</button>
                         <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }} className="px-3 py-1.5 text-[10px] font-mono rounded-lg" style={{ color: "#f87171" }}>Delete</button>
                       </div>
