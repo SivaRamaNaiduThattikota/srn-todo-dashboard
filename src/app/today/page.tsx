@@ -1,15 +1,15 @@
 "use client";
 
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
-import { fetchHabits, fetchHabitLogs, toggleHabitDay, fetchFocusSessions, type DailyHabit, type HabitLog, type FocusSession } from "@/lib/supabase";
+import { fetchHabits, fetchHabitLogs, toggleHabitDay, fetchFocusSessions, updateTodo, type DailyHabit, type HabitLog, type FocusSession, type TodoStatus } from "@/lib/supabase";
 import { useState, useEffect, useMemo } from "react";
 import { isToday, isPast, format } from "date-fns";
 import Link from "next/link";
 
 export default function TodayPage() {
   const { todos } = useRealtimeTodos();
-  const [habits, setHabits] = useState<DailyHabit[]>([]);
-  const [logs, setLogs] = useState<HabitLog[]>([]);
+  const [habits, setHabits]   = useState<DailyHabit[]>([]);
+  const [logs, setLogs]       = useState<HabitLog[]>([]);
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -19,15 +19,17 @@ export default function TodayPage() {
     fetchFocusSessions(1).then(setSessions).catch(() => {});
   }, []);
 
-  const todayLogs = useMemo(() => logs.filter((l) => l.completed_date === today), [logs, today]);
-  const habitsCompleted = todayLogs.length;
-  const habitsTotal = habits.length;
+  const todayLogs        = useMemo(() => logs.filter((l) => l.completed_date === today), [logs, today]);
+  const habitsCompleted  = todayLogs.length;
+  const habitsTotal      = habits.length;
 
-  const todayTasks = useMemo(() => todos.filter((t) => t.due_date && isToday(new Date(t.due_date)) && t.status !== "done"), [todos]);
+  const todayTasks  = useMemo(() => todos.filter((t) => t.due_date && isToday(new Date(t.due_date)) && t.status !== "done"), [todos]);
   const overdueTasks = useMemo(() => todos.filter((t) => t.due_date && isPast(new Date(t.due_date)) && !isToday(new Date(t.due_date)) && t.status !== "done"), [todos]);
-  const inProgress = useMemo(() => todos.filter((t) => t.status === "in_progress"), [todos]);
-  const todayDone = useMemo(() => todos.filter((t) => t.completed_at && isToday(new Date(t.completed_at))), [todos]);
-  const todayFocusMinutes = useMemo(() => sessions.filter((s) => s.completed && isToday(new Date(s.started_at))).reduce((sum, s) => sum + s.duration_minutes, 0), [sessions]);
+  const inProgress  = useMemo(() => todos.filter((t) => t.status === "in_progress"), [todos]);
+  const todayDone   = useMemo(() => todos.filter((t) => t.completed_at && isToday(new Date(t.completed_at))), [todos]);
+  const todayFocusMinutes = useMemo(() =>
+    sessions.filter((s) => s.completed && isToday(new Date(s.started_at))).reduce((sum, s) => sum + s.duration_minutes, 0),
+  [sessions]);
 
   const currentStreak = useMemo(() => {
     if (habits.length === 0) return 0;
@@ -49,7 +51,31 @@ export default function TodayPage() {
     setLogs(updated);
   };
 
-  const hour = new Date().getHours();
+  /* ── Inline task status cycle ── */
+  const STATUS_CYCLE: Record<TodoStatus, TodoStatus> = {
+    pending:     "in_progress",
+    in_progress: "done",
+    done:        "pending",
+    blocked:     "pending",
+  };
+  const STATUS_ICON: Record<TodoStatus, string> = {
+    pending:     "○",
+    in_progress: "◑",
+    done:        "●",
+    blocked:     "✕",
+  };
+  const STATUS_COLOR: Record<TodoStatus, string> = {
+    pending:     "#f5a623",
+    in_progress: "#4da6ff",
+    done:        "#5ecf95",
+    blocked:     "#ff6b6b",
+  };
+  const handleCycleStatus = async (id: string, current: TodoStatus) => {
+    const next = STATUS_CYCLE[current];
+    await updateTodo(id, { status: next });
+  };
+
+  const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const QUICK_ACTIONS = [
@@ -59,14 +85,37 @@ export default function TodayPage() {
     { href: "/analytics", label: "See analytics",       icon: "📊", color: "#b48eff" },
   ];
 
+  const TaskRow = ({ t, overdue = false }: { t: (typeof todos)[0]; overdue?: boolean }) => (
+    <div
+      className="flex items-center justify-between px-3.5 py-2.5 rounded-[14px]"
+      style={{
+        background: overdue ? "rgba(255,107,107,0.08)" : "var(--glass-fill)",
+        border: `0.5px solid ${overdue ? "rgba(255,107,107,0.20)" : "var(--glass-border)"}`,
+      }}
+    >
+      <div className="flex items-center gap-2">
+        {/* Cycle button */}
+        <button
+          onClick={() => handleCycleStatus(t.id, t.status)}
+          className="text-sm leading-none transition-all"
+          style={{ color: STATUS_COLOR[t.status], width: "18px", textAlign: "center" }}
+          title={`Status: ${t.status} — click to advance`}
+        >
+          {STATUS_ICON[t.status]}
+        </button>
+        <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{t.title}</span>
+        {overdue && <span className="text-[10px] font-mono" style={{ color: "#ff6b6b" }}>overdue</span>}
+      </div>
+      <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{t.priority}</span>
+    </div>
+  );
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10">
       {/* Greeting */}
       <header className="mb-6 sm:mb-8 animate-fade-in-up">
-        <h1
-          className="text-xl sm:text-2xl font-semibold tracking-tight"
-          style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}
-        >
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
+          style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
           {greeting}, SRN
         </h1>
         <p className="text-xs sm:text-sm font-mono mt-1" style={{ color: "var(--text-muted)" }}>
@@ -78,74 +127,44 @@ export default function TodayPage() {
         {/* Left — habits + tasks */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Daily Habits — CC-style tiles */}
+          {/* Daily habits */}
           <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up">
             <div className="flex items-center justify-between mb-4">
-              <h2
-                className="text-sm font-medium"
-                style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
-              >
+              <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
                 Daily habits
               </h2>
               <div className="flex items-center gap-2">
-                <span
-                  className="text-xs font-mono"
-                  style={{ color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "var(--text-muted)" }}
-                >
+                <span className="text-xs font-mono"
+                  style={{ color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "var(--text-muted)" }}>
                   {habitsCompleted}/{habitsTotal}
                 </span>
                 {currentStreak > 0 && (
-                  <span
-                    className="text-[10px] font-mono px-2 py-0.5 rounded-[8px]"
-                    style={{
-                      background: "rgba(245,166,35,0.12)",
-                      color: "#f5a623",
-                      border: "0.5px solid rgba(245,166,35,0.22)",
-                    }}
-                  >
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-[8px]"
+                    style={{ background: "rgba(245,166,35,0.12)", color: "#f5a623", border: "0.5px solid rgba(245,166,35,0.22)" }}>
                     {currentStreak}d streak
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Habit grid — CC glossy tiles */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {habits.map((h) => {
                 const done = todayLogs.some((l) => l.habit_id === h.id);
                 return (
-                  <button
-                    key={h.id}
-                    onClick={() => handleToggleHabit(h.id)}
-                    className="cc-habit p-3 sm:p-4 text-left"
+                  <button key={h.id} onClick={() => handleToggleHabit(h.id)} className="cc-habit p-3 sm:p-4 text-left"
                     style={{
-                      background: done
-                        ? `linear-gradient(160deg, ${h.color}35 0%, ${h.color}20 100%)`
-                        : "var(--cc-glass-base)",
+                      background: done ? `linear-gradient(160deg, ${h.color}35 0%, ${h.color}20 100%)` : "var(--cc-glass-base)",
                       borderColor: done ? `${h.color}45` : "rgba(255,255,255,0.14)",
                       boxShadow: done
                         ? `inset 0 0.5px 0 ${h.color}55, 0 4px 16px ${h.color}25, 0 1px 3px rgba(0,0,0,0.2)`
                         : "var(--cc-inner-shadow), var(--cc-outer-shadow)",
-                    }}
-                  >
-                    {/* Icon */}
-                    <div
-                      className="w-7 h-7 rounded-[10px] flex items-center justify-center text-sm mb-2"
-                      style={{
-                        background: done ? h.color : "rgba(255,255,255,0.10)",
-                        boxShadow: done ? `0 2px 8px ${h.color}50, inset 0 0.5px 0 rgba(255,255,255,0.35)` : "inset 0 0.5px 0 rgba(255,255,255,0.15)",
-                      }}
-                    >
+                    }}>
+                    <div className="w-7 h-7 rounded-[10px] flex items-center justify-center text-sm mb-2"
+                      style={{ background: done ? h.color : "rgba(255,255,255,0.10)", boxShadow: done ? `0 2px 8px ${h.color}50, inset 0 0.5px 0 rgba(255,255,255,0.35)` : "inset 0 0.5px 0 rgba(255,255,255,0.15)" }}>
                       {done ? "✓" : h.icon}
                     </div>
-                    <span
-                      className="text-xs font-medium block leading-tight"
-                      style={{
-                        color: done ? h.color : "var(--text-secondary)",
-                        fontFamily: "-apple-system, sans-serif",
-                        letterSpacing: "-0.01em",
-                      }}
-                    >
+                    <span className="text-xs font-medium block leading-tight"
+                      style={{ color: done ? h.color : "var(--text-secondary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.01em" }}>
                       {h.name}
                     </span>
                   </button>
@@ -153,11 +172,7 @@ export default function TodayPage() {
               })}
             </div>
 
-            <Link
-              href="/streaks"
-              className="block mt-3 text-[10px] font-mono text-center"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <Link href="/streaks" className="block mt-3 text-[10px] font-mono text-center" style={{ color: "var(--text-muted)" }}>
               View full streak history →
             </Link>
           </div>
@@ -171,45 +186,11 @@ export default function TodayPage() {
               )}
             </h2>
             {todayTasks.length === 0 && overdueTasks.length === 0 ? (
-              <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
-                No tasks due today.
-              </p>
+              <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>No tasks due today.</p>
             ) : (
               <div className="space-y-2">
-                {overdueTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-[14px]"
-                    style={{
-                      background: "rgba(255,107,107,0.08)",
-                      border: "0.5px solid rgba(255,107,107,0.20)",
-                      boxShadow: "inset 0 0.5px 0 rgba(255,180,180,0.15)",
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ background: "#ff6b6b", boxShadow: "0 0 6px rgba(255,107,107,0.5)" }} />
-                      <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{t.title}</span>
-                      <span className="text-[10px] font-mono" style={{ color: "#ff6b6b" }}>overdue</span>
-                    </div>
-                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{t.priority}</span>
-                  </div>
-                ))}
-                {todayTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-[14px]"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "0.5px solid var(--glass-border)",
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ background: "#f5a623", boxShadow: "0 0 6px rgba(245,166,35,0.4)" }} />
-                      <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{t.title}</span>
-                    </div>
-                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{t.priority}</span>
-                  </div>
-                ))}
+                {overdueTasks.map((t) => <TaskRow key={t.id} t={t} overdue />)}
+                {todayTasks.map((t) => <TaskRow key={t.id} t={t} />)}
               </div>
             )}
           </div>
@@ -222,19 +203,10 @@ export default function TodayPage() {
               </h2>
               <div className="space-y-2">
                 {inProgress.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-[14px]"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "0.5px solid var(--glass-border)",
-                    }}
-                  >
+                  <div key={t.id} className="flex items-center justify-between px-3.5 py-2.5 rounded-[14px]"
+                    style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
                     <div className="flex items-center gap-2">
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ background: "#4da6ff", boxShadow: "0 0 6px rgba(77,166,255,0.4)" }}
-                      />
+                      <span className="w-2 h-2 rounded-full" style={{ background: "#4da6ff", boxShadow: "0 0 6px rgba(77,166,255,0.4)" }} />
                       <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{t.title}</span>
                     </div>
                     <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>@{t.assigned_agent}</span>
@@ -247,7 +219,6 @@ export default function TodayPage() {
 
         {/* Right — stats + quick actions */}
         <div className="space-y-4">
-
           {/* Today's stats */}
           <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
             <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
@@ -255,10 +226,10 @@ export default function TodayPage() {
             </h2>
             <div className="space-y-3">
               {[
-                { label: "Tasks completed",  value: todayDone.length,                                                  color: "#5ecf95" },
-                { label: "Focus time",       value: `${todayFocusMinutes}m`,                                          color: "#4da6ff" },
-                { label: "Habits done",      value: `${habitsCompleted}/${habitsTotal}`,                              color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "#f5a623" },
-                { label: "Current streak",   value: `${currentStreak}d`,                                             color: currentStreak > 0 ? "#f5a623" : "var(--text-muted)" },
+                { label: "Tasks completed", value: todayDone.length,                                                    color: "#5ecf95" },
+                { label: "Focus time",      value: `${todayFocusMinutes}m`,                                            color: "#4da6ff" },
+                { label: "Habits done",     value: `${habitsCompleted}/${habitsTotal}`,                                color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "#f5a623" },
+                { label: "Current streak",  value: `${currentStreak}d`,                                               color: currentStreak > 0 ? "#f5a623" : "var(--text-muted)" },
               ].map((s) => (
                 <div key={s.label} className="flex items-center justify-between">
                   <span className="text-[11px] font-mono" style={{ color: "var(--text-secondary)" }}>{s.label}</span>
@@ -268,35 +239,21 @@ export default function TodayPage() {
             </div>
           </div>
 
-          {/* Quick actions — CC-style tiles */}
+          {/* Quick actions */}
           <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
             <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
               Quick actions
             </h2>
             <div className="grid grid-cols-2 gap-2">
               {QUICK_ACTIONS.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
+                <Link key={item.href} href={item.href}
                   className="cc-tile flex flex-col items-start p-3 rounded-[18px] no-underline"
-                  style={{ minHeight: "72px" }}
-                >
-                  <span
-                    className="text-xl mb-2"
-                    style={{ position: "relative", zIndex: 3, filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}
-                  >
+                  style={{ minHeight: "72px" }}>
+                  <span className="text-xl mb-2" style={{ position: "relative", zIndex: 3, filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}>
                     {item.icon}
                   </span>
-                  <span
-                    className="text-[11px] font-medium leading-tight"
-                    style={{
-                      color: "var(--text-primary)",
-                      position: "relative",
-                      zIndex: 3,
-                      fontFamily: "-apple-system, sans-serif",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
+                  <span className="text-[11px] font-medium leading-tight"
+                    style={{ color: "var(--text-primary)", position: "relative", zIndex: 3, fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.01em" }}>
                     {item.label}
                   </span>
                 </Link>
