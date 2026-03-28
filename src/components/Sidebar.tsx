@@ -37,10 +37,8 @@ const SETTINGS_ICON = (
   </svg>
 );
 
-/* ── NavLink ── */
-function NavLink({
-  href, label, icon, pathname, showLabel,
-}: {
+/* ── Nav item ── */
+function NavLink({ href, label, icon, pathname, showLabel }: {
   href: string; label: string; icon: React.ReactNode; pathname: string; showLabel: boolean;
 }) {
   const isActive = pathname === href;
@@ -48,30 +46,35 @@ function NavLink({
     <Link
       href={href}
       title={!showLabel ? label : undefined}
-      className="group flex items-center gap-3 rounded-[13px] transition-all duration-200 relative"
       style={{
+        display: "flex",
+        alignItems: "center",
+        gap: showLabel ? "10px" : "0",
+        justifyContent: showLabel ? "flex-start" : "center",
+        height: "40px",
+        padding: showLabel ? "0 12px" : "0",
+        borderRadius: "13px",
+        position: "relative",
         background:           isActive ? "var(--cc-glass-hover)" : "transparent",
-        color:                isActive ? "var(--accent)" : "var(--cc-text)",
         backdropFilter:       isActive ? "blur(16px) saturate(1.8)" : "none",
         WebkitBackdropFilter: isActive ? "blur(16px) saturate(1.8)" : "none",
         boxShadow:            isActive ? "var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)" : "none",
         border:               isActive ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent",
-        minHeight: "40px",
-        padding: showLabel ? "0 12px" : "0",
-        justifyContent: showLabel ? "flex-start" : "center",
+        textDecoration: "none",
+        flexShrink: 0, // never shrink — important for scroll to work
       }}
     >
       {isActive && (
-        <div style={{ position: "absolute", left: 0, top: "22%", bottom: "22%", width: "2.5px", borderRadius: "0 3px 3px 0", background: "var(--accent)", boxShadow: "0 0 8px var(--accent-glow)" }} />
+        <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: "2.5px", borderRadius: "0 3px 3px 0", background: "var(--accent)", boxShadow: "0 0 8px var(--accent-glow)" }} />
       )}
       {isActive && (
-        <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg,transparent,var(--specular-top),transparent)", pointerEvents: "none" }} />
       )}
-      <span className="flex-shrink-0" style={{ color: isActive ? "var(--accent)" : "var(--cc-text)" }}>
+      <span style={{ flexShrink: 0, color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex" }}>
         {icon}
       </span>
       {showLabel && (
-        <span className="font-medium tracking-tight truncate" style={{ fontSize: "13.5px", color: isActive ? "var(--text-primary)" : "var(--cc-text)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: "13.5px", fontWeight: 500, color: isActive ? "var(--text-primary)" : "var(--cc-text)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {label}
         </span>
       )}
@@ -79,176 +82,170 @@ function NavLink({
   );
 }
 
-/* ── Sidebar ── */
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR
+   ══════════════════════════════════════════════════════════ */
 export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, setCollapsed } = useSidebar();
 
-  /* lg breakpoint — label visibility */
-  const [isLg, setIsLg] = useState(false);
+  const [isLg, setIsLg] = useState(true);
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
     setIsLg(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsLg(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const h = (e: MediaQueryListEvent) => setIsLg(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
   }, []);
 
-  /* Labels shown only on desktop + not collapsed */
   const showLabels = isLg && !collapsed;
 
-  /*
-    More-section open state.
-    KEY FIX: moreOpen is INDEPENDENT of showLabels.
-    When collapsed (icon mode), More items are NOT auto-shown —
-    they stay hidden and the user can still collapse/expand More separately.
-  */
   const [moreOpen, setMoreOpen] = useState(false);
-
-  /* Auto-open More only if current path is in More nav — but only set it once */
   useEffect(() => {
-    if (MORE_NAV.some((item) => item.href === pathname)) {
-      setMoreOpen(true);
-    }
+    if (MORE_NAV.some((i) => i.href === pathname)) setMoreOpen(true);
   }, [pathname]);
 
-  /* Sidebar pixel width */
-  const sidebarWidth = showLabels ? "224px" : "60px";
+  const sidebarW = showLabels ? 224 : 60;
 
   return (
-    <aside
-      className="glass-sidebar fixed left-0 top-0 bottom-0 z-40 flex flex-col"
-      style={{ width: sidebarWidth, transition: "width 0.28s cubic-bezier(0.2,0.8,0.2,1)", overflow: "hidden" }}
-    >
-      {/* ── Header ── */}
-      <div
-        className="flex items-center flex-shrink-0 pt-5 pb-3"
-        style={{ paddingLeft: "12px", paddingRight: "8px", minHeight: "64px", gap: "10px" }}
+    <>
+      {/* ── Sidebar panel ── */}
+      <aside
+        className="glass-sidebar"
+        style={{
+          position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 40,
+          width: `${sidebarW}px`,
+          transition: "width 0.28s cubic-bezier(0.2,0.8,0.2,1)",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
-        {/* Logo */}
-        <div
-          className="flex-shrink-0 w-9 h-9 rounded-[11px] flex items-center justify-center relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, var(--accent-dim) 0%, var(--accent-muted) 100%)", border: "0.5px solid var(--cc-tile-border)", boxShadow: "0 2px 10px var(--accent-glow), inset 0 0.5px 0 rgba(255,255,255,0.30)" }}
-        >
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%)", borderRadius: "11px 11px 0 0" }} />
-          <span className="font-bold text-sm relative z-10" style={{ color: "var(--accent)", fontFamily: "-apple-system, SF Pro Display, sans-serif" }}>S</span>
-        </div>
-
-        {/* Title text — only when expanded */}
-        {showLabels && (
-          <div className="flex-1 overflow-hidden">
-            <h1 className="font-semibold tracking-tight leading-none whitespace-nowrap" style={{ fontSize: "14px", color: "var(--text-primary)", fontFamily: "-apple-system, SF Pro Display, sans-serif" }}>SRN Command</h1>
-            <p className="font-mono mt-0.5 whitespace-nowrap" style={{ fontSize: "11px", color: "var(--text-muted)" }}>Center</p>
+        {/* Logo header — fixed height, never scrolls */}
+        <div style={{
+          flexShrink: 0,
+          display: "flex", alignItems: "center",
+          height: "64px",
+          padding: showLabels ? "0 12px 0 14px" : "0",
+          justifyContent: showLabels ? "flex-start" : "center",
+          gap: "10px",
+        }}>
+          <div style={{ width: "36px", height: "36px", borderRadius: "11px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", background: "linear-gradient(135deg, var(--accent-dim), var(--accent-muted))", border: "0.5px solid var(--cc-tile-border)", boxShadow: "0 2px 10px var(--accent-glow), inset 0 0.5px 0 rgba(255,255,255,0.30)" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg,rgba(255,255,255,0.28),transparent)", borderRadius: "11px 11px 0 0" }} />
+            <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: "14px", position: "relative", zIndex: 1 }}>S</span>
           </div>
-        )}
-
-        {/* ── Collapse/expand toggle — ALWAYS visible on lg ── */}
-        {isLg && (
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="flex-shrink-0 rounded-[10px] flex items-center justify-center transition-all hover:scale-105"
-            style={{
-              width: "28px", height: "28px",
-              marginLeft: showLabels ? "0" : "auto",
-              marginRight: showLabels ? "0" : "auto",
-              background: "var(--cc-glass-base)",
-              border: "0.5px solid var(--cc-tile-border)",
-              color: "var(--cc-text-muted)",
-              cursor: "pointer",
-              /* When collapsed, this button IS the only header element after logo, so center it */
-              alignSelf: "center",
-            }}
-          >
-            <svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-              style={{ transform: collapsed ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s ease" }}
-            >
-              {/* Left-pointing chevron — rotates to right-pointing when collapsed */}
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div className="flex-shrink-0" style={{ height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 8px" }} />
-
-      {/* ── Scrollable nav ── */}
-      <nav className="flex-1 min-h-0 px-2 overflow-y-auto overflow-x-hidden flex flex-col" style={{ scrollbarWidth: "none" }}>
-
-        {/* Primary */}
-        <div className="space-y-0.5">
-          {PRIMARY_NAV.map((item) => (
-            <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
-          ))}
-        </div>
-
-        {/* More section */}
-        <div className="mt-1 space-y-0.5">
-          {/*
-            More section header / toggle.
-            - Expanded sidebar: show "More" label button with arrow
-            - Collapsed sidebar: show a small separator dot so the user knows there are more items,
-              and clicking it expands the More section in-place
-          */}
-          {showLabels ? (
-            /* Expanded: text toggle */
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-[13px] transition-all"
-              style={{ color: "var(--cc-text-muted)", background: "transparent", border: "none", cursor: "pointer" }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"
-                style={{ transform: moreOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}>
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-              <span className="font-medium" style={{ fontSize: "13px", fontFamily: "-apple-system, SF Pro Display, sans-serif" }}>More</span>
-              <span className="font-mono ml-auto" style={{ opacity: 0.45, fontSize: "11px" }}>{MORE_NAV.length}</span>
-            </button>
-          ) : (
-            /* Collapsed: small icon-only toggle showing "..." */
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              title={moreOpen ? "Hide more" : "Show more pages"}
-              className="flex items-center justify-center w-full rounded-[13px] transition-all"
-              style={{
-                height: "32px",
-                background: moreOpen ? "var(--cc-glass-base)" : "transparent",
-                border: moreOpen ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent",
-                cursor: "pointer",
-                color: "var(--cc-text-muted)",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="5"  cy="12" r="1.5" fill="currentColor" stroke="none"/>
-                <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-                <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-              </svg>
-            </button>
-          )}
-
-          {/* More nav items — shown only when moreOpen, regardless of collapsed state */}
-          {moreOpen && (
-            <div className="space-y-0.5 animate-fade-in">
-              {MORE_NAV.map((item) => (
-                <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
-              ))}
+          {showLabels && (
+            <div style={{ overflow: "hidden", flex: 1 }}>
+              <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", lineHeight: 1 }}>SRN Command</div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "monospace", marginTop: "3px" }}>Center</div>
             </div>
           )}
         </div>
 
-        <div className="flex-1" />
-      </nav>
+        {/* Divider */}
+        <div style={{ flexShrink: 0, height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 4px" }} />
 
-      {/* Divider */}
-      <div className="flex-shrink-0" style={{ height: "0.5px", background: "var(--cc-tile-border)", margin: "4px 12px" }} />
+        {/* ════════════════════════════════════════════
+            SCROLLABLE NAV
+            Critical rules:
+            - flex: 1   → takes all available vertical space
+            - minHeight: 0  → allows flex child to shrink below content size
+            - overflowY: auto  → scrolls when items exceed height
+            - NO flex spacer inside — that prevents scrolling
+            ════════════════════════════════════════════ */}
+        <nav style={{
+          flex: 1,
+          minHeight: 0,          /* ← CRITICAL: without this, overflow:auto doesn't work in flex */
+          overflowY: "auto",
+          overflowX: "hidden",
+          padding: "4px 8px 4px",
+          scrollbarWidth: "none",
+        }}>
 
-      {/* Settings — always pinned at bottom */}
-      <div className="px-2 pb-4 flex-shrink-0">
-        <NavLink href="/settings" label="Settings" icon={SETTINGS_ICON} pathname={pathname} showLabel={showLabels} />
-      </div>
-    </aside>
+          {/* Primary nav items */}
+          {PRIMARY_NAV.map((item) => (
+            <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
+          ))}
+
+          {/* Spacer between primary and more */}
+          <div style={{ height: "8px" }} />
+
+          {/* More toggle */}
+          {showLabels ? (
+            <button
+              onClick={() => setMoreOpen(!moreOpen)}
+              style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", height: "36px", padding: "0 12px", borderRadius: "13px", border: "none", background: "transparent", cursor: "pointer", color: "var(--cc-text-muted)", flexShrink: 0 }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                style={{ transform: moreOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+              <span style={{ fontSize: "13px", fontWeight: 500 }}>More</span>
+              <span style={{ marginLeft: "auto", fontSize: "11px", fontFamily: "monospace", opacity: 0.45 }}>{MORE_NAV.length}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setMoreOpen(!moreOpen)}
+              title={moreOpen ? "Hide more" : "Show more"}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "34px", width: "100%", borderRadius: "13px", cursor: "pointer", background: moreOpen ? "var(--cc-glass-base)" : "transparent", border: moreOpen ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent", color: "var(--cc-text-muted)", flexShrink: 0 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/>
+              </svg>
+            </button>
+          )}
+
+          {/* More nav items */}
+          {moreOpen && MORE_NAV.map((item) => (
+            <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
+          ))}
+
+          {/* Bottom padding so last item isn't flush against the divider */}
+          <div style={{ height: "8px" }} />
+        </nav>
+
+        {/* Divider above Settings — fixed, never scrolls */}
+        <div style={{ flexShrink: 0, height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 4px" }} />
+
+        {/* Settings — always pinned at bottom, never scrolled away */}
+        <div style={{ flexShrink: 0, padding: "0 8px 16px" }}>
+          <NavLink href="/settings" label="Settings" icon={SETTINGS_ICON} pathname={pathname} showLabel={showLabels} />
+        </div>
+      </aside>
+
+      {/* ── Floating collapse/expand button ──
+          Positioned at the right edge of the sidebar.
+          Completely outside <aside> so it's never clipped.
+          Only on desktop (lg+).
+      ── */}
+      {isLg && (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          style={{
+            position: "fixed",
+            left: `${sidebarW - 13}px`,
+            top: "48px",
+            zIndex: 50,
+            width: "26px", height: "26px",
+            borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "var(--bg-primary)",
+            border: "1.5px solid var(--glass-border-hover)",
+            color: "var(--text-secondary)",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.40), inset 0 0.5px 0 rgba(255,255,255,0.12)",
+            transition: "left 0.28s cubic-bezier(0.2,0.8,0.2,1)",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.15)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"
+            style={{ transform: collapsed ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s ease" }}>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
+    </>
   );
 }
