@@ -4,8 +4,22 @@ module.exports = {
   darkMode: "class",
   theme: {
     extend: {
+      /* ── Override Tailwind's default fontSize scale to readable sizes ── */
+      /* This means text-xs, text-sm, text-base etc. all produce larger text */
+      fontSize: {
+        "xs":   ["12.5px", { lineHeight: "1.5" }],   /* was 12px */
+        "sm":   ["14px",   { lineHeight: "1.5" }],   /* was 13.5px — this is the key one */
+        "base": ["15.5px", { lineHeight: "1.55" }],  /* was 16px but too large for UI labels */
+        "md":   ["16px",   { lineHeight: "1.5" }],   /* custom step */
+        "lg":   ["18px",   { lineHeight: "1.45" }],  /* was 18px */
+        "xl":   ["20px",   { lineHeight: "1.4" }],   /* was 20px */
+        "2xl":  ["24px",   { lineHeight: "1.35" }],  /* was 24px */
+        "3xl":  ["30px",   { lineHeight: "1.3" }],   /* was 30px */
+        "4xl":  ["36px",   { lineHeight: "1.25" }],  /* was 36px */
+        "5xl":  ["48px",   { lineHeight: "1.2" }],   /* was 48px */
+      },
+
       colors: {
-        /* Glass surface tokens */
         glass: {
           fill:    "var(--glass-fill)",
           hover:   "var(--glass-fill-hover)",
@@ -20,7 +34,6 @@ module.exports = {
           bottom:  "var(--glass-border-bottom)",
           subtle:  "var(--glass-border-subtle)",
         },
-        /* Legacy compat */
         surface: {
           0: "#08080c",
           1: "#0e0e14",
@@ -71,21 +84,21 @@ module.exports = {
         xl:  "60px",
       },
       boxShadow: {
-        glass:    "var(--shadow-md)",
+        glass:      "var(--shadow-md)",
         "glass-lg": "var(--shadow-lg)",
         "glass-xl": "var(--shadow-xl)",
-        accent:   "0 4px 14px var(--accent-glow)",
+        accent:     "0 4px 14px var(--accent-glow)",
       },
       animation: {
-        "fade-in":     "fadeIn 0.22s ease both",
-        "fade-in-up":  "fadeInUp 0.32s cubic-bezier(0.2,0.8,0.2,1) both",
-        "slide-up":    "slideUp 0.32s cubic-bezier(0.34,1.4,0.64,1) both",
-        "scale-in":    "scaleIn 0.28s cubic-bezier(0.34,1.4,0.64,1) both",
-        "float":       "float 3s ease-in-out infinite",
-        "pulse-slow":  "pulse 3s cubic-bezier(0.4,0,0.6,1) infinite",
-        "live-pulse":  "livePulse 2.2s ease-in-out infinite",
-        "shimmer":     "glassShimmer 1.8s ease-in-out infinite",
-        "spin-slow":   "spinSlow 8s linear infinite",
+        "fade-in":    "fadeIn 0.22s ease both",
+        "fade-in-up": "fadeInUp 0.32s cubic-bezier(0.2,0.8,0.2,1) both",
+        "slide-up":   "slideUp 0.32s cubic-bezier(0.34,1.4,0.64,1) both",
+        "scale-in":   "scaleIn 0.28s cubic-bezier(0.34,1.4,0.64,1) both",
+        "float":      "float 3s ease-in-out infinite",
+        "pulse-slow": "pulse 3s cubic-bezier(0.4,0,0.6,1) infinite",
+        "live-pulse": "livePulse 2.2s ease-in-out infinite",
+        "shimmer":    "glassShimmer 1.8s ease-in-out infinite",
+        "spin-slow":  "spinSlow 8s linear infinite",
       },
       keyframes: {
         fadeIn:   { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
