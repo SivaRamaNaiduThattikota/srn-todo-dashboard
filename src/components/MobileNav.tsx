@@ -4,9 +4,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
-/* ─────────────────────────────────────────────────────────────
-   All navigation items — every route in the app
-   ───────────────────────────────────────────────────────────── */
 const ALL_NAV = [
   {
     href: "/today",
@@ -47,6 +44,17 @@ const ALL_NAV = [
         <circle cx="12" cy="12" r="10"/>
         <polyline points="12 6 12 12"/>
         <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+      </svg>
+    ),
+  },
+  // ── More items below (shown in sheet) ────────────────────────────
+  {
+    href: "/learning",
+    label: "Learning",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
       </svg>
     ),
   },
@@ -159,24 +167,17 @@ const ALL_NAV = [
   },
 ];
 
-/* The 5 primary tabs always visible in the bottom bar */
 const PRIMARY_TABS = ALL_NAV.slice(0, 4); // Today, Tasks, Streaks, Focus
-const MORE_ITEMS = ALL_NAV.slice(4);      // Everything else
+const MORE_ITEMS   = ALL_NAV.slice(4);    // Learning + everything else
 
 export function MobileNav() {
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Close sheet on route change
   useEffect(() => { setSheetOpen(false); }, [pathname]);
 
-  // Prevent body scroll when sheet open
   useEffect(() => {
-    if (sheetOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = sheetOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [sheetOpen]);
 
@@ -184,7 +185,7 @@ export function MobileNav() {
 
   return (
     <>
-      {/* ── Bottom Tab Bar ─────────────────────────────────────── */}
+      {/* ── Bottom Tab Bar ── */}
       <nav
         className="mobile-bottom-nav"
         style={{
@@ -196,76 +197,26 @@ export function MobileNav() {
           zIndex: 50,
         }}
       >
-        {/* Specular top edge — same as glass cards */}
-        <div style={{
-          position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px",
-          background: "linear-gradient(90deg, transparent 0%, var(--specular-top) 50%, transparent 100%)",
-          pointerEvents: "none",
-        }} />
+        <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg, transparent 0%, var(--specular-top) 50%, transparent 100%)", pointerEvents: "none" }} />
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "stretch",
-            justifyContent: "space-around",
-            padding: "6px 4px",
-            paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
-          }}
-        >
-          {/* Primary 4 tabs */}
+        <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-around", padding: "6px 4px", paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))" }}>
           {PRIMARY_TABS.map((item) => {
             const isActive = pathname === item.href;
-            return (
-              <TabItem
-                key={item.href}
-                href={item.href}
-                label={item.label}
-                icon={item.icon}
-                isActive={isActive}
-              />
-            );
+            return <TabItem key={item.href} href={item.href} label={item.label} icon={item.icon} isActive={isActive} />;
           })}
 
-          {/* "More" button — opens sheet */}
+          {/* More button */}
           <button
             onClick={() => setSheetOpen(true)}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "3px",
-              padding: "4px 4px",
-              borderRadius: "12px",
-              background: (isMoreActive || sheetOpen)
-                ? "var(--cc-glass-hover)"
-                : "transparent",
-              border: "0.5px solid transparent",
-              cursor: "pointer",
-              transition: "all 0.18s ease",
-              minWidth: "52px",
-              position: "relative",
-            }}
+            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", padding: "4px 4px", borderRadius: "12px", background: (isMoreActive || sheetOpen) ? "var(--cc-glass-hover)" : "transparent", border: "0.5px solid transparent", cursor: "pointer", transition: "all 0.18s ease", minWidth: "52px", position: "relative" }}
           >
-            {/* Active indicator dot */}
             {isMoreActive && !sheetOpen && (
-              <div style={{
-                position: "absolute", top: "5px",
-                width: "4px", height: "4px", borderRadius: "50%",
-                background: "var(--accent)",
-                boxShadow: "0 0 6px var(--accent-glow)",
-              }} />
+              <div style={{ position: "absolute", top: "5px", width: "4px", height: "4px", borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 6px var(--accent-glow)" }} />
             )}
             <span style={{ color: (isMoreActive || sheetOpen) ? "var(--accent)" : "var(--cc-text)", display: "flex" }}>
               {sheetOpen ? (
-                /* X icon when open */
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               ) : (
-                /* Grid / more icon */
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="5"  cy="5"  r="1.5" fill="currentColor" stroke="none"/>
                   <circle cx="12" cy="5"  r="1.5" fill="currentColor" stroke="none"/>
@@ -279,129 +230,31 @@ export function MobileNav() {
                 </svg>
               )}
             </span>
-            <span style={{
-              fontSize: "9px", fontWeight: 600,
-              color: (isMoreActive || sheetOpen) ? "var(--accent)" : "var(--cc-text-muted)",
-              fontFamily: "-apple-system, SF Pro Display, sans-serif",
-              letterSpacing: "0.01em",
-            }}>
-              More
-            </span>
+            <span style={{ fontSize: "9px", fontWeight: 600, color: (isMoreActive || sheetOpen) ? "var(--accent)" : "var(--cc-text-muted)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "0.01em" }}>More</span>
           </button>
         </div>
       </nav>
 
-      {/* ── "More" Bottom Sheet ─────────────────────────────────── */}
+      {/* ── More Sheet ── */}
       {sheetOpen && (
         <>
-          {/* Scrim */}
-          <div
-            onClick={() => setSheetOpen(false)}
-            style={{
-              position: "fixed", inset: 0, zIndex: 48,
-              background: "rgba(0,0,0,0.35)",
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
-              animation: "fadeIn 0.18s ease both",
-            }}
-          />
-
-          {/* Sheet */}
-          <div
-            style={{
-              position: "fixed",
-              bottom: 0, left: 0, right: 0,
-              zIndex: 49,
-              background: "var(--cc-glass-base)",
-              backdropFilter: "blur(56px) saturate(2.4)",
-              WebkitBackdropFilter: "blur(56px) saturate(2.4)",
-              borderTop: "0.5px solid var(--cc-tile-border)",
-              borderRadius: "24px 24px 0 0",
-              boxShadow: "0 -12px 48px rgba(0,0,0,0.25), 0 -1px 0 var(--specular-top)",
-              paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
-              animation: "slideUp 0.28s cubic-bezier(0.34,1.4,0.64,1) both",
-            }}
-          >
-            {/* Drag handle */}
+          <div onClick={() => setSheetOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 48, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", animation: "fadeIn 0.18s ease both" }} />
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 49, background: "var(--cc-glass-base)", backdropFilter: "blur(56px) saturate(2.4)", WebkitBackdropFilter: "blur(56px) saturate(2.4)", borderTop: "0.5px solid var(--cc-tile-border)", borderRadius: "24px 24px 0 0", boxShadow: "0 -12px 48px rgba(0,0,0,0.25), 0 -1px 0 var(--specular-top)", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))", animation: "slideUp 0.28s cubic-bezier(0.34,1.4,0.64,1) both" }}>
             <div style={{ display: "flex", justifyContent: "center", paddingTop: "12px", paddingBottom: "8px" }}>
-              <div style={{
-                width: "36px", height: "4px", borderRadius: "100px",
-                background: "var(--cc-text-muted)", opacity: 0.4,
-              }} />
+              <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.4 }} />
             </div>
-
-            {/* Sheet top specular */}
-            <div style={{
-              position: "absolute", top: 0, left: "15%", right: "15%", height: "0.5px",
-              background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)",
-            }} />
-
-            {/* Section label */}
-            <div style={{
-              padding: "4px 20px 12px",
-              fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",
-              color: "var(--cc-text-muted)", textTransform: "uppercase",
-              fontFamily: "-apple-system, SF Pro Display, sans-serif",
-            }}>
+            <div style={{ position: "absolute", top: 0, left: "15%", right: "15%", height: "0.5px", background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)" }} />
+            <div style={{ padding: "4px 20px 12px", fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em", color: "var(--cc-text-muted)", textTransform: "uppercase", fontFamily: "-apple-system, SF Pro Display, sans-serif" }}>
               All Pages
             </div>
-
-            {/* Grid of items */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "8px",
-              padding: "0 16px 16px",
-            }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", padding: "0 16px 16px" }}>
               {MORE_ITEMS.map((item) => {
                 const isActive = pathname === item.href;
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "14px 8px 12px",
-                      borderRadius: "16px",
-                      background: isActive ? "var(--cc-glass-active)" : "var(--cc-glass-base)",
-                      border: isActive
-                        ? "0.5px solid var(--accent)"
-                        : "0.5px solid var(--cc-tile-border)",
-                      boxShadow: isActive
-                        ? `var(--cc-inner-shadow), 0 0 16px var(--accent-glow)`
-                        : `var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)`,
-                      textDecoration: "none",
-                      position: "relative",
-                      overflow: "hidden",
-                      transition: "all 0.16s ease",
-                    }}
-                  >
-                    {/* Specular dome */}
-                    <div style={{
-                      position: "absolute", top: 0, left: 0, right: 0, height: "50%",
-                      background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)",
-                      borderRadius: "16px 16px 0 0",
-                      pointerEvents: "none",
-                      mixBlendMode: "overlay",
-                    }} />
-                    <span style={{ color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex", position: "relative", zIndex: 1 }}>
-                      {item.icon}
-                    </span>
-                    <span style={{
-                      fontSize: "10px", fontWeight: 600,
-                      color: isActive ? "var(--accent)" : "var(--cc-text)",
-                      fontFamily: "-apple-system, SF Pro Display, sans-serif",
-                      letterSpacing: "-0.01em",
-                      textAlign: "center",
-                      lineHeight: 1.2,
-                      position: "relative", zIndex: 1,
-                    }}>
-                      {item.label}
-                    </span>
+                  <Link key={item.href} href={item.href} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", padding: "14px 8px 12px", borderRadius: "16px", background: isActive ? "var(--cc-glass-active)" : "var(--cc-glass-base)", border: isActive ? "0.5px solid var(--accent)" : "0.5px solid var(--cc-tile-border)", boxShadow: isActive ? "var(--cc-inner-shadow), 0 0 16px var(--accent-glow)" : "var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)", textDecoration: "none", position: "relative", overflow: "hidden", transition: "all 0.16s ease" }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)", borderRadius: "16px 16px 0 0", pointerEvents: "none", mixBlendMode: "overlay" }} />
+                    <span style={{ color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex", position: "relative", zIndex: 1 }}>{item.icon}</span>
+                    <span style={{ fontSize: "10px", fontWeight: 600, color: isActive ? "var(--accent)" : "var(--cc-text)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "-0.01em", textAlign: "center", lineHeight: 1.2, position: "relative", zIndex: 1 }}>{item.label}</span>
                   </Link>
                 );
               })}
@@ -413,73 +266,13 @@ export function MobileNav() {
   );
 }
 
-/* ── Single tab item ──────────────────────────────────────── */
-function TabItem({
-  href, label, icon, isActive,
-}: {
-  href: string; label: string; icon: React.ReactNode; isActive: boolean;
-}) {
+function TabItem({ href, label, icon, isActive }: { href: string; label: string; icon: React.ReactNode; isActive: boolean }) {
   return (
-    <Link
-      href={href}
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "3px",
-        padding: "4px 4px",
-        borderRadius: "12px",
-        background: isActive ? "var(--cc-glass-hover)" : "transparent",
-        border: `0.5px solid ${isActive ? "var(--cc-tile-border)" : "transparent"}`,
-        boxShadow: isActive ? "var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)" : "none",
-        textDecoration: "none",
-        cursor: "pointer",
-        transition: "all 0.18s cubic-bezier(0.2,0.8,0.2,1)",
-        minWidth: "52px",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Specular top on active tab */}
-      {isActive && (
-        <div style={{
-          position: "absolute", top: 0, left: "10%", right: "10%", height: "0.5px",
-          background: "var(--specular-top)",
-          pointerEvents: "none",
-        }} />
-      )}
-
-      {/* Active glow dot */}
-      {isActive && (
-        <div style={{
-          position: "absolute", top: "4px",
-          width: "3px", height: "3px", borderRadius: "50%",
-          background: "var(--accent)",
-          boxShadow: "0 0 5px var(--accent-glow)",
-        }} />
-      )}
-
-      <span style={{
-        color: isActive ? "var(--accent)" : "var(--cc-text)",
-        display: "flex",
-        marginTop: isActive ? "6px" : "0",
-        transition: "color 0.18s ease",
-      }}>
-        {icon}
-      </span>
-
-      <span style={{
-        fontSize: "9px",
-        fontWeight: 600,
-        color: isActive ? "var(--accent)" : "var(--cc-text-muted)",
-        fontFamily: "-apple-system, SF Pro Display, sans-serif",
-        letterSpacing: "0.01em",
-        transition: "color 0.18s ease",
-      }}>
-        {label}
-      </span>
+    <Link href={href} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", padding: "4px 4px", borderRadius: "12px", background: isActive ? "var(--cc-glass-hover)" : "transparent", border: `0.5px solid ${isActive ? "var(--cc-tile-border)" : "transparent"}`, boxShadow: isActive ? "var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)" : "none", textDecoration: "none", cursor: "pointer", transition: "all 0.18s cubic-bezier(0.2,0.8,0.2,1)", minWidth: "52px", position: "relative", overflow: "hidden" }}>
+      {isActive && <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "0.5px", background: "var(--specular-top)", pointerEvents: "none" }} />}
+      {isActive && <div style={{ position: "absolute", top: "4px", width: "3px", height: "3px", borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 5px var(--accent-glow)" }} />}
+      <span style={{ color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex", marginTop: isActive ? "6px" : "0", transition: "color 0.18s ease" }}>{icon}</span>
+      <span style={{ fontSize: "9px", fontWeight: 600, color: isActive ? "var(--accent)" : "var(--cc-text-muted)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "0.01em", transition: "color 0.18s ease" }}>{label}</span>
     </Link>
   );
 }

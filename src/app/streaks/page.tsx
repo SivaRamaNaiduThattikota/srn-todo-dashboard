@@ -5,13 +5,12 @@ import { fetchHabits, fetchHabitLogs, toggleHabitDay, addHabit, deleteHabit, typ
 import { format, subDays, eachDayOfInterval } from "date-fns";
 
 export default function StreaksPage() {
-  const [habits, setHabits]     = useState<DailyHabit[]>([]);
-  const [logs, setLogs]         = useState<HabitLog[]>([]);
+  const [habits, setHabits]   = useState<DailyHabit[]>([]);
+  const [logs, setLogs]       = useState<HabitLog[]>([]);
   const [newHabit, setNewHabit] = useState("");
   const [newColor, setNewColor] = useState("#6ee7b7");
   const today = format(new Date(), "yyyy-MM-dd");
 
-  /* Undo-delete state */
   const [pendingDelete, setPendingDelete] = useState<DailyHabit | null>(null);
   const [undoTimer, setUndoTimer]         = useState<ReturnType<typeof setTimeout> | null>(null);
   const [undoSeconds, setUndoSeconds]     = useState(5);
@@ -23,6 +22,7 @@ export default function StreaksPage() {
   }, []);
 
   const reload = async () => { setHabits(await fetchHabits()); setLogs(await fetchHabitLogs(90)); };
+
   const handleAdd = async () => {
     if (!newHabit.trim()) return;
     await addHabit(newHabit.trim(), newColor);
@@ -30,32 +30,17 @@ export default function StreaksPage() {
     await reload();
   };
 
-  /* Soft-delete with 5s undo */
   const handleDelete = (habit: DailyHabit) => {
-    // Clear any existing pending delete
     if (undoTimer) clearTimeout(undoTimer);
     if (undoInterval) clearInterval(undoInterval);
-    if (pendingDelete) {
-      // Actually delete the previous pending one immediately
-      deleteHabit(pendingDelete.id).then(reload);
-    }
+    if (pendingDelete) deleteHabit(pendingDelete.id).then(reload);
     setPendingDelete(habit);
     setUndoSeconds(5);
-
     const iv = setInterval(() => setUndoSeconds((s) => s - 1), 1000);
     setUndoInterval(iv);
-
-    const t = setTimeout(async () => {
-      clearInterval(iv);
-      await deleteHabit(habit.id);
-      setPendingDelete(null);
-      await reload();
-    }, 5000);
+    const t = setTimeout(async () => { clearInterval(iv); await deleteHabit(habit.id); setPendingDelete(null); await reload(); }, 5000);
     setUndoTimer(t);
-
-    window.dispatchEvent(new CustomEvent("srn:toast", {
-      detail: { message: `Habit deleted — undo in ${5}s`, type: "warning" },
-    }));
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Habit deleted — undo in 5s", type: "warning" } }));
   };
 
   const handleUndo = () => {
@@ -72,6 +57,7 @@ export default function StreaksPage() {
     setLogs(await fetchHabitLogs(90));
   };
 
+  // 84 days = 12 weeks — fits in a 12-column grid on desktop, scrolls on mobile
   const heatmapDays      = useMemo(() => eachDayOfInterval({ start: subDays(new Date(), 83), end: new Date() }), []);
   const heatmapStartDate = format(subDays(new Date(), 83), "MMM d");
 
@@ -104,11 +90,7 @@ export default function StreaksPage() {
   }, [habits, logs]);
 
   const COLORS = ["#6ee7b7", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#ef4444", "#06b6d4"];
-
-  /* Visible habits (excluding one pending delete) */
-  const visibleHabits = useMemo(() =>
-    habits.filter((h) => h.id !== pendingDelete?.id),
-  [habits, pendingDelete]);
+  const visibleHabits = useMemo(() => habits.filter((h) => h.id !== pendingDelete?.id), [habits, pendingDelete]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10">
@@ -130,10 +112,9 @@ export default function StreaksPage() {
 
       {/* Undo banner */}
       {pendingDelete && (
-        <div className="liquid-glass rounded-2xl px-4 py-3 mb-4 flex items-center justify-between animate-fade-in-up"
-          style={{ borderColor: "rgba(255,107,107,0.3)" }}>
+        <div className="liquid-glass rounded-2xl px-4 py-3 mb-4 flex items-center justify-between animate-fade-in-up" style={{ borderColor: "rgba(255,107,107,0.3)" }}>
           <span className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
-            Deleting "<span style={{ color: "#ff6b6b" }}>{pendingDelete.name}</span>" and all its history in{" "}
+            Deleting "<span style={{ color: "#ff6b6b" }}>{pendingDelete.name}</span>" in{" "}
             <span style={{ color: "#ff6b6b" }}>{undoSeconds}s</span>…
           </span>
           <button onClick={handleUndo} className="px-3 py-1 text-[10px] font-mono rounded-xl"
@@ -143,15 +124,14 @@ export default function StreaksPage() {
         </div>
       )}
 
-      {/* Habit cards */}
+      {/* Habit cards — 2 cols on mobile, 4 on sm+ */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
         {visibleHabits.map((h) => {
           const done = logs.some((l) => l.habit_id === h.id && l.completed_date === today);
           return (
             <div key={h.id} className="glass rounded-2xl p-4 hover-lift" style={{ borderColor: done ? `${h.color}40` : undefined }}>
               <div className="flex items-center justify-between mb-2">
-                <button onClick={() => handleToggle(h.id, today)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold transition-all"
+                <button onClick={() => handleToggle(h.id, today)} className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold transition-all"
                   style={{ background: done ? h.color : "var(--bg-input)", color: done ? "#fff" : "var(--text-muted)" }}>
                   {done ? "✓" : h.icon}
                 </button>
@@ -166,45 +146,73 @@ export default function StreaksPage() {
 
       {/* Add habit */}
       <div className="glass rounded-2xl p-4 mb-6 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap sm:flex-nowrap">
           <input type="text" value={newHabit} onChange={(e) => setNewHabit(e.target.value)}
             placeholder="Add new habit..."
-            className="flex-1 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none"
+            className="flex-1 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none min-w-0"
             style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 flex-shrink-0">
             {COLORS.map((c) => (
-              <button key={c} onClick={() => setNewColor(c)} className="w-5 h-5 rounded-full transition-all"
+              <button key={c} onClick={() => setNewColor(c)} className="w-5 h-5 rounded-full transition-all flex-shrink-0"
                 style={{ background: c, transform: newColor === c ? "scale(1.3)" : "scale(1)", boxShadow: newColor === c ? `0 0 8px ${c}60` : "none" }} />
             ))}
           </div>
-          <button onClick={handleAdd} className="px-3 py-2 text-xs font-medium rounded-xl"
+          <button onClick={handleAdd} className="px-3 py-2.5 text-xs font-medium rounded-xl flex-shrink-0"
             style={{ background: "var(--accent)", color: "#0a0a0b" }}>
             Add
           </button>
         </div>
       </div>
 
-      {/* Heatmaps */}
+      {/* Heatmaps — horizontal scroll on mobile */}
       {visibleHabits.map((h) => (
         <div key={h.id} className="glass rounded-2xl p-4 sm:p-5 mb-4 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium" style={{ color: h.color }}>{h.name}</span>
             <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{streaks[h.id] || 0} day streak</span>
           </div>
-          <div className="flex gap-[3px] flex-wrap">
-            {heatmapDays.map((day) => {
-              const dateStr    = format(day, "yyyy-MM-dd");
-              const done       = logs.some((l) => l.habit_id === h.id && l.completed_date === dateStr);
-              const isTodayDate = dateStr === today;
-              return (
-                <button key={dateStr} onClick={() => handleToggle(h.id, dateStr)}
-                  className="rounded-sm transition-all duration-150"
-                  style={{ width: "10px", height: "10px", background: done ? h.color : "var(--bg-input)", opacity: done ? 1 : 0.4, outline: isTodayDate ? `1.5px solid ${h.color}` : "none", outlineOffset: "1px" }}
-                  title={`${format(day, "MMM d, yyyy")} — ${done ? "done" : "not done"}`} />
-              );
-            })}
+
+          {/* Scroll wrapper — on mobile this scrolls horizontally, on desktop it wraps */}
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+            <div style={{
+              display: "grid",
+              // 12 weeks × 7 days = 84 cells, each column = 1 week
+              gridTemplateColumns: "repeat(12, 1fr)",
+              gridTemplateRows:    "repeat(7, 1fr)",
+              gridAutoFlow:        "column",
+              gap:                 "3px",
+              // Min width ensures each cell is at least 10px — on small screens this triggers scroll
+              minWidth:            "calc(12 * 13px)",
+              width:               "100%",
+            }}>
+              {heatmapDays.map((day) => {
+                const dateStr     = format(day, "yyyy-MM-dd");
+                const done        = logs.some((l) => l.habit_id === h.id && l.completed_date === dateStr);
+                const isTodayDate = dateStr === today;
+                return (
+                  <button
+                    key={dateStr}
+                    onClick={() => handleToggle(h.id, dateStr)}
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1",
+                      borderRadius: "3px",
+                      background: done ? h.color : "var(--bg-input)",
+                      opacity: done ? 1 : 0.4,
+                      outline: isTodayDate ? `1.5px solid ${h.color}` : "none",
+                      outlineOffset: "1px",
+                      transition: "all 0.15s",
+                      minWidth: "10px",
+                      minHeight: "10px",
+                    }}
+                    title={`${format(day, "MMM d, yyyy")} — ${done ? "done" : "not done"}`}
+                  />
+                );
+              })}
+            </div>
           </div>
+
           <div className="flex justify-between mt-2">
             <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{heatmapStartDate}</span>
             <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>today ({format(new Date(), "MMM d")})</span>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
-import { addTodo, type TodoPriority, type TodoCategory, type ResourceLink } from "@/lib/supabase";
+import { addTodo, updateTodo, type TodoPriority, type TodoCategory, type ResourceLink, type Todo } from "@/lib/supabase";
 import { AddTodoModal } from "@/components/AddTodoModal";
 import {
   startOfMonth, endOfMonth, eachDayOfInterval, format,
@@ -20,13 +20,20 @@ export default function CalendarPage() {
   const { todos, loading } = useRealtimeTodos();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [prefillDate, setPrefillDate]   = useState<string | null>(null);
+
+  // Drag state
+  const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [touchDragging, setTouchDragging] = useState<Todo | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const today = format(new Date(), "yyyy-MM-dd");
   const isCurrentMonth = isSameMonth(currentMonth, new Date());
 
   const days = useMemo(() => {
-    const start   = startOfMonth(currentMonth);
-    const end     = endOfMonth(currentMonth);
-    const allDays = eachDayOfInterval({ start, end });
+    const start    = startOfMonth(currentMonth);
+    const end      = endOfMonth(currentMonth);
+    const allDays  = eachDayOfInterval({ start, end });
     const startDay = start.getDay();
     const padStart = startDay === 0 ? 6 : startDay - 1;
     const paddedStart: Date[] = [];
@@ -42,6 +49,7 @@ export default function CalendarPage() {
 
   const handleDayClick = (day: Date) => {
     if (!isSameMonth(day, currentMonth)) return;
+    if (draggingTodo || touchDragging) return; // don't open modal while dragging
     setPrefillDate(format(day, "yyyy-MM-dd"));
   };
 
@@ -54,100 +62,168 @@ export default function CalendarPage() {
     setPrefillDate(null);
   };
 
+  // ── Desktop drag handlers ──────────────────────────────────────────
+  const handleDragStart = useCallback((e: React.DragEvent, todo: Todo) => {
+    setDraggingTodo(todo);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", todo.id);
+    // Make drag image semi-transparent
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "0.5";
+    }
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = "1";
+    }
+    setDraggingTodo(null);
+    setDragOverDate(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, dateStr: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDate(dateStr);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverDate(null);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    if (!isSameMonth(day, currentMonth)) return;
+    if (!draggingTodo) return;
+    const newDate = format(day, "yyyy-MM-dd");
+    if (newDate === draggingTodo.due_date) return; // no change
+    await updateTodo(draggingTodo.id, { due_date: newDate });
+    setDraggingTodo(null);
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Moved to ${format(day, "MMM d")}`, type: "success" } }));
+  }, [draggingTodo, currentMonth]);
+
+  // ── Touch drag handlers (mobile) ───────────────────────────────────
+  // On mobile we show a long-press indicator; actual rescheduling done via
+  // a date-picker bottom sheet instead of HTML5 drag (which doesn't work on iOS).
+  const [touchPickTodo, setTouchPickTodo]   = useState<Todo | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent, todo: Todo) => {
+    longPressRef.current = setTimeout(() => {
+      setTouchPickTodo(todo);
+      // vibrate if available
+      if (navigator.vibrate) navigator.vibrate(40);
+    }, 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressRef.current) clearTimeout(longPressRef.current);
+  }, []);
+
+  const handleTouchReschedule = async (day: Date) => {
+    if (!touchPickTodo) return;
+    if (!isSameMonth(day, currentMonth)) return;
+    const newDate = format(day, "yyyy-MM-dd");
+    await updateTodo(touchPickTodo.id, { due_date: newDate });
+    setTouchPickTodo(null);
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Moved to ${format(day, "MMM d")}`, type: "success" } }));
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10">
-      {/* Header */}
-      <header className="mb-6 sm:mb-8 animate-fade-in-up">
+      <header className="mb-5 sm:mb-8 animate-fade-in-up">
         <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
           style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
           Calendar
         </h1>
         <p className="text-xs sm:text-sm font-mono mt-1" style={{ color: "var(--text-muted)" }}>
-          Tasks by due date · click a day to add a task
+          {touchPickTodo
+            ? `Tap a date to move "${touchPickTodo.title}"`
+            : "Tap a day to add · drag tasks to reschedule · long-press on mobile"}
         </p>
       </header>
 
-      {/* Month navigation */}
-      <div className="flex items-center justify-between mb-6 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
-        <button
-          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="glass rounded-xl px-3 sm:px-4 py-2 transition-all"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
+      {/* Touch-reschedule cancel bar */}
+      {touchPickTodo && (
+        <div className="liquid-glass rounded-2xl px-4 py-3 mb-4 flex items-center justify-between animate-fade-in-up"
+          style={{ border: "0.5px solid var(--accent-dim)", background: "var(--accent-muted)" }}>
+          <span className="text-xs font-mono" style={{ color: "var(--accent)" }}>
+            Tap any date to reschedule "{touchPickTodo.title}"
+          </span>
+          <button onClick={() => setTouchPickTodo(null)}
+            className="text-xs font-mono px-3 py-1 rounded-xl"
+            style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+            Cancel
+          </button>
+        </div>
+      )}
 
+      {/* Month navigation */}
+      <div className="flex items-center justify-between mb-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
+        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="glass rounded-xl px-3 sm:px-4 py-2 transition-all" style={{ color: "var(--text-secondary)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
         <div className="flex items-center gap-3">
-          <h2 className="text-base sm:text-lg font-medium font-mono" style={{ color: "var(--text-primary)" }}>
-            {format(currentMonth, "MMMM yyyy")}
-          </h2>
-          {/* Today button — only visible when not on current month */}
+          <h2 className="text-base sm:text-lg font-medium font-mono" style={{ color: "var(--text-primary)" }}>{format(currentMonth, "MMMM yyyy")}</h2>
           {!isCurrentMonth && (
-            <button
-              onClick={() => setCurrentMonth(new Date())}
-              className="px-3 py-1 text-[10px] font-mono rounded-[10px] transition-all"
-              style={{
-                background: "var(--accent-muted)",
-                color: "var(--accent)",
-                border: "0.5px solid var(--accent-dim)",
-              }}
-            >
-              Today
-            </button>
+            <button onClick={() => setCurrentMonth(new Date())} className="px-3 py-1 text-[10px] font-mono rounded-[10px] transition-all" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>Today</button>
           )}
         </div>
-
-        <button
-          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="glass rounded-xl px-3 sm:px-4 py-2 transition-all"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
+        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="glass rounded-xl px-3 sm:px-4 py-2 transition-all" style={{ color: "var(--text-secondary)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
 
       {/* Day headers */}
       <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <div key={d} className="text-center text-[10px] sm:text-xs font-mono py-2"
-            style={{ color: "var(--text-muted)" }}>
-            {d}
-          </div>
+          <div key={d} className="text-center py-2" style={{ color: "var(--text-muted)", fontSize: "clamp(8px, 2.2vw, 12px)", fontFamily: "monospace" }}>{d}</div>
         ))}
       </div>
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1 sm:gap-2 animate-fade-in-up" style={{ animationDelay: "180ms" }}>
         {days.map((day, i) => {
-          const dayTodos      = todosWithDueDate.filter((t) => isSameDay(new Date(t.due_date!), day));
+          const dayTodos       = todosWithDueDate.filter((t) => isSameDay(new Date(t.due_date!), day));
           const inCurrentMonth = isSameMonth(day, currentMonth);
-          const isNow         = isToday(day);
-          const dateStr       = format(day, "yyyy-MM-dd");
+          const isNow          = isToday(day);
+          const dateStr        = format(day, "yyyy-MM-dd");
+          const isDragOver     = dragOverDate === dateStr && inCurrentMonth;
+          const isTouchTarget  = !!touchPickTodo && inCurrentMonth;
 
           return (
             <div
               key={i}
-              onClick={() => handleDayClick(day)}
+              draggable={false}
+              onClick={() => {
+                if (touchPickTodo && inCurrentMonth) { handleTouchReschedule(day); return; }
+                handleDayClick(day);
+              }}
+              onDragOver={(e) => inCurrentMonth ? handleDragOver(e, dateStr) : undefined}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, day)}
               className="glass rounded-xl transition-all duration-200"
               style={{
-                minHeight: "60px",
-                padding: "6px 6px 6px 8px",
-                opacity: !inCurrentMonth ? 0.25 : 1,
-                outline: isNow ? "1.5px solid var(--accent)" : "none",
+                minHeight: "clamp(52px, 10vw, 80px)",
+                padding:   "clamp(4px, 1.2vw, 8px)",
+                opacity:   !inCurrentMonth ? 0.25 : 1,
+                outline:   isNow ? "1.5px solid var(--accent)" : isDragOver ? "1.5px solid var(--accent-dim)" : "none",
                 outlineOffset: "1px",
-                cursor: inCurrentMonth ? "pointer" : "default",
-                background: isNow ? "var(--glass-fill-hover)" : undefined,
+                cursor:    inCurrentMonth ? "pointer" : "default",
+                background: isDragOver
+                  ? "var(--glass-fill-hover)"
+                  : isNow
+                  ? "var(--glass-fill-hover)"
+                  : isTouchTarget
+                  ? "var(--accent-muted)"
+                  : undefined,
+                boxShadow: isDragOver ? "0 0 0 2px var(--accent-dim), var(--shadow-md)" : undefined,
+                transition: "background 0.15s, box-shadow 0.15s, outline 0.15s",
               }}
             >
               {/* Day number */}
-              <div
-                className="text-[10px] sm:text-xs font-mono mb-1"
-                style={{ color: isNow ? "var(--accent)" : "var(--text-muted)", fontWeight: isNow ? 600 : 400 }}
-              >
+              <div style={{ color: isNow ? "var(--accent)" : "var(--text-muted)", fontWeight: isNow ? 600 : 400, fontSize: "clamp(9px, 2.5vw, 12px)", fontFamily: "monospace", marginBottom: "2px" }}>
                 {format(day, "d")}
               </div>
 
@@ -156,29 +232,28 @@ export default function CalendarPage() {
                 {dayTodos.slice(0, 3).map((t) => (
                   <div
                     key={t.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, t)}
+                    onDragEnd={handleDragEnd}
+                    onTouchStart={(e) => handleTouchStart(e, t)}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchMove={handleTouchEnd}
+                    onClick={(e) => e.stopPropagation()} // prevent day-click while interacting with task
                     className="flex items-center gap-1"
-                    style={{ opacity: t.status === "done" ? 0.4 : 1 }}
+                    style={{ opacity: t.status === "done" ? 0.4 : 1, cursor: "grab", userSelect: "none", touchAction: "none" }}
                   >
-                    <span
-                      className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full flex-shrink-0"
-                      style={{ background: PRIORITY_COLOR[t.priority] }}
-                    />
-                    <span
-                      className="text-[8px] sm:text-[10px] truncate font-mono"
-                      style={{
-                        color:
-                          isBefore(new Date(t.due_date!), new Date()) && t.status !== "done"
-                            ? "#ff6b6b"
-                            : "var(--text-secondary)",
-                      }}
-                    >
+                    <span className="rounded-full flex-shrink-0" style={{ width: "clamp(4px, 1.2vw, 6px)", height: "clamp(4px, 1.2vw, 6px)", background: PRIORITY_COLOR[t.priority] }} />
+                    <span className="truncate font-mono" style={{
+                      fontSize: "clamp(7px, 2vw, 10px)",
+                      color: isBefore(new Date(t.due_date!), new Date()) && t.status !== "done" ? "#ff6b6b" : "var(--text-secondary)",
+                    }}>
                       {t.title}
                     </span>
                   </div>
                 ))}
                 {dayTodos.length > 3 && (
-                  <span className="text-[8px] font-mono" style={{ color: "var(--text-muted)" }}>
-                    +{dayTodos.length - 3} more
+                  <span className="font-mono" style={{ fontSize: "clamp(6px, 1.8vw, 8px)", color: "var(--text-muted)" }}>
+                    +{dayTodos.length - 3}
                   </span>
                 )}
               </div>
@@ -190,19 +265,19 @@ export default function CalendarPage() {
       {todosWithDueDate.length === 0 && !loading && (
         <div className="text-center py-12 mt-6 glass rounded-2xl animate-fade-in">
           <p className="text-sm font-mono" style={{ color: "var(--text-muted)" }}>No tasks have due dates yet.</p>
-          <p className="text-xs font-mono mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
-            Click any day to add a task with that date.
-          </p>
+          <p className="text-xs font-mono mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>Click any day to add a task with that date.</p>
         </div>
       )}
 
-      {/* Add task modal — pre-filled with clicked date */}
+      {/* Drag tip — desktop only */}
+      {todosWithDueDate.length > 0 && (
+        <p className="hidden sm:block text-center text-[10px] font-mono mt-4" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
+          Drag any task to a different day to reschedule it
+        </p>
+      )}
+
       {prefillDate && (
-        <AddTodoModal
-          prefillDueDate={prefillDate}
-          onAdd={handleAdd}
-          onClose={() => setPrefillDate(null)}
-        />
+        <AddTodoModal prefillDueDate={prefillDate} onAdd={handleAdd} onClose={() => setPrefillDate(null)} />
       )}
     </div>
   );
