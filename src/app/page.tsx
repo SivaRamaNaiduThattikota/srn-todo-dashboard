@@ -530,7 +530,7 @@ export default function TasksPage() {
           <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {templates.map((tmpl) => (
               <button key={tmpl.id} onClick={() => handleUseTemplate(tmpl)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-left transition-all hover-lift"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-left transition-all liquid-glass-sweep"
                 style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--accent)" }} />
                 <div className="min-w-0">
@@ -570,12 +570,11 @@ export default function TasksPage() {
 
             return (
               <div key={todo.id}
-                className="group relative rounded-[22px] overflow-hidden animate-fade-in-up hover-lift"
+                className="group relative rounded-[22px] overflow-hidden animate-fade-in-up liquid-glass-sweep"
                 style={{
                   animationDelay: `${idx * 30}ms`,
                   opacity: todo.status === "done" ? 0.65 : 1,
-                  transition: "opacity 0.3s ease, transform 0.28s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.28s ease",
-                  /* Liquid glass card */
+                  transition: "opacity 0.3s ease, transform 0.28s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.28s ease, border-color 0.22s ease",
                   background: "var(--glass-fill)",
                   backdropFilter: "blur(28px) saturate(1.8)",
                   WebkitBackdropFilter: "blur(28px) saturate(1.8)",
@@ -594,16 +593,7 @@ export default function TasksPage() {
                   pointerEvents: "none", zIndex: 4,
                 }} />
 
-                {/* Left priority accent bar */}
-                <div style={{
-                  position: "absolute", left: 0, top: "12%", bottom: "12%",
-                  width: "3px", borderRadius: "0 3px 3px 0",
-                  background: `linear-gradient(180deg, ${priorityColor(todo.priority)}, ${priorityColor(todo.priority)}88)`,
-                  boxShadow: `0 0 8px ${priorityColor(todo.priority)}55`,
-                  zIndex: 3,
-                }} />
-
-                {/* Inner glass overlay — subtle top-to-transparent sheen */}
+                {/* Inner glass overlay */}
                 <div style={{
                   position: "absolute", top: 0, left: 0, right: 0, height: "42%",
                   background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)",
@@ -611,7 +601,7 @@ export default function TasksPage() {
                   borderRadius: "22px 22px 0 0",
                 }} />
 
-                <div className="relative flex items-center gap-2 pl-5 pr-3 py-3" style={{ zIndex: 5 }}>
+                <div className="relative flex items-center gap-2 px-3 py-3" style={{ zIndex: 5 }}>
                   {bulkMode && (
                     <button onClick={() => toggleSelect(todo.id)}
                       className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all"
@@ -620,8 +610,21 @@ export default function TasksPage() {
                     </button>
                   )}
 
-                  {/* Colored status dot with glow */}
-                  <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full" style={{ background: sc.color, boxShadow: `0 0 8px ${sc.color}70, 0 0 3px ${sc.color}` }} />
+                  {/* Status indicator — visible ring + colored fill */}
+                  <div className="flex-shrink-0 relative" style={{ width: "20px", height: "20px" }}>
+                    {/* Outer ring */}
+                    <div style={{
+                      position: "absolute", inset: 0, borderRadius: "50%",
+                      border: `1.5px solid ${sc.color}70`,
+                      boxShadow: `0 0 8px ${sc.color}40`,
+                    }} />
+                    {/* Inner filled dot */}
+                    <div style={{
+                      position: "absolute", inset: "4px", borderRadius: "50%",
+                      background: sc.color,
+                      boxShadow: `0 0 6px ${sc.color}`,
+                    }} />
+                  </div>
 
                   {/* Title + badges */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
@@ -648,32 +651,40 @@ export default function TasksPage() {
 
                   {/* Right controls */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
-                    <select
-                      value={todo.status}
-                      onChange={async (e) => {
-                        const next = e.target.value as TodoStatus;
-                        await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
-                      }}
-                      className="rounded-[10px] text-[11px] font-mono cursor-pointer focus:outline-none"
-                      style={{
-                        background: `${sc.color}18`,
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
-                        color: sc.color,
-                        border: `0.5px solid ${sc.color}55`,
-                        boxShadow: `inset 0 1px 0 ${sc.color}25, 0 2px 6px rgba(0,0,0,0.15)`,
-                        padding: "4px 4px",
-                        height: "28px",
-                        width: "28px",
-                        transition: "all 0.2s ease",
-                      }}
-                      title={sc.label}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s.value} value={s.value} style={{ background: "#0a0a14", color: s.color }}>{s.icon} {s.label}</option>
-                      ))}
-                    </select>
+                    {/* Status pill — shows icon on mobile, icon+label on sm+ */}
+                    <div className="relative flex-shrink-0" style={{ height: "28px" }}>
+                      {/* Visible styled pill */}
+                      <div className="flex items-center gap-1 px-2 h-full rounded-[10px] pointer-events-none"
+                        style={{
+                          background: `${sc.color}18`,
+                          border: `0.5px solid ${sc.color}55`,
+                          boxShadow: `inset 0 1px 0 ${sc.color}25`,
+                          color: sc.color,
+                          fontSize: "10px",
+                          fontFamily: "monospace",
+                          fontWeight: 600,
+                          minWidth: "28px",
+                          whiteSpace: "nowrap",
+                        }}>
+                        <span style={{ fontSize: "12px" }}>{sc.icon}</span>
+                        <span className="hidden sm:inline">{sc.label}</span>
+                      </div>
+                      {/* Invisible native select overlaid for functionality */}
+                      <select
+                        value={todo.status}
+                        onChange={async (e) => {
+                          const next = e.target.value as TodoStatus;
+                          await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
+                        }}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        style={{ fontSize: "14px" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s.value} value={s.value}>{s.icon} {s.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
                       className="w-7 h-7 flex items-center justify-center rounded-xl"
