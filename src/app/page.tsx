@@ -24,12 +24,14 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 ];
 const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
-/* ─── Recycle Bin Modal ─────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────
+   RECYCLE BIN MODAL
+   ───────────────────────────────────────────────────── */
 function RecycleBinModal({ onClose }: { onClose: () => void }) {
-  const [items, setItems]               = useState<Todo[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // id to hard-delete
-  const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const [items, setItems]           = useState<Todo[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmEmpty, setConfirmEmpty]   = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -60,166 +62,181 @@ function RecycleBinModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-      {/* Scrim */}
-      <div className="absolute inset-0 animate-fade-in" style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(8px)" }} onClick={onClose} />
+    <>
+      {/* Scrim — full screen, above nav */}
+      <div
+        className="fixed inset-0 z-[60] animate-fade-in"
+        style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
+        onClick={onClose}
+      />
 
-      {/* Sheet */}
-      <div className="relative w-full sm:max-w-lg sm:mx-4 animate-slide-up flex flex-col"
-        style={{
-          background: "var(--cc-glass-base)",
-          backdropFilter: "blur(48px) saturate(2.2)",
-          border: "0.5px solid var(--cc-tile-border)",
-          borderRadius: "28px 28px 0 0",
-          maxHeight: "calc(100dvh - 80px)",
-        }}>
-
-        {/* Drag handle */}
-        <div className="flex justify-center pt-2.5 pb-0 sm:hidden flex-shrink-0">
-          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.35 }} />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 flex-shrink-0"
-          style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
-          <div>
-            <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-              <span>🗑</span> Recycle Bin
-            </h2>
-            <p className="text-[11px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {items.length} deleted task{items.length !== 1 ? "s" : ""}
-            </p>
+      {/*
+        Sheet anchor:
+        - Mobile: fixed bottom = 0 BUT the sheet's maxHeight leaves space for the nav (64px).
+          The sheet itself has no bottom padding — it just stops above the nav naturally
+          because its maxHeight prevents it from growing behind the nav.
+        - Desktop: centered flex container.
+      */}
+      <div className="fixed z-[61] left-0 right-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:px-4">
+        <div
+          className="relative w-full sm:max-w-lg flex flex-col animate-slide-up"
+          style={{
+            background: "var(--cc-glass-base)",
+            backdropFilter: "blur(48px) saturate(2.2)",
+            border: "0.5px solid var(--cc-tile-border)",
+            borderRadius: "24px 24px 0 0",
+            /* KEY: max height = viewport minus nav bar (64px) minus safe area */
+            maxHeight: "calc(var(--dvh, 100dvh) - 64px - env(safe-area-inset-bottom, 0px))",
+            boxShadow: "0 -8px 40px rgba(0,0,0,0.30)",
+          }}
+        >
+          {/* Drag handle */}
+          <div className="sm:hidden flex justify-center pt-2.5 pb-1 flex-shrink-0">
+            <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.35 }} />
           </div>
-          <div className="flex items-center gap-2">
-            {items.length > 0 && (
-              <button onClick={() => setConfirmEmpty(true)}
-                className="px-3 py-1.5 rounded-xl text-[11px] font-mono"
-                style={{ background: "rgba(255,107,107,0.10)", color: "#ff6b6b", border: "0.5px solid rgba(255,107,107,0.25)" }}>
-                Empty bin
-              </button>
-            )}
-            <button onClick={onClose}
-              className="w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)", color: "var(--text-muted)" }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-        </div>
 
-        {/* Confirm empty bin */}
-        {confirmEmpty && (
-          <div className="mx-5 mt-3 p-3 rounded-[14px] animate-fade-in"
-            style={{ background: "rgba(255,107,107,0.08)", border: "0.5px solid rgba(255,107,107,0.25)" }}>
-            <p className="text-xs font-mono mb-2" style={{ color: "#f87171" }}>
-              Permanently delete all {items.length} items? This cannot be undone.
-            </p>
-            <div className="flex gap-2">
-              <button onClick={handleEmptyBin}
-                className="flex-1 py-2 text-xs font-medium rounded-[10px]"
-                style={{ background: "rgba(248,65,65,0.18)", color: "#f87171" }}>
-                Yes, empty
-              </button>
-              <button onClick={() => setConfirmEmpty(false)}
-                className="flex-1 py-2 text-xs rounded-[10px]"
-                style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
-                Cancel
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-3 pb-3 flex-shrink-0"
+            style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
+            <div>
+              <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                <span>🗑</span> Recycle Bin
+              </h2>
+              <p className="text-[11px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                {items.length} deleted task{items.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {items.length > 0 && !confirmEmpty && (
+                <button onClick={() => setConfirmEmpty(true)}
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-mono"
+                  style={{ background: "rgba(255,107,107,0.10)", color: "#ff6b6b", border: "0.5px solid rgba(255,107,107,0.25)" }}>
+                  Empty bin
+                </button>
+              )}
+              <button onClick={onClose}
+                className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)", color: "var(--text-muted)" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
           </div>
-        )}
 
-        {/* Items list */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-5 h-5 rounded-full border-2 border-transparent animate-spin"
-                style={{ borderTopColor: "var(--accent)", borderRightColor: "var(--accent-dim)" }} />
+          {/* Confirm empty bin */}
+          {confirmEmpty && (
+            <div className="mx-5 mt-3 p-3 rounded-[14px] flex-shrink-0 animate-fade-in"
+              style={{ background: "rgba(255,107,107,0.08)", border: "0.5px solid rgba(255,107,107,0.25)" }}>
+              <p className="text-xs font-mono mb-2" style={{ color: "#f87171" }}>
+                Permanently delete all {items.length} items? This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={handleEmptyBin}
+                  className="flex-1 py-2.5 text-xs font-medium rounded-[10px]"
+                  style={{ background: "rgba(248,65,65,0.18)", color: "#f87171" }}>
+                  Yes, empty
+                </button>
+                <button onClick={() => setConfirmEmpty(false)}
+                  className="flex-1 py-2.5 text-xs rounded-[10px]"
+                  style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                  Cancel
+                </button>
+              </div>
             </div>
-          ) : items.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-3 opacity-25">🗑</div>
-              <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Recycle bin is empty</p>
-              <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Deleted tasks appear here</p>
-            </div>
-          ) : (
-            items.map((item) => (
-              <div key={item.id}>
-                {/* Confirm hard delete for this item */}
-                {confirmDelete === item.id && (
-                  <div className="mb-1 p-3 rounded-[14px] animate-fade-in"
-                    style={{ background: "rgba(255,107,107,0.08)", border: "0.5px solid rgba(255,107,107,0.25)" }}>
-                    <p className="text-xs font-mono mb-2" style={{ color: "#f87171" }}>
-                      Permanently delete "{item.title}"? This cannot be undone.
-                    </p>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleHardDelete(item.id)}
-                        className="flex-1 py-2 text-xs font-medium rounded-[10px]"
-                        style={{ background: "rgba(248,65,65,0.18)", color: "#f87171" }}>
-                        Delete forever
-                      </button>
-                      <button onClick={() => setConfirmDelete(null)}
-                        className="flex-1 py-2 text-xs rounded-[10px]"
-                        style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
-                        Cancel
-                      </button>
+          )}
+
+          {/* Items — scrollable */}
+          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2"
+            style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", minHeight: 0 }}>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-5 h-5 rounded-full border-2 border-transparent animate-spin"
+                  style={{ borderTopColor: "var(--accent)", borderRightColor: "var(--accent-dim)" }} />
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-3 opacity-25">🗑</div>
+                <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Recycle bin is empty</p>
+                <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Deleted tasks appear here</p>
+              </div>
+            ) : (
+              items.map((item) => (
+                <div key={item.id}>
+                  {confirmDelete === item.id && (
+                    <div className="mb-2 p-3 rounded-[14px] animate-fade-in"
+                      style={{ background: "rgba(255,107,107,0.08)", border: "0.5px solid rgba(255,107,107,0.25)" }}>
+                      <p className="text-xs font-mono mb-2" style={{ color: "#f87171" }}>
+                        Permanently delete "{item.title}"? This cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleHardDelete(item.id)}
+                          className="flex-1 py-2.5 text-xs font-medium rounded-[10px]"
+                          style={{ background: "rgba(248,65,65,0.18)", color: "#f87171" }}>
+                          Delete forever
+                        </button>
+                        <button onClick={() => setConfirmDelete(null)}
+                          className="flex-1 py-2.5 text-xs rounded-[10px]"
+                          style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="glass rounded-[16px] px-4 py-3 flex items-center gap-3"
-                  style={{ opacity: confirmDelete === item.id ? 0.5 : 1 }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)", textDecoration: "line-through", opacity: 0.7 }}>
-                      {item.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-[6px]"
-                        style={{ background: "rgba(255,149,0,0.12)", color: "#ff9500" }}>
-                        {item.priority}
-                      </span>
-                      {item.due_date && (
-                        <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
-                          due {new Date(item.due_date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                  <div className="glass rounded-[16px] px-4 py-3 flex items-center gap-3"
+                    style={{ opacity: confirmDelete === item.id ? 0.45 : 1 }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate"
+                        style={{ color: "var(--text-primary)", textDecoration: "line-through", opacity: 0.7 }}>
+                        {item.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-[6px]"
+                          style={{ background: "rgba(255,149,0,0.12)", color: "#ff9500" }}>
+                          {item.priority}
                         </span>
-                      )}
-                      <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
-                        deleted {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : ""}
-                      </span>
+                        {item.due_date && (
+                          <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+                            due {new Date(item.due_date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                        <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+                          deleted {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : ""}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Restore */}
-                    <button onClick={() => handleRestore(item.id)}
-                      className="px-2.5 py-1.5 rounded-[10px] text-[10px] font-mono transition-all"
-                      style={{ background: "rgba(94,207,149,0.12)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.28)" }}>
-                      Restore
-                    </button>
-                    {/* Delete forever */}
-                    <button onClick={() => setConfirmDelete(confirmDelete === item.id ? null : item.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-[10px] transition-all"
-                      style={{ background: confirmDelete === item.id ? "rgba(255,107,107,0.18)" : "transparent", color: "#ff6b6b", border: "0.5px solid rgba(255,107,107,0.25)" }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-                      </svg>
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button onClick={() => handleRestore(item.id)}
+                        className="px-2.5 py-1.5 rounded-[10px] text-[10px] font-mono"
+                        style={{ background: "rgba(94,207,149,0.12)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.28)" }}>
+                        Restore
+                      </button>
+                      <button onClick={() => setConfirmDelete(confirmDelete === item.id ? null : item.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-[10px]"
+                        style={{ background: confirmDelete === item.id ? "rgba(255,107,107,0.18)" : "transparent", color: "#ff6b6b", border: "0.5px solid rgba(255,107,107,0.25)" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
 
-        {/* Footer padding for mobile safe area */}
-        <div className="flex-shrink-0" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))" }} />
+          {/* Bottom safe-area spacer — only shows on mobile */}
+          <div className="flex-shrink-0 sm:hidden" style={{ height: "8px" }} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-/* ─── Main Tasks Page ────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────
+   MAIN TASKS PAGE
+   ───────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { todos, loading, error, lastEvent } = useRealtimeTodos();
   const [filter, setFilter]   = useState<TodoStatus | "all">("all");
@@ -272,21 +289,17 @@ export default function DashboardPage() {
     tags: string[]; resource_links: ResourceLink[]; estimated_mins: number | null;
   }) => { await addTodo({ ...data, status: "pending" }); setShowAdd(false); };
 
-  const toggleSelect = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const bulkMarkDone = async () => { await Promise.all(Array.from(selected).map((id) => updateTodo(id, { status: "done" }))); setSelected(new Set()); };
   const bulkDelete   = async () => { await Promise.all(Array.from(selected).map((id) => deleteTodo(id))); setSelected(new Set()); };
 
   const exportCSV = () => {
     const headers = "id,title,status,priority,assigned_agent,start_date,due_date,tags,estimated_mins,created_at,updated_at\n";
-    const rows = todos.map((t) =>
-      `${t.id},"${t.title}",${t.status},${t.priority},${t.assigned_agent},${t.start_date||""},${t.due_date||""},"${(t.tags||[]).join("|")}",${t.estimated_mins||""},${t.created_at},${t.updated_at}`
-    ).join("\n");
+    const rows = todos.map((t) => `${t.id},"${t.title}",${t.status},${t.priority},${t.assigned_agent},${t.start_date||""},${t.due_date||""},"${(t.tags||[]).join("|")}",${t.estimated_mins||""},${t.created_at},${t.updated_at}`).join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `srn-tasks-${new Date().toISOString().slice(0,10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
-
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(todos, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -296,7 +309,6 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-5 sm:py-8 sm:px-6 lg:px-8">
-      {/* Header */}
       <header className="mb-5 sm:mb-8 animate-fade-in-up">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
@@ -312,22 +324,17 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Recycle bin button */}
-            <button onClick={() => setShowBin(true)}
-              className="cc-btn px-3 py-1.5 text-[11px] flex items-center gap-1.5"
-              title="Recycle bin">
+            <button onClick={() => setShowBin(true)} className="cc-btn px-3 py-1.5 text-[11px] flex items-center gap-1.5" title="Recycle bin">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}>
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                 <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
               </svg>
               <span style={{ position: "relative", zIndex: 3 }} className="hidden sm:inline">Bin</span>
             </button>
-
             <div className="hidden sm:flex items-center gap-1">
-              <button onClick={exportCSV} className="cc-btn px-3 py-1.5 text-[10px] font-mono"><span style={{ position: "relative", zIndex: 3 }}>CSV</span></button>
+              <button onClick={exportCSV}  className="cc-btn px-3 py-1.5 text-[10px] font-mono"><span style={{ position: "relative", zIndex: 3 }}>CSV</span></button>
               <button onClick={exportJSON} className="cc-btn px-3 py-1.5 text-[10px] font-mono"><span style={{ position: "relative", zIndex: 3 }}>JSON</span></button>
             </div>
-
             <button onClick={() => setShowAdd(true)} className="cc-btn cc-btn-accent px-4 py-2 text-[12px]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}><path d="M12 5v14M5 12h14"/></svg>
               <span style={{ position: "relative", zIndex: 3 }}>New Task</span>
@@ -339,22 +346,20 @@ export default function DashboardPage() {
 
       <StatsBar todos={todos} />
 
-      {/* Bulk action bar */}
       {selected.size > 0 && (
         <div className="glass rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between animate-fade-in-up">
           <span className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>{selected.size} selected</span>
           <div className="flex gap-2">
             <button onClick={bulkMarkDone} className="cc-chip px-3 py-1 text-xs font-mono" style={{ color: "#5ecf95", borderColor: "rgba(94,207,149,0.35)" }}><span style={{ position: "relative", zIndex: 2 }}>Mark done</span></button>
-            <button onClick={bulkDelete} className="cc-chip px-3 py-1 text-xs font-mono" style={{ color: "#ff6b6b", borderColor: "rgba(255,107,107,0.35)" }}><span style={{ position: "relative", zIndex: 2 }}>Delete</span></button>
+            <button onClick={bulkDelete}   className="cc-chip px-3 py-1 text-xs font-mono" style={{ color: "#ff6b6b", borderColor: "rgba(255,107,107,0.35)" }}><span style={{ position: "relative", zIndex: 2 }}>Delete</span></button>
             <button onClick={() => setSelected(new Set())} className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Clear</button>
           </div>
         </div>
       )}
 
-      {/* Filters + Sort + Search */}
       <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-5 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <div className="flex gap-0.5 sm:gap-1 glass rounded-xl p-1 overflow-x-auto">
+          <div className="flex gap-0.5 sm:gap-1 glass rounded-xl p-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             {STATUS_FILTERS.map((s) => (
               <button key={s} onClick={() => setFilter(s)}
                 className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium rounded-lg transition-all duration-200 whitespace-nowrap flex items-center gap-1"
@@ -422,7 +427,11 @@ export default function DashboardPage() {
       )}
 
       <div className="mt-5 sm:mt-6 text-[10px] sm:text-xs font-mono text-center" style={{ color: "var(--text-muted)" }}>
-        {filtered.length} of {todos.length} tasks · <button onClick={() => setShowBin(true)} style={{ color: "var(--text-muted)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", fontSize: "inherit", fontFamily: "monospace" }}>recycle bin</button>
+        {filtered.length} of {todos.length} tasks ·{" "}
+        <button onClick={() => setShowBin(true)}
+          style={{ color: "var(--text-muted)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", fontSize: "inherit", fontFamily: "monospace" }}>
+          recycle bin
+        </button>
       </div>
 
       {showAdd && <AddTodoModal onAdd={handleAdd} onClose={() => setShowAdd(false)} />}
