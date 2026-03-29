@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { fetchProjects, addProject, updateProject, deleteProject, type Project } from "@/lib/supabase";
 
-/* ─── Status ─── */
 const STATUS_OPTIONS = [
   { value: "planning",    label: "Planning",    color: "#94a3b8", emoji: "📋" },
   { value: "in-progress", label: "In Progress", color: "#60a5fa", emoji: "🔨" },
@@ -14,14 +13,13 @@ const STATUS_ORDER: Record<string, number> = { deployed: 0, completed: 1, "in-pr
 
 type SortBy = "sort_order" | "progress" | "status" | "title" | "updated";
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-  { value: "sort_order", label: "Default" },
+  { value: "sort_order", label: "Default"  },
   { value: "progress",   label: "Progress" },
-  { value: "status",     label: "Status" },
-  { value: "title",      label: "A–Z" },
-  { value: "updated",    label: "Recent" },
+  { value: "status",     label: "Status"   },
+  { value: "title",      label: "A–Z"      },
+  { value: "updated",    label: "Recent"   },
 ];
 
-/* ─── Default sections ─── */
 const DEFAULT_SECTIONS = [
   { id: "foundation", label: "Foundation ML",       description: "Classical ML, SQL analytics, causal inference, statistics — the minimum bar for any DS/MLE role.", color: "#5ecf95", categories: ["Classical ML", "Data Engineering", "Time Series", "Statistics"] },
   { id: "nlp-dl",     label: "NLP & Deep Learning", description: "Transformers, fine-tuning, RAG, computer vision — what separates ML Engineers from analysts.",     color: "#4da6ff", categories: ["NLP", "Deep Learning", "LLMs & GenAI", "Computer Vision"] },
@@ -29,77 +27,57 @@ const DEFAULT_SECTIONS = [
 ];
 type Section = typeof DEFAULT_SECTIONS[number];
 
-interface UndoState       { projectId: string; projectData: Project; timeoutId: ReturnType<typeof setTimeout>; }
+interface UndoState        { projectId: string; projectData: Project; timeoutId: ReturnType<typeof setTimeout>; }
 interface SectionUndoState { section: Section; timeoutId: ReturnType<typeof setTimeout>; intervalId: ReturnType<typeof setInterval>; }
 
-/* ─── Slider ─── */
 function ColoredSlider({ value, color, onChange }: { value: number; color: string; onChange: (v: number) => void }) {
   return <input type="range" min="0" max="100" step="5" value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" style={{ background: `linear-gradient(to right,${color} 0%,${color} ${value}%,var(--bg-input) ${value}%,var(--bg-input) 100%)` }} />;
 }
 
-/* ─── Search bar ─── */
+/* ── Search bar ── */
 function SearchBar({ value, onChange, resultCount, totalCount }: { value: string; onChange: (v: string) => void; resultCount: number; totalCount: number }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="relative animate-fade-in-up" style={{ animationDelay: "15ms" }}>
-      <div
-        className="flex items-center gap-2 rounded-[14px] px-3 transition-all"
-        style={{
-          background: "var(--cc-glass-base)",
-          border: `0.5px solid ${value ? "var(--accent)" : "var(--cc-tile-border)"}`,
-          backdropFilter: "blur(20px) saturate(1.8)",
-          boxShadow: value ? `0 0 0 3px var(--accent-muted), var(--cc-outer-shadow)` : "var(--cc-outer-shadow)",
-        }}
-      >
-        {/* Search icon */}
+      <div className="flex items-center gap-2 rounded-[14px] px-3 transition-all"
+        style={{ background: "var(--cc-glass-base)", border: `0.5px solid ${value ? "var(--accent)" : "var(--cc-tile-border)"}`, backdropFilter: "blur(20px) saturate(1.8)", boxShadow: value ? "0 0 0 3px var(--accent-muted), var(--cc-outer-shadow)" : "var(--cc-outer-shadow)" }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: value ? "var(--accent)" : "var(--cc-text-muted)", flexShrink: 0 }}>
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+        <input ref={inputRef} type="text" value={value} onChange={(e) => onChange(e.target.value)}
           placeholder="Search by title, description, tech stack…"
           className="flex-1 bg-transparent py-2.5 text-xs font-mono focus:outline-none"
-          style={{ color: "var(--text-primary)", minWidth: 0 }}
-        />
-        {/* Result count badge */}
+          style={{ color: "var(--text-primary)", minWidth: 0 }} />
         {value && (
           <span className="text-[9px] font-mono flex-shrink-0 px-2 py-0.5 rounded-lg"
             style={{ background: resultCount > 0 ? "var(--accent-muted)" : "rgba(248,65,65,0.12)", color: resultCount > 0 ? "var(--accent)" : "#f87171" }}>
             {resultCount} / {totalCount}
           </span>
         )}
-        {/* Clear */}
         {value && (
           <button onClick={() => { onChange(""); inputRef.current?.focus(); }}
-            className="w-6 h-6 flex items-center justify-center rounded-lg flex-shrink-0 transition-all"
-            style={{ color: "var(--cc-text-muted)", background: "var(--glass-fill)" }}>
-            ×
-          </button>
+            className="w-6 h-6 flex items-center justify-center rounded-lg flex-shrink-0"
+            style={{ color: "var(--cc-text-muted)", background: "var(--glass-fill)" }}>×</button>
         )}
       </div>
     </div>
   );
 }
 
-/* ─── Delete confirm ─── */
 function DeleteConfirm({ title, onConfirm, onCancel }: { title: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="animate-scale-in rounded-[14px] p-3 mt-3" style={{ background: "rgba(248,65,65,0.08)", border: "0.5px solid rgba(248,65,65,0.28)" }}>
       <p className="text-[11px] font-medium mb-0.5" style={{ color: "#f87171" }}>Delete "{title}"?</p>
       <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>You'll have 5 seconds to undo.</p>
       <div className="flex gap-2">
-        <button onClick={onConfirm} className="flex-1 py-2.5 text-[11px] font-medium rounded-xl transition-all" style={{ background: "rgba(248,65,65,0.18)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.35)" }}>Yes, delete</button>
-        <button onClick={onCancel}  className="flex-1 py-2.5 text-[11px] font-mono rounded-xl"                 style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>Cancel</button>
+        <button onClick={onConfirm} className="flex-1 py-2.5 text-[11px] font-medium rounded-xl" style={{ background: "rgba(248,65,65,0.18)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.35)" }}>Yes, delete</button>
+        <button onClick={onCancel}  className="flex-1 py-2.5 text-[11px] font-mono rounded-xl" style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>Cancel</button>
       </div>
     </div>
   );
 }
 
-/* ─── Undo toast ─── */
-function UndoToast({ label, onUndo, onDismiss, progress }: { label: string; onUndo: () => void; onDismiss: () => void; progress: number; }) {
+function UndoToast({ label, onUndo, onDismiss, progress }: { label: string; onUndo: () => void; onDismiss: () => void; progress: number }) {
   return (
     <div className="fixed left-1/2 animate-slide-up z-50" style={{ transform: "translateX(-50%)", bottom: "calc(80px + env(safe-area-inset-bottom,0px) + 8px)", width: "calc(100vw - 32px)", maxWidth: "360px" }}>
       <div className="rounded-[16px] px-4 py-3 flex items-center gap-3 relative overflow-hidden" style={{ background: "var(--cc-glass-base)", border: "0.5px solid var(--cc-tile-border)", backdropFilter: "blur(32px) saturate(2)", boxShadow: "var(--cc-outer-shadow)" }}>
@@ -113,21 +91,21 @@ function UndoToast({ label, onUndo, onDismiss, progress }: { label: string; onUn
 }
 
 /* ════════════════ SECTION MODAL ════════════════ */
-function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSave: (s: Section[]) => void; onClose: () => void; }) {
-  const [local, setLocal]             = useState<Section[]>(JSON.parse(JSON.stringify(sections)));
-  const [expandedId, setExpandedId]   = useState<string | null>(null);
+function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSave: (s: Section[]) => void; onClose: () => void }) {
+  const [local, setLocal]           = useState<Section[]>(JSON.parse(JSON.stringify(sections)));
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newCatInputs, setNewCatInputs] = useState<Record<string, string>>({});
   const [newLabel, setNewLabel]   = useState("");
   const [newDesc, setNewDesc]     = useState("");
   const [newColor, setNewColor]   = useState("#94a3b8");
-  const [sectionUndo, setSectionUndo]                 = useState<SectionUndoState | null>(null);
-  const [sectionUndoProgress, setSectionUndoProgress] = useState(100);
-  const [deletingId, setDeletingId]                   = useState<string | null>(null);
+  const [sectionUndo, setSectionUndo]                   = useState<SectionUndoState | null>(null);
+  const [sectionUndoProgress, setSectionUndoProgress]   = useState(100);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { return () => { if (sectionUndo) { clearTimeout(sectionUndo.timeoutId); clearInterval(sectionUndo.intervalId); } }; }, [sectionUndo]);
 
   const updateSection = (id: string, patch: Partial<Section>) => setLocal((p) => p.map((s) => s.id === id ? { ...s, ...patch } : s));
-  const addCat = (secId: string) => { const v = (newCatInputs[secId] || "").trim(); if (!v) return; setLocal((p) => p.map((s) => s.id === secId && !s.categories.includes(v) ? { ...s, categories: [...s.categories, v] } : s)); setNewCatInputs((p) => ({ ...p, [secId]: "" })); };
+  const addCat    = (secId: string) => { const v = (newCatInputs[secId] || "").trim(); if (!v) return; setLocal((p) => p.map((s) => s.id === secId && !s.categories.includes(v) ? { ...s, categories: [...s.categories, v] } : s)); setNewCatInputs((p) => ({ ...p, [secId]: "" })); };
   const removeCat = (secId: string, cat: string) => setLocal((p) => p.map((s) => s.id === secId ? { ...s, categories: s.categories.filter((c) => c !== cat) } : s));
 
   const startSectionDelete = (sec: Section) => {
@@ -205,9 +183,8 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
                       </div>
                       <div className="flex gap-2">
                         <input value={newCatInputs[sec.id] || ""} onChange={(e) => setNewCatInputs((p) => ({ ...p, [sec.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCat(sec.id); } }} placeholder="e.g. Healthcare AI, Robotics…" className="flex-1 rounded-xl px-3 py-2.5 text-[11px] font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
-                        <button onClick={() => addCat(sec.id)} disabled={!(newCatInputs[sec.id] || "").trim()} className="px-3 py-2.5 text-[11px] font-medium rounded-xl transition-all disabled:opacity-30 flex-shrink-0" style={{ background: `${sec.color}20`, color: sec.color, border: `0.5px solid ${sec.color}35` }}>+ Add</button>
+                        <button onClick={() => addCat(sec.id)} disabled={!(newCatInputs[sec.id] || "").trim()} className="px-3 py-2.5 text-[11px] font-medium rounded-xl disabled:opacity-30 flex-shrink-0" style={{ background: `${sec.color}20`, color: sec.color, border: `0.5px solid ${sec.color}35` }}>+ Add</button>
                       </div>
-                      <p className="text-[9px] font-mono mt-1" style={{ color: "var(--text-muted)" }}>Press Enter or + Add · case-sensitive</p>
                     </div>
                   </div>
                 )}
@@ -218,10 +195,10 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
             <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>New section</p>
             <div className="flex gap-2">
               <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-0 flex-shrink-0" style={{ padding: "3px" }} />
-              <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSection(); }} placeholder="Section name, e.g. Healthcare AI" className="flex-1 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+              <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSection(); }} placeholder="Section name" className="flex-1 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
             </div>
             <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Short description (optional)" className="w-full rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
-            <button onClick={addSection} disabled={!newLabel.trim()} className="w-full py-3 text-xs font-medium rounded-xl disabled:opacity-30 transition-all" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>+ Add section</button>
+            <button onClick={addSection} disabled={!newLabel.trim()} className="w-full py-3 text-xs font-medium rounded-xl disabled:opacity-30" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>+ Add section</button>
           </div>
         </div>
         <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
@@ -243,11 +220,14 @@ export default function ProjectsPage() {
   const [saving, setSaving]         = useState(false);
   const [sortBy, setSortBy]         = useState<SortBy>("sort_order");
   const [filterStatus, setFilterStatus] = useState<string>("");
-  const [searchQuery, setSearchQuery]   = useState("");            /* ← NEW */
+  const [searchQuery, setSearchQuery]   = useState("");
 
-  const [sections, setSections]           = useState<Section[]>(DEFAULT_SECTIONS);
-  const [activeSection, setActiveSection] = useState<string>("foundation");
+  const [sections, setSections]               = useState<Section[]>(DEFAULT_SECTIONS);
+  const [activeSection, setActiveSection]     = useState<string>("foundation");
   const [showSectionModal, setShowSectionModal] = useState(false);
+
+  // CHANGE 4: description "show more" state per section
+  const [descExpanded, setDescExpanded] = useState<Record<string, boolean>>({});
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [undoState, setUndoState]             = useState<UndoState | null>(null);
@@ -255,15 +235,15 @@ export default function ProjectsPage() {
   const undoProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* form */
-  const [title, setTitle]             = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory]       = useState("");
-  const [techInput, setTechInput]     = useState("");
-  const [status, setStatus]           = useState<Project["status"]>("planning");
-  const [progress, setProgress]       = useState(0);
-  const [github, setGithub]           = useState("");
-  const [liveUrl, setLiveUrl]         = useState("");
-  const [targetDate, setTargetDate]   = useState("");             /* ← NEW */
+  const [title, setTitle]                     = useState("");
+  const [description, setDescription]         = useState("");
+  const [category, setCategory]               = useState("");
+  const [techInput, setTechInput]             = useState("");
+  const [status, setStatus]                   = useState<Project["status"]>("planning");
+  const [progress, setProgress]               = useState(0);
+  const [github, setGithub]                   = useState("");
+  const [liveUrl, setLiveUrl]                 = useState("");
+  const [targetDate, setTargetDate]           = useState("");
   const [highlightsInput, setHighlightsInput] = useState("");
 
   useEffect(() => { try { const s = localStorage.getItem("srn-project-sections"); if (s) setSections(JSON.parse(s)); } catch {} }, []);
@@ -271,7 +251,6 @@ export default function ProjectsPage() {
   const reload = useCallback(async () => setProjects(await fetchProjects()), []);
 
   const resetForm = () => { setTitle(""); setDescription(""); setCategory(""); setTechInput(""); setStatus("planning"); setProgress(0); setGithub(""); setLiveUrl(""); setTargetDate(""); setHighlightsInput(""); setShowForm(false); setEditingId(null); setSaving(false); };
-
   const handleSaveSections = (updated: Section[]) => { setSections(updated); localStorage.setItem("srn-project-sections", JSON.stringify(updated)); setShowSectionModal(false); if (!updated.find((s) => s.id === activeSection)) setActiveSection(updated[0]?.id || "__all__"); };
 
   const handleSave = async () => {
@@ -303,28 +282,21 @@ export default function ProjectsPage() {
   };
   const handleUndo = () => { if (!undoState) return; clearTimeout(undoState.timeoutId); if (undoProgressRef.current) clearInterval(undoProgressRef.current); setUndoState(null); window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Delete undone ✓", type: "success" } })); };
   const handleProgressUpdate = async (id: string, val: number) => { const u: Partial<Project> = { progress: val }; if (val === 100) u.status = "completed"; else if (val > 0) u.status = "in-progress"; else u.status = "planning"; await updateProject(id, u); await reload(); };
-  const handleStatusChange  = async (id: string, s: Project["status"]) => { const u: Partial<Project> = { status: s }; if (s === "completed" || s === "deployed") u.progress = 100; else if (s === "planning") u.progress = 0; await updateProject(id, u); await reload(); };
+  const handleStatusChange   = async (id: string, s: Project["status"]) => { const u: Partial<Project> = { status: s }; if (s === "completed" || s === "deployed") u.progress = 100; else if (s === "planning") u.progress = 0; await updateProject(id, u); await reload(); };
 
   const getSectionForProject = useCallback((cat: string) => { for (const sec of sections) { if (sec.categories.includes(cat)) return sec.id; } return "__uncategorised__"; }, [sections]);
   const sectionCounts = useMemo(() => { const c: Record<string, number> = {}; projects.forEach((p) => { const sid = getSectionForProject(p.category || ""); c[sid] = (c[sid] || 0) + 1; }); return c; }, [projects, getSectionForProject]);
   const uncategorisedCount = sectionCounts["__uncategorised__"] || 0;
 
-  /* ── Search helper ── */
   const matchesSearch = useCallback((p: Project, q: string) => {
     if (!q.trim()) return true;
     const lower = q.toLowerCase();
-    return (
-      p.title.toLowerCase().includes(lower) ||
-      (p.description || "").toLowerCase().includes(lower) ||
-      (p.category || "").toLowerCase().includes(lower) ||
-      (p.tech || []).some((t) => t.toLowerCase().includes(lower))
-    );
+    return p.title.toLowerCase().includes(lower) || (p.description || "").toLowerCase().includes(lower) || (p.category || "").toLowerCase().includes(lower) || (p.tech || []).some((t) => t.toLowerCase().includes(lower));
   }, []);
 
-  /* ── Visible projects: section filter + status filter + search ── */
   const visibleProjects = useMemo(() => {
     let list: Project[];
-    if (activeSection === "__all__")             list = [...projects];
+    if (activeSection === "__all__") list = [...projects];
     else if (activeSection === "__uncategorised__") list = projects.filter((p) => getSectionForProject(p.category || "") === "__uncategorised__");
     else { const sec = sections.find((s) => s.id === activeSection); list = sec ? projects.filter((p) => sec.categories.includes(p.category || "")) : []; }
     if (filterStatus) list = list.filter((p) => p.status === filterStatus);
@@ -332,11 +304,7 @@ export default function ProjectsPage() {
     return [...list].sort((a, b) => { switch (sortBy) { case "progress": return b.progress - a.progress; case "status": return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]; case "title": return a.title.localeCompare(b.title); case "updated": return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(); default: return a.sort_order - b.sort_order; } });
   }, [projects, activeSection, sections, filterStatus, sortBy, searchQuery, getSectionForProject, matchesSearch]);
 
-  /* Search across ALL projects (for "found in other section" hint) */
-  const globalSearchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    return projects.filter((p) => matchesSearch(p, searchQuery));
-  }, [projects, searchQuery, matchesSearch]);
+  const globalSearchResults = useMemo(() => { if (!searchQuery.trim()) return []; return projects.filter((p) => matchesSearch(p, searchQuery)); }, [projects, searchQuery, matchesSearch]);
 
   const totalProgress  = projects.length > 0 ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / projects.length) : 0;
   const statusCounts   = useMemo(() => { const c: Record<string, number> = {}; projects.forEach((p) => { c[p.status] = (c[p.status] || 0) + 1; }); return c; }, [projects]);
@@ -350,7 +318,6 @@ export default function ProjectsPage() {
     return list;
   }, [sections, sectionCounts, projects.length, uncategorisedCount]);
 
-  /* Days until target date */
   const daysUntil = (dateStr: string) => {
     if (!dateStr) return null;
     const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
@@ -393,77 +360,95 @@ export default function ProjectsPage() {
         )}
       </header>
 
-      {/* ── SEARCH BAR ── */}
+      {/* Search bar */}
       {projects.length > 0 && (
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          resultCount={visibleProjects.length}
-          totalCount={activeSection === "__all__" ? projects.length : (tabs.find((t) => t.id === activeSection)?.count || 0)}
-        />
+        <SearchBar value={searchQuery} onChange={setSearchQuery} resultCount={visibleProjects.length} totalCount={activeSection === "__all__" ? projects.length : (tabs.find((t) => t.id === activeSection)?.count || 0)} />
       )}
 
-      {/* "Found in other sections" hint */}
+      {/* Cross-section search hint */}
       {searchQuery && visibleProjects.length === 0 && globalSearchResults.length > 0 && (
-        <div className="mt-2 mb-0 px-3 py-2.5 rounded-[12px] flex items-center gap-2 animate-fade-in"
-          style={{ background: "var(--accent-muted)", border: "0.5px solid var(--accent-dim)" }}>
-          <span className="text-[10px] font-mono" style={{ color: "var(--accent)" }}>
-            Found {globalSearchResults.length} result{globalSearchResults.length > 1 ? "s" : ""} in other sections.
-          </span>
-          <button onClick={() => setActiveSection("__all__")} className="text-[10px] font-semibold ml-auto px-2.5 py-1 rounded-lg transition-all"
-            style={{ background: "var(--accent)", color: "#0a0a0b" }}>
-            Show all
-          </button>
+        <div className="mt-2 px-3 py-2.5 rounded-[12px] flex items-center gap-2 animate-fade-in" style={{ background: "var(--accent-muted)", border: "0.5px solid var(--accent-dim)" }}>
+          <span className="text-[10px] font-mono" style={{ color: "var(--accent)" }}>Found {globalSearchResults.length} result{globalSearchResults.length > 1 ? "s" : ""} in other sections.</span>
+          <button onClick={() => setActiveSection("__all__")} className="text-[10px] font-semibold ml-auto px-2.5 py-1 rounded-lg" style={{ background: "var(--accent)", color: "#0a0a0b" }}>Show all</button>
         </div>
       )}
 
-      {/* Status filters */}
+      {/* ── CHANGE 3: Status filters — 2×2 grid on mobile, row on desktop ── */}
       {projects.length > 0 && (
-        <div className="flex gap-2 mt-3 mb-3 animate-fade-in-up" style={{ animationDelay: "20ms", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "2px" }}>
-          {STATUS_OPTIONS.map((s) => {
-            const count = statusCounts[s.value] || 0; const active = filterStatus === s.value;
-            return (
-              <button key={s.value} onClick={() => setFilterStatus(active ? "" : s.value)}
-                className="flex items-center gap-1.5 rounded-[12px] text-[10px] font-mono transition-all flex-shrink-0"
-                style={{ padding: "8px 12px", background: active ? `${s.color}18` : "var(--glass-fill)", border: `0.5px solid ${active ? `${s.color}40` : "var(--glass-border)"}`, color: active ? s.color : "var(--text-muted)", backdropFilter: "blur(12px)", whiteSpace: "nowrap" }}>
-                {s.emoji} {s.label} <span style={{ opacity: 0.6 }}>({count})</span>
-              </button>
-            );
-          })}
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="flex-shrink-0 ml-auto glass rounded-xl px-3 text-[10px] font-mono focus:outline-none cursor-pointer" style={{ color: "var(--text-secondary)", height: "36px", minWidth: "80px" }}>
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+        <div className="mt-3 mb-3 animate-fade-in-up" style={{ animationDelay: "20ms" }}>
+          {/* CHANGE 5: Sort on its own row, full-width on mobile */}
+          <div className="mb-2">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="w-full sm:w-auto glass rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none cursor-pointer"
+              style={{ color: "var(--text-secondary)" }}>
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          {/* 2×2 grid on mobile, flex row on sm+ */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5">
+            {STATUS_OPTIONS.map((s) => {
+              const count = statusCounts[s.value] || 0; const active = filterStatus === s.value;
+              return (
+                <button key={s.value} onClick={() => setFilterStatus(active ? "" : s.value)}
+                  className="flex items-center justify-center gap-1.5 rounded-[12px] text-[10px] font-mono transition-all"
+                  style={{ padding: "9px 12px", background: active ? `${s.color}18` : "var(--glass-fill)", border: `0.5px solid ${active ? `${s.color}40` : "var(--glass-border)"}`, color: active ? s.color : "var(--text-muted)" }}>
+                  <span>{s.emoji}</span>
+                  <span>{s.label}</span>
+                  <span style={{ opacity: 0.6 }}>({count})</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Section tabs */}
+      {/* ── CHANGE 1: Section tabs — wrap grid on mobile, single row on desktop ── */}
       <div className="mb-4 animate-fade-in-up" style={{ animationDelay: "35ms" }}>
-        <div className="flex gap-1 p-1 rounded-[16px]" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border)", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-          {tabs.map((tab) => {
-            const isActive = activeSection === tab.id;
-            /* Highlight tab if search found results there */
-            const hasSearchResults = searchQuery ? globalSearchResults.some((p) => {
-              if (tab.id === "__all__") return true;
-              if (tab.id === "__uncategorised__") return getSectionForProject(p.category || "") === "__uncategorised__";
-              const sec = sections.find((s) => s.id === tab.id);
-              return sec ? sec.categories.includes(p.category || "") : false;
-            }) : false;
-            return (
-              <button key={tab.id} onClick={() => { setActiveSection(tab.id); setExpandedId(null); }}
-                className="flex-shrink-0 flex items-center gap-1.5 rounded-[11px] transition-all duration-200 relative overflow-hidden"
-                style={{ padding: "10px 12px", background: isActive ? "var(--cc-glass-hover)" : "transparent", border: `0.5px solid ${isActive ? `${tab.color}40` : searchQuery && hasSearchResults ? `${tab.color}25` : "transparent"}`, backdropFilter: isActive ? "blur(20px) saturate(1.8)" : "none", boxShadow: isActive ? `inset 0 1px 0 var(--specular-top), 0 2px 10px ${tab.color}18` : "none", whiteSpace: "nowrap" }}>
-                {isActive && <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "0.5px", background: `linear-gradient(90deg,transparent,${tab.color}70,transparent)`, pointerEvents: "none" }} />}
-                <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: tab.color, boxShadow: isActive ? `0 0 6px ${tab.color}80` : "none", flexShrink: 0, transition: "box-shadow 0.2s" }} />
-                <span className="text-[11px] font-medium" style={{ color: isActive ? "var(--text-primary)" : "var(--cc-text-muted)", transition: "color 0.2s" }}>{tab.label}</span>
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-lg" style={{ background: isActive ? `${tab.color}20` : "var(--glass-fill)", color: isActive ? tab.color : "var(--text-muted)", transition: "all 0.2s" }}>{tab.count}</span>
-              </button>
-            );
-          })}
+        <div className="p-1 rounded-[16px]" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border)" }}>
+          {/* Mobile: wrap into rows of 2. Desktop: single flex row */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1">
+            {tabs.map((tab) => {
+              const isActive = activeSection === tab.id;
+              const hasSearchResults = searchQuery ? globalSearchResults.some((p) => {
+                if (tab.id === "__all__") return true;
+                if (tab.id === "__uncategorised__") return getSectionForProject(p.category || "") === "__uncategorised__";
+                const sec = sections.find((s) => s.id === tab.id);
+                return sec ? sec.categories.includes(p.category || "") : false;
+              }) : false;
+              return (
+                <button key={tab.id}
+                  onClick={() => { setActiveSection(tab.id); setExpandedId(null); }}
+                  className="flex items-center justify-center gap-1.5 rounded-[11px] transition-all duration-200 relative overflow-hidden"
+                  style={{ padding: "10px 10px", background: isActive ? "var(--cc-glass-hover)" : "transparent", border: `0.5px solid ${isActive ? `${tab.color}40` : searchQuery && hasSearchResults ? `${tab.color}25` : "transparent"}`, backdropFilter: isActive ? "blur(20px) saturate(1.8)" : "none", boxShadow: isActive ? `inset 0 1px 0 var(--specular-top), 0 2px 10px ${tab.color}18` : "none" }}>
+                  {isActive && <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "0.5px", background: `linear-gradient(90deg,transparent,${tab.color}70,transparent)`, pointerEvents: "none" }} />}
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: tab.color, boxShadow: isActive ? `0 0 6px ${tab.color}80` : "none", flexShrink: 0 }} />
+                  <span className="text-[11px] font-medium truncate" style={{ color: isActive ? "var(--text-primary)" : "var(--cc-text-muted)" }}>{tab.label}</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-lg flex-shrink-0" style={{ background: isActive ? `${tab.color}20` : "var(--glass-fill)", color: isActive ? tab.color : "var(--text-muted)" }}>{tab.count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* CHANGE 4: Description banner — clamp to 2 lines with "more" toggle */}
         {activeSectionData && activeSection !== "__all__" && activeSection !== "__uncategorised__" && (
-          <div className="mt-2 px-3 py-2 rounded-[11px] animate-fade-in flex items-center gap-2" style={{ background: `${activeSectionData.color}0d`, border: `0.5px solid ${activeSectionData.color}28` }}>
-            <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: activeSectionData.color, flexShrink: 0 }} />
-            <p className="text-[10px] font-mono" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>{activeSectionData.description}</p>
+          <div className="mt-2 px-3 py-2.5 rounded-[11px] animate-fade-in" style={{ background: `${activeSectionData.color}0d`, border: `0.5px solid ${activeSectionData.color}28` }}>
+            <div className="flex items-start gap-2">
+              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: activeSectionData.color, flexShrink: 0, marginTop: "5px" }} />
+              <p className="text-[10px] font-mono flex-1"
+                style={{ color: "var(--text-secondary)", lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: descExpanded[activeSectionData.id] ? 99 : 2, WebkitBoxOrient: "vertical" }}>
+                {activeSectionData.description}
+              </p>
+              {/* Only show toggle if description is long enough to overflow */}
+              {activeSectionData.description.length > 80 && (
+                <button
+                  onClick={() => setDescExpanded((p) => ({ ...p, [activeSectionData.id]: !p[activeSectionData.id] }))}
+                  className="flex-shrink-0 text-[9px] font-mono mt-0.5"
+                  style={{ color: activeSectionData.color, opacity: 0.8 }}>
+                  {descExpanded[activeSectionData.id] ? "less" : "more"}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -478,10 +463,8 @@ export default function ProjectsPage() {
           <div className="space-y-3">
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Project title *" autoFocus className="w-full rounded-2xl px-4 py-3 text-sm font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What does this project do..." rows={2} className="w-full rounded-2xl px-4 py-3 text-xs font-mono focus:outline-none resize-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
-
-            {/* Category grouped by section */}
             <div>
-              <span className="text-[10px] font-mono block mb-1.5" style={{ color: "var(--text-muted)" }}>Category — sets which section this appears in</span>
+              <span className="text-[10px] font-mono block mb-1.5" style={{ color: "var(--text-muted)" }}>Category</span>
               <div className="space-y-2.5">
                 {sections.map((sec) => (
                   <div key={sec.id}>
@@ -495,25 +478,20 @@ export default function ProjectsPage() {
                 ))}
                 <div>
                   <span className="text-[9px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--text-muted)" }}>Or type custom</span>
-                  <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Healthcare AI, Robotics..." className="w-full rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
+                  <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Healthcare AI..." className="w-full rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
                 </div>
               </div>
             </div>
-
             <input type="text" value={techInput} onChange={(e) => setTechInput(e.target.value)} placeholder="Tech: Python, PyTorch, FastAPI, Docker..." className="w-full rounded-2xl px-4 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
-            <textarea value={highlightsInput} onChange={(e) => setHighlightsInput(e.target.value)} placeholder={"Key deliverables (one per line)"} rows={3} className="w-full rounded-2xl px-4 py-2.5 text-xs font-mono focus:outline-none resize-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
-
+            <textarea value={highlightsInput} onChange={(e) => setHighlightsInput(e.target.value)} placeholder="Key deliverables (one per line)" rows={3} className="w-full rounded-2xl px-4 py-2.5 text-xs font-mono focus:outline-none resize-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <input type="url" value={github}  onChange={(e) => setGithub(e.target.value)}  placeholder="GitHub URL"    className="flex-1 rounded-2xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
               <input type="url" value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} placeholder="Live demo URL" className="flex-1 rounded-2xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
             </div>
-
-            {/* Target date — NEW */}
             <div>
               <span className="text-[10px] font-mono block mb-1" style={{ color: "var(--text-muted)" }}>Target completion date (optional)</span>
-              <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className="w-full sm:w-auto rounded-2xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)" }} />
+              <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className="w-full sm:w-auto rounded-2xl px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
             </div>
-
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <span className="text-[10px] font-mono block mb-1.5" style={{ color: "var(--text-muted)" }}>Status</span>
@@ -544,25 +522,24 @@ export default function ProjectsPage() {
         <div className="p-8 sm:p-10 text-center rounded-[22px] animate-fade-in" style={{ background: activeSectionData ? `${activeSectionData.color}0a` : "var(--glass-fill)", border: `0.5px solid ${activeSectionData ? `${activeSectionData.color}25` : "var(--glass-border)"}` }}>
           <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>{searchQuery ? `No results for "${searchQuery}"` : projects.length === 0 ? "No projects yet" : "No projects in this section"}</p>
           <p className="text-xs font-mono mb-4" style={{ color: "var(--text-muted)" }}>{searchQuery ? "Try a different search term, or switch sections." : activeSectionData?.description || "Add a project to get started."}</p>
-          {!searchQuery && <button onClick={() => setShowForm(true)} className="px-5 py-2.5 text-xs font-medium rounded-2xl transition-all" style={{ background: activeSectionData?.color || "var(--accent)", color: "#0a0a0b" }}>+ Add project</button>}
-          {searchQuery  && <button onClick={() => setSearchQuery("")} className="px-5 py-2.5 text-xs font-medium rounded-2xl transition-all" style={{ background: "var(--glass-fill-hover)", color: "var(--text-primary)", border: "0.5px solid var(--glass-border)" }}>Clear search</button>}
+          {!searchQuery && <button onClick={() => setShowForm(true)} className="px-5 py-2.5 text-xs font-medium rounded-2xl" style={{ background: activeSectionData?.color || "var(--accent)", color: "#0a0a0b" }}>+ Add project</button>}
+          {searchQuery  && <button onClick={() => setSearchQuery("")} className="px-5 py-2.5 text-xs font-medium rounded-2xl" style={{ background: "var(--glass-fill-hover)", color: "var(--text-primary)", border: "0.5px solid var(--glass-border)" }}>Clear search</button>}
         </div>
       ) : (
         <div className="space-y-3">
           {visibleProjects.map((p, i) => {
             const sc = STATUS_OPTIONS.find((s) => s.value === p.status) || STATUS_OPTIONS[0];
-            const secData    = sections.find((s) => s.categories.includes(p.category || ""));
-            const secColor   = secData?.color || "#94a3b8";
-            const isExpanded = expandedId === p.id;
+            const secData      = sections.find((s) => s.categories.includes(p.category || ""));
+            const secColor     = secData?.color || "#94a3b8";
+            const isExpanded   = expandedId === p.id;
             const isConfirmDel = confirmDeleteId === p.id;
             const isPendingDel = undoState?.projectId === p.id;
-            const deadline   = daysUntil((p as any).end_date || "");
-            /* Highlight matched search terms */
+            const deadline     = daysUntil((p as any).end_date || "");
             const isSearchMatch = searchQuery && matchesSearch(p, searchQuery);
 
             return (
               <div key={p.id} className="liquid-glass rounded-[22px] overflow-hidden hover-lift animate-fade-in-up"
-                style={{ animationDelay: `${i * 35}ms`, opacity: isPendingDel ? 0.42 : 1, transition: "opacity 0.3s ease", boxShadow: isSearchMatch && searchQuery ? `var(--shadow-md), 0 0 0 1.5px ${secColor}40` : undefined }}>
+                style={{ animationDelay: `${i * 35}ms`, opacity: isPendingDel ? 0.42 : 1, transition: "opacity 0.3s ease", boxShadow: isSearchMatch ? `var(--shadow-md), 0 0 0 1.5px ${secColor}40` : undefined }}>
                 <div style={{ height: "2px", background: `linear-gradient(90deg,${secColor}80,transparent)` }} />
                 <div className="p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-2">
@@ -574,7 +551,7 @@ export default function ProjectsPage() {
                       <div className="flex items-center gap-1.5 flex-wrap mb-1">
                         <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${sc.color}12`, color: sc.color, border: `0.5px solid ${sc.color}30` }}>{sc.label}</span>
                         {p.category && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${secColor}10`, color: secColor, border: `0.5px solid ${secColor}28` }}>{p.category}</span>}
-                        {deadline && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${deadline.color}12`, color: deadline.color, border: `0.5px solid ${deadline.color}28` }}>{deadline.label}</span>}
+                        {deadline   && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${deadline.color}12`, color: deadline.color, border: `0.5px solid ${deadline.color}28` }}>{deadline.label}</span>}
                       </div>
                       {p.description && <p className="text-[11px] sm:text-xs line-clamp-2" style={{ color: "var(--text-secondary)", lineHeight: 1.55 }}>{p.description}</p>}
                     </div>
@@ -585,19 +562,29 @@ export default function ProjectsPage() {
                     </svg>
                   </div>
                   <div className="mt-3"><ColoredSlider value={p.progress} color={sc.color} onChange={(v) => handleProgressUpdate(p.id, v)} /></div>
+
+                  {/* CHANGE 2: Tech chips always wrap — never scroll */}
                   {p.tech && p.tech.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {p.tech.map((t) => <span key={t} className="text-[9px] font-mono px-1.5 py-0.5 rounded-lg" style={{ background: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent-muted)" : "var(--bg-elevated)", color: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent)" : "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>{t}</span>)}
+                      {p.tech.map((t) => (
+                        <span key={t} className="text-[9px] font-mono px-1.5 py-0.5 rounded-lg"
+                          style={{ background: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent-muted)" : "var(--bg-elevated)", color: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent)" : "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                          {t}
+                        </span>
+                      ))}
                     </div>
                   )}
+
                   {isConfirmDel && <DeleteConfirm title={p.title} onConfirm={() => startDeleteCountdown(p)} onCancel={() => setConfirmDeleteId(null)} />}
                   {isExpanded && !isConfirmDel && (
                     <div className="mt-4 pt-4 space-y-4 animate-fade-in" style={{ borderTop: "0.5px solid var(--border-default)" }}>
                       <div>
                         <span className="text-[10px] font-mono block mb-2" style={{ color: "var(--text-muted)" }}>Status</span>
-                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5">
+                        <div className="grid grid-cols-2 gap-1.5">
                           {STATUS_OPTIONS.map((s) => (
-                            <button key={s.value} onClick={(e) => { e.stopPropagation(); handleStatusChange(p.id, s.value as Project["status"]); }} className="flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-mono rounded-xl transition-all" style={{ background: p.status === s.value ? `${s.color}15` : "var(--bg-card)", color: p.status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${p.status === s.value ? `${s.color}35` : "var(--border-default)"}` }}>
+                            <button key={s.value} onClick={(e) => { e.stopPropagation(); handleStatusChange(p.id, s.value as Project["status"]); }}
+                              className="flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-mono rounded-xl transition-all"
+                              style={{ background: p.status === s.value ? `${s.color}15` : "var(--bg-card)", color: p.status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${p.status === s.value ? `${s.color}35` : "var(--border-default)"}` }}>
                               {s.emoji} {s.label}
                             </button>
                           ))}
@@ -621,7 +608,7 @@ export default function ProjectsPage() {
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }}          className="flex-1 py-2.5 text-[11px] font-mono rounded-xl" style={{ color: "var(--text-secondary)", border: "0.5px solid var(--glass-border)" }}>Edit</button>
+                        <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }}             className="flex-1 py-2.5 text-[11px] font-mono rounded-xl" style={{ color: "var(--text-secondary)", border: "0.5px solid var(--glass-border)" }}>Edit</button>
                         <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }} className="flex-1 py-2.5 text-[11px] font-mono rounded-xl" style={{ color: "#f87171", border: "0.5px solid rgba(248,65,65,0.25)" }}>Delete</button>
                       </div>
                     </div>
