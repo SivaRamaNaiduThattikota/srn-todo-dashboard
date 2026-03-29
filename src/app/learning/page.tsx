@@ -661,6 +661,7 @@ export default function LearningPage() {
   const [infoPhase, setInfoPhase]   = useState<LearningPhase | null>(null);
   const [showBin, setShowBin]         = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showGuide, setShowGuide]       = useState(false); // roadmap strategy card
 
   const [deleteStep, setDeleteStep]       = useState<Record<number, 1 | 2>>({});
   const [pendingDelete, setPendingDelete] = useState<LearningPhase | null>(null);
@@ -830,6 +831,199 @@ export default function LearningPage() {
           })}
         </div>
       </header>
+
+      {/* ── STUDY PLAN GUIDE — collapsible card between header and phases ── */}
+      {!loading && (
+        <div className="mb-4 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
+          <div className="liquid-glass rounded-[20px] overflow-hidden">
+            {/* Top green stripe */}
+            <div style={{ height: "2px", background: "linear-gradient(90deg, #5ecf95, #5ecf9500)" }} />
+
+            {/* Header — click to toggle */}
+            <button
+              onClick={() => setShowGuide((v) => !v)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "#5ecf95", flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                </svg>
+                <span className="text-xs font-semibold" style={{ color: "#5ecf95" }}>How This Roadmap Works</span>
+                <span className="text-[10px] font-mono hidden sm:inline" style={{ color: "var(--text-muted)" }}>
+                  — sequential · parallel · daily schedule · common mistakes
+                </span>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                style={{ color: "var(--text-muted)", flexShrink: 0, transform: showGuide ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.22s ease" }}>
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+
+            {showGuide && (
+              <div className="px-4 pb-5 space-y-4 animate-fade-in">
+
+                {/* ── SECTION 1: Sequential track ──────────────────────── */}
+                <div className="rounded-[14px] overflow-hidden" style={{ border: "0.5px solid rgba(94,207,149,0.22)" }}>
+                  <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap" style={{ background: "rgba(94,207,149,0.08)", borderBottom: "0.5px solid rgba(94,207,149,0.15)" }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#5ecf95" }}>① Sequential</span>
+                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>do ONE at a time, full focus — this is your main track</span>
+                  </div>
+                  <div className="px-4 py-3">
+                    {/* Phase flow boxes */}
+                    <div className="flex items-start gap-1 flex-wrap mb-3">
+                      {[
+                        { label: "Python for ML",  time: "~4 wks",  color: "#534AB7", textColor: "#a09aee" },
+                        { label: "Core ML",         time: "~8 wks",  color: "#0F6E56", textColor: "#4ecfa0" },
+                        { label: "Deep Learning",   time: "~7 wks",  color: "#993C1D", textColor: "#e8895a" },
+                        { label: "MLOps + Design",  time: "~8 wks",  color: "#854F0B", textColor: "#d4924a" },
+                        { label: "Portfolio",        time: "~6 wks",  color: "#993556", textColor: "#e07fa0" },
+                      ].map((s, i, arr) => (
+                        <div key={s.label} className="flex items-center gap-1">
+                          <div className="rounded-[10px] px-2.5 py-1.5 text-center" style={{ background: `${s.color}18`, border: `0.5px solid ${s.color}40` }}>
+                            <div className="text-[10px] font-semibold" style={{ color: s.textColor }}>{s.label}</div>
+                            <div className="text-[9px] font-mono mt-0.5" style={{ color: s.color, opacity: 0.8 }}>{s.time}</div>
+                          </div>
+                          {i < arr.length - 1 && <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>→</span>}
+                        </div>
+                      ))}
+                    </div>
+                    {/* DSA always-on */}
+                    <div className="flex items-center gap-2 rounded-[10px] px-3 py-2" style={{ background: "rgba(24,95,165,0.10)", border: "0.5px solid rgba(24,95,165,0.25)" }}>
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#6aaee8" }} />
+                      <span className="text-[11px] font-semibold font-mono" style={{ color: "#6aaee8" }}>DSA for Interviews</span>
+                      <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>— 1 LC problem every day. Never stop. Entire 18 months.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── SECTION 2: Parallel track ─────────────────────────── */}
+                <div className="rounded-[14px] overflow-hidden" style={{ border: "0.5px solid rgba(251,191,36,0.22)" }}>
+                  <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap" style={{ background: "rgba(251,191,36,0.07)", borderBottom: "0.5px solid rgba(251,191,36,0.15)" }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#fbbf24" }}>② Parallel</span>
+                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>1 hour per day alongside your sequential phase — separate daily block</span>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    {[
+                      { label: "SQL + Data Engineering",  when: "Start NOW",                  whenColor: "#f87171",  bg: "rgba(29,107,140,0.10)",  border: "rgba(29,107,140,0.25)",  textColor: "#56c3e8", note: "Your Power BI background means you are already close. 3–4 weeks gets you interview-ready." },
+                      { label: "Stats + Probability",     when: "Start NOW",                  whenColor: "#f87171",  bg: "rgba(90,59,140,0.10)",   border: "rgba(90,59,140,0.25)",   textColor: "#b088ef", note: "Interview staple — A/B testing, Bayes, distributions. Run alongside Python/DSA. 3–4 weeks." },
+                      { label: "Cloud — AWS / GCP",       when: "Start at Deep Learning",     whenColor: "#fbbf24",  bg: "rgba(15,110,86,0.08)",   border: "rgba(15,110,86,0.22)",   textColor: "#4ecfa0", note: "Pick one cloud only. Get one model deployed end-to-end. 4–6 weeks." },
+                      { label: "NLP / LLMs Expanded",     when: "Start at Deep Learning",     whenColor: "#fbbf24",  bg: "rgba(133,79,11,0.08)",   border: "rgba(133,79,11,0.22)",   textColor: "#d4924a", note: "RAG, LoRA, vector DBs — builds directly on DL knowledge. 4–6 weeks." },
+                    ].map((p) => (
+                      <div key={p.label} className="flex items-start gap-3 rounded-[10px] px-3 py-2.5" style={{ background: p.bg, border: `0.5px solid ${p.border}` }}>
+                        <div className="flex-shrink-0 mt-1"><div className="w-2 h-2 rounded-full" style={{ background: p.whenColor }} /></div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-semibold" style={{ color: p.textColor }}>{p.label}</span>
+                            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full flex-shrink-0"
+                              style={{ background: `${p.whenColor}22`, color: p.whenColor, border: `0.5px solid ${p.whenColor}44` }}>
+                              {p.when}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{p.note}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── SECTION 3: Daily schedule ─────────────────────────── */}
+                <div className="rounded-[14px] overflow-hidden" style={{ border: "0.5px solid rgba(160,154,238,0.22)" }}>
+                  <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap" style={{ background: "rgba(83,74,183,0.08)", borderBottom: "0.5px solid rgba(160,154,238,0.15)" }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a09aee" }}>③ Sample Daily Schedule</span>
+                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>what a study day actually looks like</span>
+                  </div>
+                  <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      { time: "Morning  6–7am",    task: "DSA — 1 LeetCode problem",           color: "#6aaee8",  bg: "rgba(24,95,165,0.09)"   },
+                      { time: "Morning  7–9am",    task: "Main sequential phase (Python / Core ML / Deep Learning / MLOps)", color: "#5ecf95", bg: "rgba(94,207,149,0.08)" },
+                      { time: "Evening  8–9pm",    task: "Parallel — SQL or Stats (1 hr only)", color: "#fbbf24",  bg: "rgba(251,191,36,0.08)"  },
+                      { time: "Weekend  (2 hrs)",  task: "Project work + Kaggle notebook",      color: "#e8895a",  bg: "rgba(153,60,29,0.09)"   },
+                    ].map((s) => (
+                      <div key={s.time} className="flex items-start gap-3 rounded-[10px] px-3 py-2.5" style={{ background: s.bg, border: `0.5px solid ${s.color}30` }}>
+                        <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: s.color }} />
+                        <div>
+                          <div className="text-[9px] font-mono uppercase tracking-wider mb-0.5" style={{ color: s.color, opacity: 0.85 }}>{s.time}</div>
+                          <div className="text-[11px] font-mono" style={{ color: "var(--text-secondary)", lineHeight: 1.4 }}>{s.task}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── SECTION 4: Weekly milestones rhythm ──────────────── */}
+                <div className="rounded-[14px] overflow-hidden" style={{ border: "0.5px solid rgba(78,207,160,0.20)" }}>
+                  <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap" style={{ background: "rgba(15,110,86,0.07)", borderBottom: "0.5px solid rgba(78,207,160,0.15)" }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#4ecfa0" }}>④ Weekly Milestone Rhythm</span>
+                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>what you should be producing every week</span>
+                  </div>
+                  <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      { icon: "🧠", label: "1 new ML concept", detail: "Read + summarise in your own words — not just watch a video" },
+                      { icon: "💻", label: "1 LeetCode problem", detail: "Every single day. Easy → Medium → Hard over time. No excuses." },
+                      { icon: "📊", label: "1 SQL challenge", detail: "DataLemur or StrataScratch. 30 Medium = interview-ready." },
+                      { icon: "📓", label: "1 Kaggle notebook", detail: "One per phase. EDA + model + evaluation + README. Push to GitHub." },
+                      { icon: "🏗️", label: "1 project commit", detail: "GitHub streak matters. Even a README improvement counts." },
+                      { icon: "📝", label: "Weekly self-review", detail: "Use the Review page. What did you learn? What was hard? What is next?" },
+                    ].map((m) => (
+                      <div key={m.label} className="flex items-start gap-2.5 rounded-[10px] px-3 py-2.5" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                        <span className="text-base flex-shrink-0 mt-0.5">{m.icon}</span>
+                        <div>
+                          <div className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>{m.label}</div>
+                          <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{m.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── SECTION 5: Common mistakes to avoid ──────────────── */}
+                <div className="rounded-[14px] overflow-hidden" style={{ border: "0.5px solid rgba(248,113,113,0.22)" }}>
+                  <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap" style={{ background: "rgba(248,113,113,0.07)", borderBottom: "0.5px solid rgba(248,113,113,0.15)" }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#f87171" }}>⑤ Common Mistakes to Avoid</span>
+                    <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>what kills most self-taught ML transitions</span>
+                  </div>
+                  <div className="px-4 py-3 space-y-1.5">
+                    {[
+                      { mistake: "Doing Deep Learning and MLOps at the same time",         fix: "These are sequential. Finish DL completely, then start MLOps. No parallel running of sequential phases." },
+                      { mistake: "Spending more than 1 hr/day on parallel tracks",         fix: "SQL/Stats/Cloud/NLP are 1 hour maximum. More than that steals time from your main phase." },
+                      { mistake: "Skipping projects — only watching lectures",             fix: "Lectures teach concepts. Projects build intuition. You need both. Aim for 1 Kaggle notebook per phase." },
+                      { mistake: "Ignoring DSA because you have ML skills",               fix: "Google and Amazon still test DSA hard. 1 LC problem per day is non-negotiable. Start today." },
+                      { mistake: "Trying to learn both AWS and GCP at the same time",     fix: "Pick one. Go deep on SageMaker OR Vertex AI. Shallow on both = expertise in neither." },
+                      { mistake: "Not tracking progress and losing motivation",            fix: "Use this dashboard. Check off topics. Mark weeks done. The progress bars are your accountability." },
+                    ].map((m, i) => (
+                      <div key={i} className="flex items-start gap-2.5 rounded-[10px] px-3 py-2.5" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                        <span className="text-[10px] mt-0.5 flex-shrink-0" style={{ color: "#f87171" }}>✕</span>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold" style={{ color: "#f87171" }}>{m.mistake}</div>
+                          <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>→ {m.fix}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── SECTION 6: Key rules chips ───────────────────────── */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { icon: "🔥", title: "Never overlap sequential", body: "Deep Learning (7 wks) and MLOps (8 wks) are NOT done at the same time — finish one, then start the next." },
+                    { icon: "⏱", title: "Parallel = 1 hr/day only",  body: "SQL, Stats, Cloud, NLP each run as a separate 60-min daily block. Never replace your main phase time." },
+                    { icon: "🎯", title: "Total: ~18–22 months",      body: "Realistic target to be interview-ready at Google · Microsoft · Amazon. Adjust based on your pace." },
+                  ].map((r) => (
+                    <div key={r.title} className="rounded-[12px] px-3 py-2.5" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm">{r.icon}</span>
+                        <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>{r.title}</span>
+                      </div>
+                      <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)", lineHeight: 1.55 }}>{r.body}</p>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-20 animate-fade-in">
