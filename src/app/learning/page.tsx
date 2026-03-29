@@ -11,7 +11,7 @@ import {
 import { RecycleBinModal } from "@/components/RecycleBinModal";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TYPES & HELPERS
+// HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 type DoneMap = Record<string, boolean>;
 type WeekMap = Record<string, boolean>;
@@ -21,196 +21,179 @@ const weekKey  = (phaseId: number, wi: number)             => `${phaseId}-${wi}`
 
 function phasePct(phase: LearningPhase, done: DoneMap) {
   let total = 0, count = 0;
-  phase.tracks.forEach((t, ti) => t.topics.forEach((_, i) => { total++; if (done[topicKey(phase.id, ti, i)]) count++; }));
+  phase.tracks.forEach((t, ti) => t.topics.forEach((_, i) => {
+    total++;
+    if (done[topicKey(phase.id, ti, i)]) count++;
+  }));
   return total === 0 ? 0 : Math.round((count / total) * 100);
 }
 function overallPct(phases: LearningPhase[], done: DoneMap) {
   let total = 0, count = 0;
-  phases.forEach((p) => p.tracks.forEach((t, ti) => t.topics.forEach((_, i) => { total++; if (done[topicKey(p.id, ti, i)]) count++; })));
+  phases.forEach((p) => p.tracks.forEach((t, ti) => t.topics.forEach((_, i) => {
+    total++;
+    if (done[topicKey(p.id, ti, i)]) count++;
+  })));
   return total === 0 ? 0 : Math.round((count / total) * 100);
 }
 function weeksDonePct(phases: LearningPhase[], weeks: WeekMap) {
   let total = 0, count = 0;
-  phases.forEach((p) => p.weeks.forEach((_, wi) => { total++; if (weeks[weekKey(p.id, wi)]) count++; }));
+  phases.forEach((p) => p.weeks.forEach((_, wi) => {
+    total++;
+    if (weeks[weekKey(p.id, wi)]) count++;
+  }));
   return total === 0 ? 0 : Math.round((count / total) * 100);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PHASE INFO MODAL  (click ⓘ → beautiful card)
+// PHASE INFO MODAL  — click ⓘ to see the full phase card
 // ─────────────────────────────────────────────────────────────────────────────
-function PhaseInfoModal({
-  phase,
-  phaseIndex,
-  pct,
-  weeksDone,
-  totalWeeks,
-  doneTopics,
-  totalTopics,
-  onClose,
-}: {
+interface PhaseInfoModalProps {
   phase: LearningPhase;
   phaseIndex: number;
   pct: number;
-  weeksDone: number;
-  totalWeeks: number;
   doneTopics: number;
   totalTopics: number;
+  doneWeeks: number;
+  totalWeeks: number;
   onClose: () => void;
-}) {
-  const circumference = 2 * Math.PI * 36;
-  const dashOffset    = circumference - (pct / 100) * circumference;
+}
+
+function PhaseInfoModal({ phase, phaseIndex, pct, doneTopics, totalTopics, doneWeeks, totalWeeks, onClose }: PhaseInfoModalProps) {
+  const r = 36;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
 
   return (
     <div
       className="fixed inset-0 z-[62] flex items-end sm:items-center justify-center px-0 sm:px-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+      style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(10px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[26px] flex flex-col animate-slide-up overflow-hidden"
         style={{
           background: "var(--cc-glass-base)",
-          border: `0.5px solid ${phase.accent_color}40`,
+          border: `0.5px solid ${phase.accent_color}45`,
           backdropFilter: "blur(56px) saturate(2.4)",
-          boxShadow: `var(--shadow-xl), 0 0 60px ${phase.accent_color}20`,
+          boxShadow: `var(--shadow-xl), 0 0 80px ${phase.accent_color}18`,
           maxHeight: "92dvh",
         }}
       >
-        {/* Drag handle (mobile) */}
+        {/* Mobile drag handle */}
         <div className="flex justify-center pt-3 flex-shrink-0 sm:hidden">
-          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.35 }} />
+          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: phase.accent_color, opacity: 0.35 }} />
         </div>
 
-        {/* Accent stripe */}
-        <div style={{ height: "2px", background: `linear-gradient(90deg, ${phase.accent_color}, ${phase.accent_color}00)`, flexShrink: 0 }} />
+        {/* Top accent stripe */}
+        <div style={{ height: "2.5px", background: `linear-gradient(90deg, ${phase.accent_color}, ${phase.accent_color}00)`, flexShrink: 0 }} />
 
         {/* Header */}
-        <div className="px-5 pt-5 pb-4 flex-shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span
-                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: phase.bg_color, color: phase.text_color, border: `0.5px solid ${phase.accent_color}30` }}
-                >
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: phase.bg_color, color: phase.text_color, border: `0.5px solid ${phase.accent_color}35` }}>
                   Phase {phaseIndex + 1}
                 </span>
-                <span
-                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}
-                >
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>
                   {phase.duration}
                 </span>
                 {pct === 100 && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(94,207,149,0.14)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.30)" }}>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(94,207,149,0.14)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.28)" }}>
                     ✓ Completed
                   </span>
                 )}
               </div>
-              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>{phase.title}</h2>
+              <h2 className="text-[18px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>{phase.title}</h2>
             </div>
 
-            {/* Circular progress */}
-            <div className="relative flex-shrink-0 w-[88px] h-[88px] flex items-center justify-center">
-              <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)" }}>
-                <circle cx="44" cy="44" r="36" fill="none" stroke={`${phase.accent_color}18`} strokeWidth="6" />
-                <circle
-                  cx="44" cy="44" r="36" fill="none"
-                  stroke={phase.accent_color} strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={dashOffset}
-                  style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)" }}
-                />
+            {/* Circular progress ring */}
+            <div className="relative flex-shrink-0" style={{ width: 88, height: 88 }}>
+              <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)", display: "block" }}>
+                <circle cx="44" cy="44" r={r} fill="none" stroke={`${phase.accent_color}1a`} strokeWidth="6" />
+                <circle cx="44" cy="44" r={r} fill="none" stroke={phase.accent_color} strokeWidth="6"
+                  strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+                  style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(0.4,0,0.2,1)" }} />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-semibold font-mono leading-none" style={{ color: phase.accent_color }}>{pct}%</span>
+                <span className="text-[18px] font-bold font-mono leading-none" style={{ color: phase.accent_color }}>{pct}%</span>
                 <span className="text-[9px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>topics</span>
               </div>
             </div>
           </div>
 
-          {/* Milestone */}
-          <div
-            className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-[14px]"
-            style={{ background: phase.bg_color, border: `0.5px solid ${phase.accent_color}25` }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ color: phase.text_color, flexShrink: 0 }}>
+          {/* Milestone banner */}
+          <div className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-[14px]"
+            style={{ background: phase.bg_color, border: `0.5px solid ${phase.accent_color}28` }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"
+              style={{ color: phase.text_color, flexShrink: 0 }}>
               <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
             </svg>
             <span className="text-[11px] font-medium" style={{ color: phase.text_color }}>Milestone: {phase.milestone}</span>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="flex gap-2 px-5 mb-4 flex-shrink-0">
+        {/* Stats chips */}
+        <div className="grid grid-cols-4 gap-1.5 px-5 mb-3 flex-shrink-0">
           {[
-            { label: "Topics", val: `${doneTopics}/${totalTopics}`, sub: `${pct}% done`, color: phase.accent_color },
-            { label: "Weeks", val: `${weeksDone}/${totalWeeks}`, sub: `${totalWeeks === 0 ? 0 : Math.round((weeksDone / totalWeeks) * 100)}% done`, color: "#5ecf95" },
-            { label: "Tracks", val: `${phase.tracks.length}`, sub: "learning tracks", color: phase.text_color },
-            { label: "Resources", val: `${phase.resources.length}`, sub: "links", color: "#d4924a" },
+            { label: "Topics", val: `${doneTopics}/${totalTopics}`, color: phase.accent_color },
+            { label: "Weeks",  val: `${doneWeeks}/${totalWeeks}`,   color: "#5ecf95" },
+            { label: "Tracks", val: `${phase.tracks.length}`,       color: phase.text_color },
+            { label: "Links",  val: `${phase.resources.length}`,    color: "#d4924a" },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="flex-1 rounded-[14px] px-3 py-2.5 text-center"
-              style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}
-            >
-              <div className="text-base font-semibold font-mono leading-none" style={{ color: s.color }}>{s.val}</div>
+            <div key={s.label} className="rounded-[13px] px-2 py-2.5 text-center"
+              style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+              <div className="text-[15px] font-bold font-mono leading-none" style={{ color: s.color }}>{s.val}</div>
               <div className="text-[9px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4" style={{ WebkitOverflowScrolling: "touch" }}>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-5" style={{ WebkitOverflowScrolling: "touch" }}>
 
-          {/* Topics progress bars per track */}
+          {/* Tracks */}
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>Topics by track</p>
-            <div className="space-y-2">
-              {phase.tracks.map((track, ti) => {
-                const total = track.topics.length;
-                return (
-                  <div key={ti} className="rounded-[12px] overflow-hidden" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
-                    <div className="px-3 py-2 flex items-center gap-3">
-                      <span className="text-[11px] font-medium flex-1 truncate" style={{ color: phase.text_color }}>{track.label}</span>
-                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)" }}>{total} topics</span>
-                    </div>
-                    <div className="mx-3 mb-2 h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
-                      <div style={{ height: "100%", background: phase.accent_color, borderRadius: "100px", width: "100%", opacity: 0.25 }} />
-                    </div>
-                  </div>
-                );
-              })}
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Topics by track</p>
+            <div className="space-y-1.5">
+              {phase.tracks.map((track, ti) => (
+                <div key={ti} className="flex items-center gap-3 rounded-[12px] px-3 py-2.5"
+                  style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: phase.accent_color, opacity: 0.7 }} />
+                  <span className="text-[11px] font-medium flex-1 truncate" style={{ color: phase.text_color }}>{track.label}</span>
+                  <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)" }}>
+                    {track.topics.length} topics
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Weeks timeline */}
+          {/* Week timeline */}
           {phase.weeks.length > 0 && (
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>Week-by-week plan</p>
-              <div className="space-y-1.5">
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Week-by-week plan</p>
+              <div className="space-y-2">
                 {phase.weeks.map((week, wi) => (
-                  <div
-                    key={wi}
-                    className="flex items-start gap-3 px-3 py-2.5 rounded-[12px]"
-                    style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}
-                  >
-                    <div
-                      className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold font-mono mt-0.5"
-                      style={{ background: `${phase.accent_color}18`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}35` }}
-                    >
-                      {wi + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-medium mb-0.5" style={{ color: "var(--text-secondary)" }}>{week.label}</p>
-                      <div className="space-y-0.5">
-                        {week.goals.map((goal, gi) => (
-                          <p key={gi} className="text-[10px] font-mono" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
-                            <span style={{ color: phase.accent_color, marginRight: "5px" }}>›</span>{goal}
-                          </p>
-                        ))}
+                  <div key={wi} className="rounded-[13px] overflow-hidden"
+                    style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                    <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold font-mono"
+                        style={{ background: `${phase.accent_color}1a`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}35` }}>
+                        {wi + 1}
                       </div>
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{week.label}</span>
+                    </div>
+                    <div className="px-3 py-2 space-y-1">
+                      {week.goals.map((goal, gi) => (
+                        <div key={gi} className="flex items-start gap-2">
+                          <span className="text-[10px] mt-0.5 flex-shrink-0" style={{ color: phase.accent_color }}>›</span>
+                          <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)", lineHeight: 1.55 }}>{goal}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -221,47 +204,34 @@ function PhaseInfoModal({
           {/* Resources */}
           {phase.resources.length > 0 && (
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>Resources & links</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Resources & links</p>
               <div className="flex flex-wrap gap-1.5">
                 {phase.resources.map((r) => (
                   r.url
-                    ? (
-                      <a
-                        key={r.label}
-                        href={r.url}
-                        target="_blank"
-                        rel="noopener"
-                        className="flex items-center gap-1.5 text-[10px] font-mono px-3 py-2 rounded-[11px] transition-all hover:opacity-80"
-                        style={{ background: `${phase.accent_color}15`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}30`, textDecoration: "none" }}
-                      >
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    ? <a key={r.label} href={r.url} target="_blank" rel="noopener"
+                        className="flex items-center gap-1.5 text-[10px] font-mono px-3 py-2 rounded-[11px] transition-all hover:opacity-75"
+                        style={{ background: `${phase.accent_color}14`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}30`, textDecoration: "none" }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                           <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                         </svg>
                         {r.label}
                       </a>
-                    ) : (
-                      <span
-                        key={r.label}
-                        className="text-[10px] font-mono px-3 py-2 rounded-[11px]"
-                        style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}
-                      >
+                    : <span key={r.label} className="text-[10px] font-mono px-3 py-2 rounded-[11px]"
+                        style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>
                         {r.label}
                       </span>
-                    )
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer close button */}
         <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
-          <button
-            onClick={onClose}
+          <button onClick={onClose}
             className="w-full py-3 text-sm font-medium rounded-[16px] transition-all"
-            style={{ background: `${phase.accent_color}18`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}35` }}
-          >
+            style={{ background: `${phase.accent_color}16`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}32` }}>
             Close
           </button>
         </div>
@@ -305,7 +275,10 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
   const [tracks, setTracks]     = useState<LearningTrack[]>(phase?.tracks ?? [{ label: "", topics: [] }]);
   const [weeks, setWeeks]       = useState<LearningWeek[]>(phase?.weeks ?? [{ label: "", goals: [] }]);
   const [practice, setPractice] = useState<LearningPractice[]>(phase?.practice ?? [{ title: "", problems: [] }]);
+  const [modalTab, setModalTab] = useState<"basic" | "topics" | "weeks" | "practice">("basic");
+
   const applyPreset = (p: typeof ACCENT_PRESETS[0]) => { setAccentColor(p.accent); setBgColor(p.bg); setTextColor(p.text); };
+
   const handleSave = async () => {
     if (!title.trim() || saving) return;
     setSaving(true);
@@ -314,6 +287,7 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
       onClose();
     } catch { setSaving(false); }
   };
+
   const addTrack = () => setTracks((p) => [...p, { label: "", topics: [] }]);
   const removeTrack = (i: number) => setTracks((p) => p.filter((_, idx) => idx !== i));
   const updateTrackLabel = (i: number, v: string) => setTracks((p) => p.map((t, idx) => idx === i ? { ...t, label: v } : t));
@@ -329,7 +303,7 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
   const updatePracticeTitle = (i: number, v: string) => setPractice((p) => p.map((s, idx) => idx === i ? { ...s, title: v } : s));
   const addProblem = (si: number, v: string) => { if (!v.trim()) return; setPractice((p) => p.map((s, idx) => idx === si ? { ...s, problems: [...s.problems, v.trim()] } : s)); };
   const removeProblem = (si: number, pi: number) => setPractice((p) => p.map((s, idx) => idx === si ? { ...s, problems: s.problems.filter((_, ii) => ii !== pi) } : s));
-  const [modalTab, setModalTab] = useState<"basic" | "topics" | "weeks" | "practice">("basic");
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
@@ -342,7 +316,7 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
         <div className="flex items-center justify-between px-5 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
           <div>
             <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{isNew ? "Add new phase" : `Edit — ${phase?.title}`}</h3>
-            <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>Changes saved to Supabase</p>
+            <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>Saved to Supabase</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl"
             style={{ color: "var(--cc-text-muted)", fontSize: "18px", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>×</button>
@@ -384,17 +358,9 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[{ label: "Accent", val: accentColor, set: setAccentColor }, { label: "Bg tint", val: bgColor.includes("rgba") ? "#888888" : bgColor, set: (v: string) => setBgColor(`rgba(${parseInt(v.slice(1,3),16)},${parseInt(v.slice(3,5),16)},${parseInt(v.slice(5,7),16)},0.13)`) }, { label: "Text", val: textColor, set: setTextColor }].map((c) => (
-                    <div key={c.label}>
-                      <span className="text-[9px] font-mono block mb-1" style={{ color: "var(--text-muted)" }}>{c.label}</span>
-                      <input type="color" value={c.val} onChange={(e) => c.set(e.target.value)} className="w-full h-9 rounded-xl cursor-pointer border-0" style={{ padding: "3px" }} />
-                    </div>
-                  ))}
-                </div>
               </div>
               <div>
-                <label className="text-[10px] font-mono uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Resources (clickable links)</label>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Resources</label>
                 <div className="space-y-1.5 mb-2">
                   {resources.map((r, i) => (
                     <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-[12px]" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
@@ -406,8 +372,11 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                 </div>
                 <div className="flex gap-2">
                   <input value={newResLabel} onChange={(e) => setNewResLabel(e.target.value)} placeholder="Label" className="flex-1 rounded-[12px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
-                  <input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="URL (optional)" className="flex-1 rounded-[12px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} onKeyDown={(e) => { if (e.key === "Enter" && newResLabel.trim()) { setResources((p) => [...p, { label: newResLabel.trim(), url: newResUrl.trim() }]); setNewResLabel(""); setNewResUrl(""); } }} />
-                  <button onClick={() => { if (!newResLabel.trim()) return; setResources((p) => [...p, { label: newResLabel.trim(), url: newResUrl.trim() }]); setNewResLabel(""); setNewResUrl(""); }} disabled={!newResLabel.trim()} className="px-3 py-2 text-xs font-medium rounded-[12px] flex-shrink-0 disabled:opacity-30" style={{ background: `${accentColor}22`, color: accentColor, border: `0.5px solid ${accentColor}44` }}>+ Add</button>
+                  <input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="URL (optional)" className="flex-1 rounded-[12px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && newResLabel.trim()) { setResources((p) => [...p, { label: newResLabel.trim(), url: newResUrl.trim() }]); setNewResLabel(""); setNewResUrl(""); } }} />
+                  <button onClick={() => { if (!newResLabel.trim()) return; setResources((p) => [...p, { label: newResLabel.trim(), url: newResUrl.trim() }]); setNewResLabel(""); setNewResUrl(""); }}
+                    disabled={!newResLabel.trim()} className="px-3 py-2 text-xs font-medium rounded-[12px] flex-shrink-0 disabled:opacity-30"
+                    style={{ background: `${accentColor}22`, color: accentColor, border: `0.5px solid ${accentColor}44` }}>+ Add</button>
                 </div>
               </div>
             </>
@@ -428,11 +397,12 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                         <button onClick={() => removeTopic(ti, i)} style={{ color: "#f87171", fontSize: "13px", flexShrink: 0 }}>×</button>
                       </div>
                     ))}
-                    <InlineAdder placeholder="Add topic (Enter to save)" accentColor={accentColor} onAdd={(v) => addTopic(ti, v)} />
+                    <InlineAdder placeholder="Add topic (Enter)" accentColor={accentColor} onAdd={(v) => addTopic(ti, v)} />
                   </div>
                 </div>
               ))}
-              <button onClick={addTrack} className="w-full py-2.5 text-xs font-medium rounded-[14px] transition-all" style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add track</button>
+              <button onClick={addTrack} className="w-full py-2.5 text-xs font-medium rounded-[14px]"
+                style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add track</button>
             </div>
           )}
           {modalTab === "weeks" && (
@@ -451,11 +421,12 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                         <button onClick={() => removeGoal(wi, gi)} style={{ color: "#f87171", fontSize: "13px", flexShrink: 0 }}>×</button>
                       </div>
                     ))}
-                    <InlineAdder placeholder="Add goal (Enter to save)" accentColor={accentColor} onAdd={(v) => addGoal(wi, v)} />
+                    <InlineAdder placeholder="Add goal (Enter)" accentColor={accentColor} onAdd={(v) => addGoal(wi, v)} />
                   </div>
                 </div>
               ))}
-              <button onClick={addWeek} className="w-full py-2.5 text-xs font-medium rounded-[14px] transition-all" style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add week</button>
+              <button onClick={addWeek} className="w-full py-2.5 text-xs font-medium rounded-[14px]"
+                style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add week</button>
             </div>
           )}
           {modalTab === "practice" && (
@@ -474,19 +445,23 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                         <button onClick={() => removeProblem(si, pi)} style={{ color: "#f87171", fontSize: "13px", flexShrink: 0 }}>×</button>
                       </div>
                     ))}
-                    <InlineAdder placeholder="Add problem (Enter to save)" accentColor={accentColor} onAdd={(v) => addProblem(si, v)} />
+                    <InlineAdder placeholder="Add problem (Enter)" accentColor={accentColor} onAdd={(v) => addProblem(si, v)} />
                   </div>
                 </div>
               ))}
-              <button onClick={addPracticeSet} className="w-full py-2.5 text-xs font-medium rounded-[14px] transition-all" style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add practice set</button>
+              <button onClick={addPracticeSet} className="w-full py-2.5 text-xs font-medium rounded-[14px]"
+                style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add practice set</button>
             </div>
           )}
         </div>
         <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
-          <button onClick={handleSave} disabled={!title.trim() || saving} className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all" style={{ background: accentColor, color: "#fff" }}>
+          <button onClick={handleSave} disabled={!title.trim() || saving}
+            className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all"
+            style={{ background: accentColor, color: "#fff" }}>
             {saving ? "Saving…" : isNew ? "Create phase" : "Save changes"}
           </button>
-          <button onClick={onClose} className="px-5 py-3 text-xs rounded-[16px]" style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>Cancel</button>
+          <button onClick={onClose} className="px-5 py-3 text-xs rounded-[16px]"
+            style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>Cancel</button>
         </div>
       </div>
     </div>
@@ -498,8 +473,14 @@ function InlineAdder({ placeholder, accentColor, onAdd }: { placeholder: string;
   const submit = () => { if (!val.trim()) return; onAdd(val); setVal(""); };
   return (
     <div className="flex gap-1.5 mt-2">
-      <input value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }} placeholder={placeholder} className="flex-1 rounded-[10px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
-      <button onClick={submit} disabled={!val.trim()} className="px-3 py-2 text-[10px] font-medium rounded-[10px] flex-shrink-0 disabled:opacity-30" style={{ background: `${accentColor}18`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+</button>
+      <input value={val} onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+        placeholder={placeholder}
+        className="flex-1 rounded-[10px] px-3 py-2 text-xs font-mono focus:outline-none"
+        style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+      <button onClick={submit} disabled={!val.trim()}
+        className="px-3 py-2 text-[10px] font-medium rounded-[10px] flex-shrink-0 disabled:opacity-30"
+        style={{ background: `${accentColor}18`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+</button>
     </div>
   );
 }
@@ -514,9 +495,8 @@ export default function LearningPage() {
   const [loading, setLoading]     = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const [openPhase, setOpenPhase] = useState<number | null>(null);
-  const [tabMap, setTabMap]       = useState<Record<number, "topics" | "weeks" | "practice">>({});
-
+  const [openPhase, setOpenPhase]   = useState<number | null>(null);
+  const [tabMap, setTabMap]         = useState<Record<number, "topics" | "weeks" | "practice">>({});
   const [editPhase, setEditPhase]   = useState<Partial<LearningPhase> | null | false>(false);
   const [infoPhase, setInfoPhase]   = useState<LearningPhase | null>(null);
   const [showBin, setShowBin]       = useState(false);
@@ -601,8 +581,8 @@ export default function LearningPage() {
   const getTab = (id: number) => tabMap[id] ?? "topics";
   const setPhaseTab = (id: number, t: "topics" | "weeks" | "practice") => setTabMap((p) => ({ ...p, [id]: t }));
 
-  const overall     = overallPct(phases, done);
-  const weeksDone   = weeksDonePct(phases, weeksMap);
+  const overall    = overallPct(phases, done);
+  const wksDone    = weeksDonePct(phases, weeksMap);
   const totalTopics = phases.reduce((s, p) => s + p.tracks.reduce((ss, t) => ss + t.topics.length, 0), 0);
   const doneTopics  = Object.values(done).filter(Boolean).length;
 
@@ -639,6 +619,7 @@ export default function LearningPage() {
           </div>
         </div>
 
+        {/* Progress bars */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono w-16 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Topics</span>
@@ -650,12 +631,13 @@ export default function LearningPage() {
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono w-16 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Weeks</span>
             <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
-              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${weeksDone}%`, background: "#5ecf95" }} />
+              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${wksDone}%`, background: "#5ecf95" }} />
             </div>
-            <span className="text-[10px] font-mono w-8 text-right flex-shrink-0" style={{ color: "#5ecf95" }}>{weeksDone}%</span>
+            <span className="text-[10px] font-mono w-8 text-right flex-shrink-0" style={{ color: "#5ecf95" }}>{wksDone}%</span>
           </div>
         </div>
 
+        {/* Phase pills */}
         <div className="flex flex-wrap gap-1.5 mt-3">
           {phases.map((p) => {
             const pct = phasePct(p, done);
@@ -685,7 +667,7 @@ export default function LearningPage() {
         </div>
       )}
 
-      {/* ── PHASES ── */}
+      {/* ── PHASE CARDS ── */}
       {!loading && (
         <div className="space-y-3">
           {phases.map((phase, pi) => {
@@ -695,12 +677,6 @@ export default function LearningPage() {
             const dStep       = deleteStep[phase.id];
             const isCountdown = dStep === 2 && pendingDelete?.id === phase.id;
 
-            // Per-phase topic/week stats for info modal
-            const phaseTopicTotal = phase.tracks.reduce((s, t) => s + t.topics.length, 0);
-            const phaseTopicDone  = phase.tracks.reduce((s, t, ti) => s + t.topics.filter((_, i) => done[topicKey(phase.id, ti, i)]).length, 0);
-            const phaseWeekTotal  = phase.weeks.length;
-            const phaseWeekDone   = phase.weeks.filter((_, wi) => weeksMap[weekKey(phase.id, wi)]).length;
-
             return (
               <div key={phase.id}
                 className="liquid-glass rounded-[22px] overflow-hidden animate-fade-in-up"
@@ -708,13 +684,16 @@ export default function LearningPage() {
 
                 <div style={{ height: "2px", background: `linear-gradient(90deg,${phase.accent_color},transparent)` }} />
 
+                {/* Row */}
                 <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4">
+                  {/* Phase number */}
                   <button onClick={() => setOpenPhase(isOpen ? null : phase.id)}
                     className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-semibold font-mono"
                     style={{ background: phase.bg_color, color: phase.text_color, border: `0.5px solid ${phase.accent_color}40` }}>
                     {pi + 1}
                   </button>
 
+                  {/* Title + progress */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setOpenPhase(isOpen ? null : phase.id)}>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{phase.title}</span>
@@ -735,30 +714,39 @@ export default function LearningPage() {
                     </div>
                   </button>
 
+                  {/* Action buttons */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* ⓘ Info button */}
+                    {/* ⓘ Info */}
                     <button
                       onClick={() => setInfoPhase(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
-                      title="Phase info"
+                      title="Phase overview"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="8" strokeWidth="2.5" strokeLinecap="round"/>
-                        <line x1="12" y1="12" x2="12" y2="16"/>
+                        <path d="M12 16v-4M12 8h.01"/>
                       </svg>
                     </button>
+                    {/* Edit */}
                     <button onClick={() => setEditPhase(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
                     </button>
+                    {/* Delete */}
                     <button onClick={() => handleDeleteStep1(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: dStep ? "#f87171" : "var(--text-muted)", background: dStep ? "rgba(248,65,65,0.10)" : "var(--glass-fill)", border: `0.5px solid ${dStep ? "rgba(248,65,65,0.28)" : "var(--glass-border)"}` }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                      </svg>
                     </button>
+                    {/* Expand toggle */}
                     <button onClick={() => setOpenPhase(isOpen ? null : phase.id)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl"
                       style={{ color: "var(--text-muted)" }}>
@@ -770,11 +758,12 @@ export default function LearningPage() {
                   </div>
                 </div>
 
+                {/* Delete step 1 */}
                 {dStep === 1 && (
                   <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] p-3 animate-fade-in"
                     style={{ background: "rgba(248,65,65,0.07)", border: "0.5px solid rgba(248,65,65,0.22)" }}>
                     <p className="text-xs font-mono mb-0.5" style={{ color: "#f87171" }}>Delete phase "{phase.title}"?</p>
-                    <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>All topic + week progress will be erased. You will have 5 seconds to undo.</p>
+                    <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>All topic + week progress erased. You'll have 5 seconds to undo.</p>
                     <div className="flex gap-2">
                       <button onClick={() => handleDeleteStep2(phase)} className="flex-1 py-2.5 text-xs font-medium rounded-[10px]"
                         style={{ background: "rgba(248,65,65,0.18)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.30)" }}>Yes, delete</button>
@@ -784,10 +773,12 @@ export default function LearningPage() {
                   </div>
                 )}
 
+                {/* Delete step 2 — countdown */}
                 {isCountdown && (
-                  <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] overflow-hidden animate-fade-in" style={{ border: "0.5px solid rgba(248,65,65,0.35)" }}>
-                    <div style={{ height: "3px", background: "rgba(248,65,65,0.15)", position: "relative" }}>
-                      <div style={{ position: "absolute", top: 0, left: 0, height: "100%", background: "#f87171", width: `${undoProgress}%`, transition: "width 0.1s linear" }} />
+                  <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] overflow-hidden animate-fade-in"
+                    style={{ border: "0.5px solid rgba(248,65,65,0.35)" }}>
+                    <div style={{ height: "3px", background: "rgba(248,65,65,0.15)" }}>
+                      <div style={{ height: "100%", background: "#f87171", width: `${undoProgress}%`, transition: "width 0.1s linear" }} />
                     </div>
                     <div className="flex items-center gap-3 px-3 py-2.5" style={{ background: "rgba(248,65,65,0.07)" }}>
                       <span className="text-xs font-mono flex-1" style={{ color: "#f87171" }}>
@@ -801,15 +792,19 @@ export default function LearningPage() {
                   </div>
                 )}
 
+                {/* Expanded content */}
                 {isOpen && (
                   <div className="animate-fade-in" style={{ borderTop: `0.5px solid ${phase.accent_color}20` }}>
+                    {/* Milestone bar */}
                     <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5" style={{ background: phase.bg_color }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: phase.text_color, flexShrink: 0 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                        style={{ color: phase.text_color, flexShrink: 0 }}>
                         <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
                       </svg>
                       <span className="text-[11px] font-medium" style={{ color: phase.text_color }}>Milestone: {phase.milestone}</span>
                     </div>
 
+                    {/* Tabs */}
                     <div className="flex items-center gap-1 px-3 sm:px-5 pt-3 pb-0 flex-wrap gap-y-2">
                       {(["topics", "weeks", "practice"] as const).map((t) => (
                         <button key={t} onClick={() => setPhaseTab(phase.id, t)}
@@ -819,7 +814,7 @@ export default function LearningPage() {
                         </button>
                       ))}
                       <div className="ml-auto flex flex-wrap gap-1 items-center">
-                        {phase.resources.map((r) => (
+                        {phase.resources.slice(0, 4).map((r) => (
                           r.url
                             ? <a key={r.label} href={r.url} target="_blank" rel="noopener"
                                 className="text-[9px] font-mono px-2 py-1 rounded-full transition-all hover:opacity-80"
@@ -831,9 +826,17 @@ export default function LearningPage() {
                                 {r.label}
                               </span>
                         ))}
+                        {phase.resources.length > 4 && (
+                          <button onClick={() => setInfoPhase(phase)}
+                            className="text-[9px] font-mono px-2 py-1 rounded-full"
+                            style={{ background: `${phase.accent_color}12`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}30` }}>
+                            +{phase.resources.length - 4} more ↗
+                          </button>
+                        )}
                       </div>
                     </div>
 
+                    {/* Topics tab */}
                     {activeTab === "topics" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {phase.tracks.map((track, ti) => (
@@ -852,7 +855,7 @@ export default function LearningPage() {
                                     className="w-full flex items-start gap-3 py-2.5 text-left rounded-xl px-2 -mx-2 transition-all"
                                     style={{ opacity: isSave ? 0.6 : 1 }}>
                                     <div className="flex-shrink-0 flex items-center justify-center transition-all duration-200"
-                                      style={{ width: "18px", height: "18px", borderRadius: "5px", marginTop: "1px", flexShrink: 0, background: isDone ? phase.accent_color : "var(--bg-input)", border: `1.5px solid ${isDone ? phase.accent_color : "var(--glass-border)"}`, boxShadow: isDone ? `0 0 8px ${phase.accent_color}44` : "none" }}>
+                                      style={{ width: "18px", height: "18px", borderRadius: "5px", marginTop: "1px", background: isDone ? phase.accent_color : "var(--bg-input)", border: `1.5px solid ${isDone ? phase.accent_color : "var(--glass-border)"}`, boxShadow: isDone ? `0 0 8px ${phase.accent_color}44` : "none" }}>
                                       {isDone && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6l3 3 5-5"/></svg>}
                                     </div>
                                     <span className="text-xs leading-relaxed" style={{ color: isDone ? "var(--text-muted)" : "var(--text-secondary)", textDecoration: isDone ? "line-through" : "none" }}>
@@ -867,6 +870,7 @@ export default function LearningPage() {
                       </div>
                     )}
 
+                    {/* Weeks tab */}
                     {activeTab === "weeks" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-2">
                         {phase.weeks.map((week, wi) => {
@@ -899,6 +903,7 @@ export default function LearningPage() {
                       </div>
                     )}
 
+                    {/* Practice tab */}
                     {activeTab === "practice" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-4">
                         {phase.practice.map((set, si) => (
@@ -947,7 +952,8 @@ export default function LearningPage() {
         const pi = phases.findIndex((p) => p.id === infoPhase.id);
         const pct = phasePct(infoPhase, done);
         const phaseTopicTotal = infoPhase.tracks.reduce((s, t) => s + t.topics.length, 0);
-        const phaseTopicDone  = infoPhase.tracks.reduce((s, t, ti) => s + t.topics.filter((_, i) => done[topicKey(infoPhase.id, ti, i)]).length, 0);
+        const phaseTopicDone  = infoPhase.tracks.reduce((s, t, ti) =>
+          s + t.topics.filter((_, i) => done[topicKey(infoPhase.id, ti, i)]).length, 0);
         const phaseWeekTotal  = infoPhase.weeks.length;
         const phaseWeekDone   = infoPhase.weeks.filter((_, wi) => weeksMap[weekKey(infoPhase.id, wi)]).length;
         return (
@@ -955,10 +961,10 @@ export default function LearningPage() {
             phase={infoPhase}
             phaseIndex={pi}
             pct={pct}
-            weeksDone={phaseWeekDone}
-            totalWeeks={phaseWeekTotal}
             doneTopics={phaseTopicDone}
             totalTopics={phaseTopicTotal}
+            doneWeeks={phaseWeekDone}
+            totalWeeks={phaseWeekTotal}
             onClose={() => setInfoPhase(null)}
           />
         );
