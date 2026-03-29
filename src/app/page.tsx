@@ -417,14 +417,29 @@ export default function TasksPage() {
   const overdue = todos.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "done").length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10" style={{ overflowX: "hidden" }}>
-      <header className="mb-5 animate-fade-in-up">
-        <div className="flex items-center justify-between gap-2 mb-3">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10" style={{ overflowX: "hidden", position: "relative" }}>
+      <header className="mb-6 animate-fade-in-up">
+        <div className="flex items-center justify-between gap-2 mb-4">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Tasks</h1>
-            <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {done}/{total} done{overdue > 0 && <span style={{ color: "#f87171" }}> · {overdue} overdue</span>}
-            </p>
+            <h1 className="font-bold tracking-tight" style={{ color: "var(--text-primary)", fontSize: "clamp(22px, 5vw, 28px)", letterSpacing: "-0.03em" }}>Tasks</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>{done}/{total} done</span>
+              {overdue > 0 && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full animate-fade-in"
+                  style={{ background: "rgba(248,65,65,0.12)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.28)" }}>
+                  {overdue} overdue
+                </span>
+              )}
+              {done > 0 && total > 0 && (
+                <div className="flex items-center gap-1.5" style={{ minWidth: "80px" }}>
+                  <div className="flex-1 h-1 rounded-full" style={{ background: "var(--glass-fill)" }}>
+                    <div className="h-1 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.round((done/total)*100)}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-light))" }} />
+                  </div>
+                  <span className="text-[9px] font-mono" style={{ color: "var(--accent)" }}>{Math.round((done/total)*100)}%</span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs" style={{ color: "var(--cc-text-muted)" }}>
@@ -448,18 +463,25 @@ export default function TasksPage() {
 
         <div className="relative mb-3">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-muted)" }}>
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-muted)" }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks, tags…"
-            className="w-full rounded-[14px] pl-9 pr-4 py-2.5 text-xs font-mono focus:outline-none"
-            style={{ background: "var(--bg-input)", border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`, color: "var(--text-primary)" }} />
+            className="w-full rounded-[16px] pl-9 pr-4 py-3 text-xs font-mono focus:outline-none transition-all"
+            style={{
+              background: "var(--bg-input)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`,
+              color: "var(--text-primary)",
+              boxShadow: search ? `0 0 0 3px var(--accent-muted), inset 0 1px 0 var(--specular-inner)` : "inset 0 1px 0 var(--specular-inner), var(--shadow-sm)",
+            }} />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>
           )}
         </div>
 
-        <div className="flex gap-2" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "2px" }}>
+        <div className="flex gap-2" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "4px" }}>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as TodoStatus | "")}
             className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
             <option value="">All status</option>
@@ -485,7 +507,7 @@ export default function TasksPage() {
       </header>
 
       {bulkMode && selectedIds.size > 0 && (
-        <div className="mb-3 liquid-glass rounded-[16px] px-4 py-3 flex items-center gap-3 animate-fade-in" style={{ overflowX: "auto", scrollbarWidth: "none" }}>
+        <div className="mb-3 rounded-[16px] px-4 py-3 flex items-center gap-3 animate-fade-in" style={{ background: "var(--glass-fill)", backdropFilter: "blur(24px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)", overflowX: "auto", scrollbarWidth: "none" }}>
           <span className="text-xs font-mono flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{selectedIds.size} selected</span>
           <div className="flex gap-1.5 ml-auto flex-shrink-0">
             {STATUS_OPTIONS.slice(0, 3).map((s) => (
@@ -500,7 +522,7 @@ export default function TasksPage() {
       )}
 
       {showTemplates && templates.length > 0 && (
-        <div className="mb-4 liquid-glass rounded-[20px] overflow-hidden animate-fade-in">
+        <div className="mb-4 rounded-[22px] overflow-hidden animate-fade-in" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px) saturate(1.8)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
           <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
             <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Templates</span>
             <button onClick={() => setShowTemplates(false)} style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>
@@ -508,7 +530,7 @@ export default function TasksPage() {
           <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {templates.map((tmpl) => (
               <button key={tmpl.id} onClick={() => handleUseTemplate(tmpl)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-left transition-all"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-left transition-all hover-lift"
                 style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--accent)" }} />
                 <div className="min-w-0">
@@ -523,13 +545,13 @@ export default function TasksPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 animate-fade-in">
-          <div className="glass rounded-2xl px-8 py-6 text-center">
+          <div className="rounded-[22px] px-8 py-6 text-center" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
             <div className="w-8 h-8 rounded-full border-2 border-transparent mx-auto mb-3 animate-spin" style={{ borderTopColor: "var(--accent)", borderRightColor: "var(--accent-dim)" }} />
             <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Loading tasks…</p>
           </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="glass rounded-[22px] p-10 text-center animate-fade-in">
+        <div className="rounded-[26px] p-10 text-center animate-scale-in" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-lg), inset 0 1px 0 var(--specular-top)" }}>
           <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>{todos.length === 0 ? "No tasks yet" : "No tasks match your filters"}</p>
           <p className="text-xs font-mono mb-4" style={{ color: "var(--text-muted)" }}>{todos.length === 0 ? "Add your first task to get started." : "Try clearing your search or filters."}</p>
           {todos.length === 0 && (
@@ -539,7 +561,7 @@ export default function TasksPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered.map((todo, idx) => {
             const isExpanded = expandedId === todo.id;
             const isSelected = selectedIds.has(todo.id);
@@ -547,11 +569,49 @@ export default function TasksPage() {
             const sc  = STATUS_OPTIONS.find((s) => s.value === todo.status)!;
 
             return (
-              <div key={todo.id} className="liquid-glass rounded-[20px] overflow-hidden animate-fade-in-up"
-                style={{ animationDelay: `${idx * 25}ms`, border: isSelected ? "0.5px solid var(--accent)" : undefined, opacity: todo.status === "done" ? 0.72 : 1, transition: "opacity 0.2s" }}>
+              <div key={todo.id}
+                className="group relative rounded-[22px] overflow-hidden animate-fade-in-up hover-lift"
+                style={{
+                  animationDelay: `${idx * 30}ms`,
+                  opacity: todo.status === "done" ? 0.65 : 1,
+                  transition: "opacity 0.3s ease, transform 0.28s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.28s ease",
+                  /* Liquid glass card */
+                  background: "var(--glass-fill)",
+                  backdropFilter: "blur(28px) saturate(1.8)",
+                  WebkitBackdropFilter: "blur(28px) saturate(1.8)",
+                  border: isSelected
+                    ? "0.5px solid var(--accent)"
+                    : `0.5px solid var(--glass-border)`,
+                  boxShadow: isSelected
+                    ? `var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)`
+                    : `var(--shadow-md), inset 0 1px 0 var(--specular-top)`,
+                }}>
 
-                {/* Task row — compact layout that fits on mobile without horizontal scroll */}
-                <div className="flex items-center gap-2 px-3 py-3">
+                {/* Specular inner highlight — top edge glow */}
+                <div style={{
+                  position: "absolute", top: 0, left: "6%", right: "6%", height: "0.5px",
+                  background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)",
+                  pointerEvents: "none", zIndex: 4,
+                }} />
+
+                {/* Left priority accent bar */}
+                <div style={{
+                  position: "absolute", left: 0, top: "12%", bottom: "12%",
+                  width: "3px", borderRadius: "0 3px 3px 0",
+                  background: `linear-gradient(180deg, ${priorityColor(todo.priority)}, ${priorityColor(todo.priority)}88)`,
+                  boxShadow: `0 0 8px ${priorityColor(todo.priority)}55`,
+                  zIndex: 3,
+                }} />
+
+                {/* Inner glass overlay — subtle top-to-transparent sheen */}
+                <div style={{
+                  position: "absolute", top: 0, left: 0, right: 0, height: "42%",
+                  background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)",
+                  pointerEvents: "none", zIndex: 2, mixBlendMode: "overlay",
+                  borderRadius: "22px 22px 0 0",
+                }} />
+
+                <div className="relative flex items-center gap-2 pl-5 pr-3 py-3" style={{ zIndex: 5 }}>
                   {bulkMode && (
                     <button onClick={() => toggleSelect(todo.id)}
                       className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all"
@@ -560,10 +620,10 @@ export default function TasksPage() {
                     </button>
                   )}
 
-                  {/* Colored status dot */}
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ background: sc.color, boxShadow: `0 0 5px ${sc.color}50` }} />
+                  {/* Colored status dot with glow */}
+                  <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full" style={{ background: sc.color, boxShadow: `0 0 8px ${sc.color}70, 0 0 3px ${sc.color}` }} />
 
-                  {/* Title + badges — takes remaining space */}
+                  {/* Title + badges */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate"
@@ -586,23 +646,26 @@ export default function TasksPage() {
                     )}
                   </button>
 
-                  {/* Right controls — status dropdown (icon only on mobile) + edit + delete + chevron */}
+                  {/* Right controls */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
-                    {/* Status dropdown — icon only on mobile, full label on sm+ */}
                     <select
                       value={todo.status}
                       onChange={async (e) => {
                         const next = e.target.value as TodoStatus;
                         await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
                       }}
-                      className="rounded-[8px] text-[11px] font-mono cursor-pointer focus:outline-none transition-all"
+                      className="rounded-[10px] text-[11px] font-mono cursor-pointer focus:outline-none"
                       style={{
                         background: `${sc.color}18`,
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
                         color: sc.color,
-                        border: `0.5px solid ${sc.color}45`,
+                        border: `0.5px solid ${sc.color}55`,
+                        boxShadow: `inset 0 1px 0 ${sc.color}25, 0 2px 6px rgba(0,0,0,0.15)`,
                         padding: "4px 4px",
                         height: "28px",
-                        width: "28px",       // icon-only on mobile
+                        width: "28px",
+                        transition: "all 0.2s ease",
                       }}
                       title={sc.label}
                       onClick={(e) => e.stopPropagation()}
@@ -613,16 +676,30 @@ export default function TasksPage() {
                     </select>
 
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
-                      className="w-7 h-7 flex items-center justify-center rounded-xl transition-all"
-                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
+                      className="w-7 h-7 flex items-center justify-center rounded-xl"
+                      style={{
+                        color: "var(--text-muted)",
+                        background: "var(--glass-fill)",
+                        backdropFilter: "blur(8px)",
+                        border: "0.5px solid var(--glass-border)",
+                        boxShadow: "inset 0 1px 0 var(--specular-inner), 0 1px 4px rgba(0,0,0,0.18)",
+                        transition: "all 0.18s ease",
+                      }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                       </svg>
                     </button>
                     <button onClick={() => handleDelete(todo.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-xl transition-all"
-                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
+                      className="w-7 h-7 flex items-center justify-center rounded-xl"
+                      style={{
+                        color: "#f87171",
+                        background: "rgba(248,65,65,0.10)",
+                        backdropFilter: "blur(8px)",
+                        border: "0.5px solid rgba(248,65,65,0.22)",
+                        boxShadow: "inset 0 1px 0 rgba(255,100,100,0.15), 0 1px 4px rgba(0,0,0,0.18)",
+                        transition: "all 0.18s ease",
+                      }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                         <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -631,7 +708,7 @@ export default function TasksPage() {
                     <button onClick={() => setExpandedId(isExpanded ? null : todo.id)}
                       className="w-7 h-7 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                        style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.22s ease" }}>
+                        style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s cubic-bezier(0.34,1.4,0.64,1)" }}>
                         <path d="M6 9l6 6 6-6"/>
                       </svg>
                     </button>
@@ -639,7 +716,7 @@ export default function TasksPage() {
                 </div>
 
                 {isExpanded && (
-                  <div className="px-4 pb-4 space-y-3 animate-fade-in" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
+                  <div className="px-4 pb-4 space-y-3 animate-fade-in" style={{ borderTop: "0.5px solid var(--glass-border-subtle)", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(8px)" }}>
                     {todo.description && (
                       <p className="text-xs font-mono pt-3" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{todo.description}</p>
                     )}
