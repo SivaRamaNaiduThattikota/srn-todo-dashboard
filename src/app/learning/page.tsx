@@ -45,21 +45,25 @@ function weeksDonePct(phases: LearningPhase[], weeks: WeekMap) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REALISTIC TIMELINE MODAL  — click ⏱ in header
+// REALISTIC TIMELINE DATA
+// phaseId maps each row to its DB learning_phase id
 // ─────────────────────────────────────────────────────────────────────────────
 const TIMELINE_ROWS = [
-  { phase: "SQL + Data Engineering",   time: "3–4 weeks",  priority: "Start now",         dot: "#f87171" },
-  { phase: "Stats + Probability",      time: "3–4 weeks",  priority: "High",              dot: "#f87171" },
-  { phase: "Core ML (existing)",       time: "8 weeks",    priority: "High",              dot: "#f87171" },
-  { phase: "DSA daily (ongoing)",      time: "15 months",  priority: "Never stop",        dot: "#f87171" },
-  { phase: "Deep Learning (existing)", time: "8 weeks",    priority: "Medium",            dot: "#fbbf24" },
-  { phase: "Cloud (new)",              time: "4–6 weeks",  priority: "Medium",            dot: "#fbbf24" },
-  { phase: "MLOps (existing)",         time: "6 weeks",    priority: "Medium",            dot: "#fbbf24" },
-  { phase: "NLP/LLMs expanded",        time: "4–6 weeks",  priority: "Medium",            dot: "#fbbf24" },
-  { phase: "ML System Design",         time: "6–8 weeks",  priority: "Before interviews", dot: "#fbbf24" },
-  { phase: "Portfolio + Interviews",   time: "6 weeks",    priority: "Last stretch",      dot: "#5ecf95" },
+  { phase: "SQL + Data Engineering",   time: "3–4 weeks",  priority: "Start now",         dot: "#f87171", phaseId: 7  },
+  { phase: "Stats + Probability",      time: "3–4 weeks",  priority: "High",              dot: "#f87171", phaseId: 8  },
+  { phase: "Core ML",                  time: "8 weeks",    priority: "High",              dot: "#f87171", phaseId: 3  },
+  { phase: "DSA for Interviews",       time: "15 months",  priority: "Never stop",        dot: "#f87171", phaseId: 2  },
+  { phase: "Deep Learning",            time: "8 weeks",    priority: "Medium",            dot: "#fbbf24", phaseId: 4  },
+  { phase: "Cloud — AWS / GCP",        time: "4–6 weeks",  priority: "Medium",            dot: "#fbbf24", phaseId: 9  },
+  { phase: "MLOps + ML System Design", time: "6–8 weeks",  priority: "Medium",            dot: "#fbbf24", phaseId: 5  },
+  { phase: "NLP / LLMs Expanded",      time: "4–6 weeks",  priority: "Medium",            dot: "#fbbf24", phaseId: 10 },
+  { phase: "Portfolio + Interviews",   time: "6 weeks",    priority: "Last stretch",      dot: "#5ecf95", phaseId: 6  },
+  { phase: "Python for ML",            time: "4 weeks",    priority: "Foundation",        dot: "#534AB7", phaseId: 1  },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// REALISTIC TIMELINE MODAL  — click ⏱ in header
+// ─────────────────────────────────────────────────────────────────────────────
 function TimelineModal({ onClose }: { onClose: () => void }) {
   return (
     <div
@@ -98,7 +102,6 @@ function TimelineModal({ onClose }: { onClose: () => void }) {
 
         <div className="flex-1 overflow-y-auto px-5 pt-3 pb-5" style={{ WebkitOverflowScrolling: "touch" }}>
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-0">
-            {/* Header row */}
             <div className="contents">
               {["Phase", "Time needed", "Priority"].map((h) => (
                 <div key={h} className="pb-2 mb-1" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
@@ -106,7 +109,6 @@ function TimelineModal({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
             </div>
-            {/* Data rows */}
             {TIMELINE_ROWS.map((row, i) => (
               <div key={i} className="contents">
                 <div className="py-2.5 flex items-center" style={{ borderBottom: i < TIMELINE_ROWS.length - 1 ? "0.5px solid var(--glass-border-subtle)" : "none" }}>
@@ -142,7 +144,9 @@ function TimelineModal({ onClose }: { onClose: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PHASE INFO MODAL  — click ⓘ to see the full phase card
+// PHASE INFO MODAL  — click ⓘ on any phase card
+// Shows: progress ring · milestone · stats · tracks · week plan ·
+//        FULL realistic timeline (current phase highlighted) · resources
 // ─────────────────────────────────────────────────────────────────────────────
 interface PhaseInfoModalProps {
   phase: LearningPhase;
@@ -297,6 +301,64 @@ function PhaseInfoModal({ phase, phaseIndex, pct, doneTopics, totalTopics, doneW
               </div>
             </div>
           )}
+
+          {/* ── Realistic Timeline — full table, current phase highlighted ── */}
+          <div>
+            <div className="flex items-center gap-2 mb-2.5">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                style={{ color: "var(--text-muted)" }}>
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                Realistic Timeline — where this phase fits
+              </p>
+            </div>
+            <div className="rounded-[14px] overflow-hidden"
+              style={{ border: `0.5px solid ${phase.accent_color}35`, background: "var(--glass-fill-deep)" }}>
+              {/* Table header */}
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-3 py-2"
+                style={{ borderBottom: "0.5px solid var(--glass-border-subtle)", background: "var(--glass-fill)" }}>
+                {["Phase", "Time needed", "Priority"].map((h) => (
+                  <span key={h} className="text-[9px] font-semibold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}>{h}</span>
+                ))}
+              </div>
+              {/* All rows — current phase highlighted with accent bar + bg */}
+              {TIMELINE_ROWS.map((row, i) => {
+                const isThis = row.phaseId === phase.id;
+                return (
+                  <div key={i}
+                    className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-3 py-2.5 items-center"
+                    style={{
+                      borderBottom: i < TIMELINE_ROWS.length - 1 ? "0.5px solid var(--glass-border-subtle)" : "none",
+                      background: isThis ? `${phase.accent_color}18` : "transparent",
+                    }}>
+                    {/* Phase name + highlight bar */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-[3px] rounded-full flex-shrink-0"
+                        style={{ height: "18px", background: isThis ? phase.accent_color : "transparent" }} />
+                      <span className="text-[11px] font-mono truncate"
+                        style={{ color: isThis ? phase.text_color : "var(--text-secondary)", fontWeight: isThis ? 600 : 400 }}>
+                        {row.phase}
+                      </span>
+                    </div>
+                    {/* Time */}
+                    <span className="text-[10px] font-mono whitespace-nowrap text-right"
+                      style={{ color: isThis ? "var(--text-secondary)" : "var(--text-muted)" }}>
+                      {row.time}
+                    </span>
+                    {/* Priority dot + label */}
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: row.dot }} />
+                      <span className="text-[10px] font-mono whitespace-nowrap font-medium" style={{ color: row.dot }}>
+                        {row.priority}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Resources */}
           {phase.resources.length > 0 && (
@@ -690,7 +752,6 @@ export default function LearningPage() {
       {/* ── HEADER ── */}
       <header className="mb-5 animate-fade-in-up">
         <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-          {/* Title + subtitle */}
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
               ML/DS Learning Roadmap
@@ -699,14 +760,11 @@ export default function LearningPage() {
               {phases.length} phases · Python + ML + DSA + MLOps → Top MNC
             </p>
           </div>
-          {/* Right side: percent + count + buttons — all on same line */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Overall % + count */}
             <div className="flex items-baseline gap-1.5 mr-1">
               <span className="text-xl sm:text-2xl font-bold font-mono leading-none" style={{ color: "var(--accent)" }}>{overall}%</span>
               <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{doneTopics}/{totalTopics}</span>
             </div>
-            {/* Timeline ⏱ */}
             <button onClick={() => setShowTimeline(true)} className="cc-btn px-3 py-2 text-xs flex-shrink-0" title="Realistic timeline">
               <span style={{ position: "relative", zIndex: 3 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -714,7 +772,6 @@ export default function LearningPage() {
                 </svg>
               </span>
             </button>
-            {/* Bin */}
             <button onClick={() => setShowBin(true)} className="cc-btn px-3 py-2 text-xs flex-shrink-0" title="Recycle bin">
               <span style={{ position: "relative", zIndex: 3 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -723,14 +780,12 @@ export default function LearningPage() {
                 </svg>
               </span>
             </button>
-            {/* + Phase */}
             <button onClick={() => setEditPhase(null)} className="cc-btn cc-btn-accent px-3 py-2 text-xs flex-shrink-0">
               <span style={{ position: "relative", zIndex: 3 }}>+ Phase</span>
             </button>
           </div>
         </div>
 
-        {/* Progress bars */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono w-16 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Topics</span>
@@ -748,7 +803,6 @@ export default function LearningPage() {
           </div>
         </div>
 
-        {/* Phase pills */}
         <div className="flex flex-wrap gap-1.5 mt-3">
           {phases.map((p) => {
             const pct = phasePct(p, done);
@@ -767,7 +821,6 @@ export default function LearningPage() {
         </div>
       </header>
 
-      {/* ── LOADING ── */}
       {loading && (
         <div className="flex items-center justify-center py-20 animate-fade-in">
           <div className="glass rounded-2xl px-8 py-6 text-center">
@@ -778,7 +831,6 @@ export default function LearningPage() {
         </div>
       )}
 
-      {/* ── PHASE CARDS ── */}
       {!loading && (
         <div className="space-y-3">
           {phases.map((phase, pi) => {
@@ -795,16 +847,13 @@ export default function LearningPage() {
 
                 <div style={{ height: "2px", background: `linear-gradient(90deg,${phase.accent_color},transparent)` }} />
 
-                {/* Row */}
                 <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4">
-                  {/* Phase number */}
                   <button onClick={() => setOpenPhase(isOpen ? null : phase.id)}
                     className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-semibold font-mono"
                     style={{ background: phase.bg_color, color: phase.text_color, border: `0.5px solid ${phase.accent_color}40` }}>
                     {pi + 1}
                   </button>
 
-                  {/* Title + progress */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setOpenPhase(isOpen ? null : phase.id)}>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{phase.title}</span>
@@ -825,21 +874,15 @@ export default function LearningPage() {
                     </div>
                   </button>
 
-                  {/* Action buttons */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* ⓘ Info */}
-                    <button
-                      onClick={() => setInfoPhase(phase)}
+                    <button onClick={() => setInfoPhase(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       title="Phase overview"
-                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}
-                    >
+                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 16v-4M12 8h.01"/>
+                        <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
                       </svg>
                     </button>
-                    {/* Edit */}
                     <button onClick={() => setEditPhase(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
@@ -848,7 +891,6 @@ export default function LearningPage() {
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                       </svg>
                     </button>
-                    {/* Delete */}
                     <button onClick={() => handleDeleteStep1(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: dStep ? "#f87171" : "var(--text-muted)", background: dStep ? "rgba(248,65,65,0.10)" : "var(--glass-fill)", border: `0.5px solid ${dStep ? "rgba(248,65,65,0.28)" : "var(--glass-border)"}` }}>
@@ -857,7 +899,6 @@ export default function LearningPage() {
                         <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
                       </svg>
                     </button>
-                    {/* Expand toggle */}
                     <button onClick={() => setOpenPhase(isOpen ? null : phase.id)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl"
                       style={{ color: "var(--text-muted)" }}>
@@ -869,7 +910,6 @@ export default function LearningPage() {
                   </div>
                 </div>
 
-                {/* Delete step 1 */}
                 {dStep === 1 && (
                   <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] p-3 animate-fade-in"
                     style={{ background: "rgba(248,65,65,0.07)", border: "0.5px solid rgba(248,65,65,0.22)" }}>
@@ -884,7 +924,6 @@ export default function LearningPage() {
                   </div>
                 )}
 
-                {/* Delete step 2 — countdown */}
                 {isCountdown && (
                   <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] overflow-hidden animate-fade-in"
                     style={{ border: "0.5px solid rgba(248,65,65,0.35)" }}>
@@ -903,10 +942,8 @@ export default function LearningPage() {
                   </div>
                 )}
 
-                {/* Expanded content */}
                 {isOpen && (
                   <div className="animate-fade-in" style={{ borderTop: `0.5px solid ${phase.accent_color}20` }}>
-                    {/* Milestone bar */}
                     <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5" style={{ background: phase.bg_color }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                         style={{ color: phase.text_color, flexShrink: 0 }}>
@@ -915,7 +952,6 @@ export default function LearningPage() {
                       <span className="text-[11px] font-medium" style={{ color: phase.text_color }}>Milestone: {phase.milestone}</span>
                     </div>
 
-                    {/* Tabs */}
                     <div className="flex items-center gap-1 px-3 sm:px-5 pt-3 pb-0 flex-wrap gap-y-2">
                       {(["topics", "weeks", "practice"] as const).map((t) => (
                         <button key={t} onClick={() => setPhaseTab(phase.id, t)}
@@ -947,7 +983,6 @@ export default function LearningPage() {
                       </div>
                     </div>
 
-                    {/* Topics tab */}
                     {activeTab === "topics" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {phase.tracks.map((track, ti) => (
@@ -981,7 +1016,6 @@ export default function LearningPage() {
                       </div>
                     )}
 
-                    {/* Weeks tab */}
                     {activeTab === "weeks" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-2">
                         {phase.weeks.map((week, wi) => {
@@ -1014,7 +1048,6 @@ export default function LearningPage() {
                       </div>
                     )}
 
-                    {/* Practice tab */}
                     {activeTab === "practice" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-4">
                         {phase.practice.map((set, si) => (
