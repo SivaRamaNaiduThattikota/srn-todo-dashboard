@@ -148,7 +148,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
           <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "rgba(255,255,255,0.25)", opacity: 0.5 }} />
         </div>
 
-        {/* Top specular highlight — iOS glass effect */}
+        {/* Top specular highlight */}
         <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.40), transparent)", pointerEvents: "none", zIndex: 1 }} />
         {/* Accent stripe */}
         <div style={{ height: "2px", background: `linear-gradient(90deg, var(--accent), transparent)`, flexShrink: 0 }} />
@@ -489,12 +489,6 @@ export default function TasksPage() {
 
   const handleDelete = useCallback(async (id: string) => { await deleteTodo(id); }, []);
 
-  const handleStatusCycle = useCallback(async (t: Todo) => {
-    const order: TodoStatus[] = ["pending", "in_progress", "done", "blocked"];
-    const next = order[(order.indexOf(t.status) + 1) % order.length];
-    await updateTodo(t.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
-  }, []);
-
   const handleBulkDelete = useCallback(async () => {
     await Promise.all([...selectedIds].map(deleteTodo));
     setSelectedIds(new Set()); setBulkMode(false);
@@ -533,18 +527,18 @@ export default function TasksPage() {
   const overdue = todos.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "done").length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10" style={{ overflowX: "hidden" }}>
 
       {/* ── HEADER ── */}
       <header className="mb-5 animate-fade-in-up">
-        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-          <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Tasks</h1>
             <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
               {done}/{total} done{overdue > 0 && <span style={{ color: "#f87171" }}> · {overdue} overdue</span>}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-shrink-0" style={{ overflowX: "auto", scrollbarWidth: "none" }}>
             <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs" style={{ color: "var(--cc-text-muted)" }} title="Templates">
               <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
             </button>
@@ -558,7 +552,7 @@ export default function TasksPage() {
               style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
               <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
             </button>
-            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs">
+            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0">
               <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
             </button>
           </div>
@@ -580,29 +574,29 @@ export default function TasksPage() {
           )}
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Filters — horizontal scroll on mobile, no wrap */}
+        <div className="flex gap-2" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "2px" }}>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer"
+            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0"
             style={{ color: "var(--text-secondary)", height: "34px" }}>
             <option value="">All status</option>
             {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as any)}
-            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer"
+            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0"
             style={{ color: "var(--text-secondary)", height: "34px" }}>
             <option value="">All priority</option>
             {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
           <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as any)}
-            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer"
+            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0"
             style={{ color: "var(--text-secondary)", height: "34px" }}>
             <option value="">All categories</option>
             {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
           {(filterStatus || filterPriority || filterCategory || search) && (
             <button onClick={() => { setFilterStatus(""); setFilterPriority(""); setFilterCategory(""); setSearch(""); }}
-              className="px-3 py-2 rounded-xl text-[11px] font-mono"
+              className="px-3 py-2 rounded-xl text-[11px] font-mono flex-shrink-0"
               style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
               Clear
             </button>
@@ -612,12 +606,12 @@ export default function TasksPage() {
 
       {/* ── BULK BAR ── */}
       {bulkMode && selectedIds.size > 0 && (
-        <div className="mb-3 liquid-glass rounded-[16px] px-4 py-3 flex items-center gap-3 flex-wrap animate-fade-in">
-          <span className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>{selectedIds.size} selected</span>
-          <div className="flex gap-1.5 flex-wrap ml-auto">
+        <div className="mb-3 liquid-glass rounded-[16px] px-4 py-3 flex items-center gap-3 animate-fade-in" style={{ overflowX: "auto", scrollbarWidth: "none" }}>
+          <span className="text-xs font-mono flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{selectedIds.size} selected</span>
+          <div className="flex gap-1.5 ml-auto flex-shrink-0">
             {STATUS_OPTIONS.slice(0, 3).map((s) => (
               <button key={s.value} onClick={() => handleBulkStatus(s.value)}
-                className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono"
+                className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono whitespace-nowrap"
                 style={{ background: `${s.color}15`, color: s.color, border: `0.5px solid ${s.color}35` }}>
                 → {s.label}
               </button>
@@ -692,7 +686,7 @@ export default function TasksPage() {
 
                 {/* No priority stripe — clean card */}
 
-                <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3">
+                <div className="flex items-center gap-2 px-3 sm:px-4 py-3">
 
                   {/* Bulk checkbox */}
                   {bulkMode && (
@@ -703,18 +697,13 @@ export default function TasksPage() {
                     </button>
                   )}
 
-                  {/* Left: Status cycle icon */}
-                  <button onClick={() => handleStatusCycle(todo)}
-                    className="flex-shrink-0 text-base leading-none transition-all"
-                    style={{ color: sc.color, width: "22px", textAlign: "center" }}
-                    title={`Status: ${sc.label} — click to advance`}>
-                    {sc.icon}
-                  </button>
+                  {/* Left: colored dot indicator */}
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ background: sc.color, boxShadow: `0 0 6px ${sc.color}60` }} />
 
                   {/* Middle: title + badges */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-medium"
+                    <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                      <span className="text-sm font-medium truncate"
                         style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>
                         {todo.title}
                       </span>
@@ -728,18 +717,6 @@ export default function TasksPage() {
                           {due.label}
                         </span>
                       )}
-                      {(todo.resource_links ?? []).length > 0 && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0 hidden sm:inline-block"
-                          style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
-                          {todo.resource_links.length} link{todo.resource_links.length > 1 ? "s" : ""}
-                        </span>
-                      )}
-                      {(todo.tags ?? []).map((tag) => (
-                        <span key={tag} className="text-[9px] font-mono px-1.5 py-0.5 rounded-full hidden sm:inline-block"
-                          style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>
-                          {tag}
-                        </span>
-                      ))}
                     </div>
                     {todo.description && !isExpanded && (
                       <p className="text-[11px] font-mono mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
@@ -748,15 +725,34 @@ export default function TasksPage() {
                     )}
                   </button>
 
-                  {/* Right: Status pill + edit + delete + chevron */}
+                  {/* Right: Status DROPDOWN + edit + delete + chevron */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => handleStatusCycle(todo)}
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-[8px] text-[10px] font-mono transition-all flex-shrink-0"
-                      style={{ background: `${sc.color}15`, color: sc.color, border: `0.5px solid ${sc.color}35` }}
-                      title="Click to change status">
-                      <span style={{ fontSize: "11px" }}>{sc.icon}</span>
-                      <span>{sc.label}</span>
-                    </button>
+
+                    {/* Status select dropdown — colored, always visible */}
+                    <select
+                      value={todo.status}
+                      onChange={async (e) => {
+                        const next = e.target.value as TodoStatus;
+                        await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
+                      }}
+                      className="rounded-[8px] text-[10px] font-mono cursor-pointer focus:outline-none transition-all"
+                      style={{
+                        background: `${sc.color}18`,
+                        color: sc.color,
+                        border: `0.5px solid ${sc.color}45`,
+                        padding: "4px 6px",
+                        height: "28px",
+                        minWidth: "88px",
+                        maxWidth: "110px",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s.value} value={s.value} style={{ background: "#0a0a14", color: s.color }}>
+                          {s.icon} {s.label}
+                        </option>
+                      ))}
+                    </select>
 
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
