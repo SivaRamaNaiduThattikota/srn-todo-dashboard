@@ -5,22 +5,23 @@ import type { TodoPriority, TodoCategory, ResourceLink, ResourceLinkType } from 
 
 interface AddTaskPayload {
   title: string; description: string; priority: TodoPriority;
-  assigned_agent: string; due_date: string | null; category: TodoCategory;
-  tags: string[]; resource_links: ResourceLink[]; estimated_mins: number | null;
+  assigned_agent: string; due_date: string | null; start_date: string | null;
+  category: TodoCategory; tags: string[]; resource_links: ResourceLink[];
+  estimated_mins: number | null;
 }
 
 interface Props {
   onAdd:           (data: AddTaskPayload) => Promise<void>;
   onClose:         () => void;
-  prefillDueDate?: string; // ← from calendar click-to-create
+  prefillDueDate?: string;
 }
 
 const TABS = ["basics", "details", "resources"] as const;
 type Tab = typeof TABS[number];
 const TAB_LABELS: Record<Tab, string> = { basics: "Basics", details: "Details", resources: "Resources" };
 const TAB_ICONS: Record<Tab, JSX.Element> = {
-  basics: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>,
-  details: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+  basics:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>,
+  details:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
   resources: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
 };
 
@@ -63,7 +64,6 @@ function detectLinkType(url: string): ResourceLinkType {
   } catch {}
   return "article";
 }
-
 function extractTitle(url: string): string {
   try { return new URL(url).hostname.replace("www.", ""); } catch { return url.slice(0, 40); }
 }
@@ -75,6 +75,7 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
   const [priority, setPriority]       = useState<TodoPriority>("medium");
   const [agent, setAgent]             = useState("");
   const [dueDate, setDueDate]         = useState(prefillDueDate ?? "");
+  const [startDate, setStartDate]     = useState("");
   const [category, setCategory]       = useState<TodoCategory>("general");
   const [tags, setTags]               = useState<string[]>([]);
   const [customTag, setCustomTag]     = useState("");
@@ -88,7 +89,6 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (tab === "basics") titleRef.current?.focus(); }, [tab]);
-  /* Sync prefillDueDate if it changes (e.g. calendar navigates to new day) */
   useEffect(() => { if (prefillDueDate) setDueDate(prefillDueDate); }, [prefillDueDate]);
 
   const canSubmit = title.trim().length > 0;
@@ -97,7 +97,12 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
     if (!canSubmit) return;
     setLoading(true); setError(null);
     try {
-      await onAdd({ title: title.trim(), description: description.trim(), priority, assigned_agent: agent.trim() || "unassigned", due_date: dueDate || null, category, tags, resource_links: links, estimated_mins: estimatedMins });
+      await onAdd({
+        title: title.trim(), description: description.trim(), priority,
+        assigned_agent: agent.trim() || "unassigned",
+        due_date: dueDate || null, start_date: startDate || null,
+        category, tags, resource_links: links, estimated_mins: estimatedMins,
+      });
     } catch (err: any) { setError(err?.message || "Failed to add task"); setLoading(false); }
   };
 
@@ -113,15 +118,38 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
   const tabStatus: Record<Tab, boolean> = { basics: title.trim().length > 0, details: tags.length > 0 || !!estimatedMins, resources: links.length > 0 };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 animate-fade-in" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)" }} onClick={onClose} />
-      <div className="relative w-full max-w-[480px] animate-slide-up"
-        style={{ background: "var(--glass-fill-hover)", backdropFilter: "blur(48px) saturate(2)", border: "0.5px solid var(--glass-border-hover)", borderRadius: "28px", boxShadow: "var(--shadow-xl), inset 0 0.5px 0 var(--glass-border-top)", maxHeight: "90dvh", display: "flex", flexDirection: "column" }}>
+    /* Full-screen overlay — on mobile sits above bottom nav */
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      {/* Scrim */}
+      <div className="absolute inset-0 animate-fade-in" style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(8px)" }} onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative w-full sm:max-w-[480px] sm:mx-4 animate-slide-up"
+        style={{
+          background: "var(--glass-fill-hover)",
+          backdropFilter: "blur(48px) saturate(2)",
+          border: "0.5px solid var(--glass-border-hover)",
+          borderRadius: "28px 28px 0 0",
+          boxShadow: "var(--shadow-xl), inset 0 0.5px 0 var(--glass-border-top)",
+          /* On mobile: fill from bottom, leave space for bottom nav bar */
+          maxHeight: "calc(100dvh - 80px)",
+          display: "flex", flexDirection: "column",
+        }}>
+        {/* Desktop corner radius */}
+        <style>{`@media (min-width: 640px) { .add-modal-inner { border-radius: 28px !important; } }`}</style>
+
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center pt-2.5 pb-0 sm:hidden flex-shrink-0">
+          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.35 }} />
+        </div>
+
+        {/* Specular top */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "0.5px", background: "linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.30) 50%, transparent 95%)", borderRadius: "28px 28px 0 0", pointerEvents: "none", zIndex: 1 }} />
 
         {/* Header */}
-        <div className="px-6 pt-5 pb-4 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
+        <div className="px-5 pt-4 pb-3 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-[17px] font-semibold tracking-tight" style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
                 {prefillDueDate ? `New task — ${prefillDueDate}` : "New task"}
@@ -130,7 +158,8 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
                 {canSubmit ? `"${title.slice(0,28)}${title.length>28?"…":""}"` : "Fill in the details below"}
               </p>
             </div>
-            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)", color: "var(--text-muted)" }}>
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)", color: "var(--text-muted)" }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -147,28 +176,53 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
           </div>
         </div>
 
-        {error && <div className="mx-6 mb-2 px-3 py-2 rounded-[12px] text-xs font-mono flex-shrink-0" style={{ background: "rgba(255,107,107,0.12)", color: "#ff6b6b", border: "0.5px solid rgba(255,107,107,0.25)" }}>{error}</div>}
+        {error && <div className="mx-5 mb-2 px-3 py-2 rounded-[12px] text-xs font-mono flex-shrink-0" style={{ background: "rgba(255,107,107,0.12)", color: "#ff6b6b", border: "0.5px solid rgba(255,107,107,0.25)" }}>{error}</div>}
 
-        <div className="flex-1 overflow-y-auto px-6 pb-2" style={{ scrollbarWidth: "none" }}>
-          {/* BASICS */}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 pb-2" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+
+          {/* ── BASICS TAB ── */}
           {tab === "basics" && (
             <div className="space-y-4 py-2">
               <FieldLabel label="Title" required>
-                <input ref={titleRef} type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What needs to be done?" onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey) setTab("details"); }} className="w-full focus:outline-none" style={inputStyle} />
+                <input ref={titleRef} type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                  placeholder="What needs to be done?"
+                  onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey) setTab("details"); }}
+                  className="w-full focus:outline-none" style={inputStyle} />
               </FieldLabel>
+
               <FieldLabel label="Description" hint="optional">
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Context, notes, acceptance criteria..." rows={3} className="w-full focus:outline-none resize-none" style={inputStyle} />
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Context, notes, acceptance criteria..." rows={3}
+                  className="w-full focus:outline-none resize-none" style={inputStyle} />
               </FieldLabel>
+
+              {/* Due date + Start date — 2 col grid */}
               <div className="grid grid-cols-2 gap-3">
-                <FieldLabel label="Due date">
-                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full focus:outline-none" style={{ ...inputStyle, colorScheme: "dark" }} />
+                <FieldLabel label="Start date">
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full focus:outline-none" style={{ ...inputStyle, colorScheme: "dark" }} />
                 </FieldLabel>
+                <FieldLabel label="Due date">
+                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full focus:outline-none" style={{ ...inputStyle, colorScheme: "dark" }} />
+                </FieldLabel>
+              </div>
+
+              {/* Category + Agent — 2 col grid */}
+              <div className="grid grid-cols-2 gap-3">
                 <FieldLabel label="Category">
-                  <select value={category} onChange={(e) => setCategory(e.target.value as TodoCategory)} className="w-full focus:outline-none" style={inputStyle}>
+                  <select value={category} onChange={(e) => setCategory(e.target.value as TodoCategory)}
+                    className="w-full focus:outline-none" style={inputStyle}>
                     {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
                   </select>
                 </FieldLabel>
+                <FieldLabel label="Assigned to">
+                  <input type="text" value={agent} onChange={(e) => setAgent(e.target.value)}
+                    placeholder="yourself..." className="w-full focus:outline-none" style={inputStyle} />
+                </FieldLabel>
               </div>
+
               <FieldLabel label="Priority">
                 <div className="flex gap-2 mt-1">
                   {(Object.entries(PRIORITY_CONFIG) as [TodoPriority, typeof PRIORITY_CONFIG[TodoPriority]][]).map(([p, cfg]) => (
@@ -179,13 +233,10 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
                   ))}
                 </div>
               </FieldLabel>
-              <FieldLabel label="Assigned to">
-                <input type="text" value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="developer, designer, yourself..." className="w-full focus:outline-none" style={inputStyle} />
-              </FieldLabel>
             </div>
           )}
 
-          {/* DETAILS */}
+          {/* ── DETAILS TAB ── */}
           {tab === "details" && (
             <div className="space-y-4 py-2">
               <FieldLabel label="Estimated time" hint="optional">
@@ -198,6 +249,7 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
                   ))}
                 </div>
               </FieldLabel>
+
               <FieldLabel label="Tags" hint="click to add">
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {PRESET_TAGS.map((t) => {
@@ -211,19 +263,24 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
                   })}
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <input type="text" value={customTag} onChange={(e) => setCustomTag(e.target.value)} onKeyDown={(e) => { if (e.key==="Enter"){e.preventDefault();addCustomTag();} }} placeholder="Custom tag..." className="flex-1 focus:outline-none" style={{ ...inputStyle, fontSize: "11px", padding: "8px 12px" }} />
+                  <input type="text" value={customTag} onChange={(e) => setCustomTag(e.target.value)}
+                    onKeyDown={(e) => { if (e.key==="Enter"){e.preventDefault();addCustomTag();} }}
+                    placeholder="Custom tag..." className="flex-1 focus:outline-none"
+                    style={{ ...inputStyle, fontSize: "11px", padding: "8px 12px" }} />
                   <button type="button" onClick={addCustomTag} disabled={!customTag.trim()} className="cc-btn px-3 py-1.5 text-[11px] disabled:opacity-30" style={{ minWidth: "52px" }}><span style={{ position: "relative", zIndex: 3 }}>+ Add</span></button>
                 </div>
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {tags.map((t) => (
-                      <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[8px] text-[10px] font-mono" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
+                      <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[8px] text-[10px] font-mono"
+                        style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
                         {t}<button type="button" onClick={() => toggleTag(t)} style={{ color: "var(--accent)", opacity: 0.6, lineHeight: 1 }}>×</button>
                       </span>
                     ))}
                   </div>
                 )}
               </FieldLabel>
+
               <FieldLabel label="Category">
                 <div className="grid grid-cols-3 gap-2 mt-1">
                   {CATEGORIES.map((c) => (
@@ -238,7 +295,7 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
             </div>
           )}
 
-          {/* RESOURCES */}
+          {/* ── RESOURCES TAB ── */}
           {tab === "resources" && (
             <div className="space-y-4 py-2">
               <p className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>Attach reference links — articles, videos, GitHub repos, docs.</p>
@@ -251,8 +308,11 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
                     </button>
                   ))}
                 </div>
-                <input type="url" value={linkUrl} onChange={(e) => { setLinkUrl(e.target.value); if (!linkTitle) setLinkType(detectLinkType(e.target.value)); }} onKeyDown={(e) => { if (e.key==="Enter"){e.preventDefault();addLink();} }} placeholder="https://..." className="w-full focus:outline-none" style={{ ...inputStyle, fontSize: "12px" }} />
-                <input type="text" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} placeholder="Title (optional)" className="w-full focus:outline-none" style={{ ...inputStyle, fontSize: "12px" }} />
+                <input type="url" value={linkUrl} onChange={(e) => { setLinkUrl(e.target.value); if (!linkTitle) setLinkType(detectLinkType(e.target.value)); }}
+                  onKeyDown={(e) => { if (e.key==="Enter"){e.preventDefault();addLink();} }}
+                  placeholder="https://..." className="w-full focus:outline-none" style={{ ...inputStyle, fontSize: "12px" }} />
+                <input type="text" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)}
+                  placeholder="Title (optional)" className="w-full focus:outline-none" style={{ ...inputStyle, fontSize: "12px" }} />
                 <button type="button" onClick={addLink} disabled={!linkUrl.trim()} className="cc-btn cc-btn-accent w-full py-2.5 text-[12px] disabled:opacity-30">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}><path d="M12 5v14M5 12h14"/></svg>
                   <span style={{ position: "relative", zIndex: 3 }}>Add link</span>
@@ -286,35 +346,66 @@ export function AddTodoModal({ onAdd, onClose, prefillDueDate }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border)", background: "var(--glass-fill-deep)", borderRadius: "0 0 28px 28px" }}>
-          <div className="flex items-center gap-2">
+        {/* ── Footer — always visible, safe-area padded ── */}
+        <div className="flex-shrink-0 px-5 pt-3 pb-4"
+          style={{
+            borderTop: "0.5px solid var(--glass-border)",
+            background: "var(--glass-fill-deep)",
+            paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))",
+          }}>
+          {/* Pagination dots */}
+          <div className="flex items-center justify-center gap-1.5 mb-3">
             {TABS.map((t) => (
-              <button key={t} type="button" onClick={() => setTab(t)} className="transition-all duration-200"
-                style={{ width: tab===t?"20px":"6px", height: "6px", borderRadius: "3px", background: tab===t?"var(--accent)":tabStatus[t]?"var(--accent-muted)":"var(--glass-border)", border: "none", padding: 0, cursor: "pointer" }} />
+              <button key={t} type="button" onClick={() => setTab(t)}
+                style={{ width: tab===t?"20px":"6px", height: "6px", borderRadius: "3px", background: tab===t?"var(--accent)":tabStatus[t]?"var(--accent-muted)":"var(--glass-border)", border: "none", padding: 0, cursor: "pointer", transition: "all 0.2s" }} />
             ))}
-            <span className="text-[10px] font-mono ml-1" style={{ color: "var(--text-muted)" }}>{TABS.indexOf(tab)+1} / {TABS.length}</span>
+            <span className="text-[10px] font-mono ml-1" style={{ color: "var(--text-muted)" }}>{TABS.indexOf(tab)+1}/{TABS.length}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="cc-btn px-4 py-2 text-[12px]"><span style={{ position: "relative", zIndex: 3 }}>Cancel</span></button>
+
+          {/* Buttons — full width on mobile, right-aligned on desktop */}
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose}
+              className="cc-btn py-3 text-[13px] font-medium"
+              style={{ flex: "0 0 auto", minWidth: "80px" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>Cancel</span>
+            </button>
+
             {tab !== "basics" && (
-              <button type="button" onClick={() => setTab(TABS[TABS.indexOf(tab)-1])} className="cc-btn px-3 py-2 text-[12px]">
+              <button type="button" onClick={() => setTab(TABS[TABS.indexOf(tab)-1])}
+                className="cc-btn py-3 text-[13px]"
+                style={{ flex: "0 0 auto", minWidth: "64px" }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}><path d="M15 18l-6-6 6-6"/></svg>
                 <span style={{ position: "relative", zIndex: 3 }}>Back</span>
               </button>
             )}
+
             {tab !== "resources" ? (
-              <button type="button" onClick={() => setTab(TABS[TABS.indexOf(tab)+1])} className="cc-btn cc-btn-accent px-4 py-2 text-[12px]" disabled={tab==="basics"&&!canSubmit} style={{ opacity: tab==="basics"&&!canSubmit?0.35:1 }}>
+              <button type="button"
+                onClick={() => setTab(TABS[TABS.indexOf(tab)+1])}
+                className="cc-btn cc-btn-accent py-3 text-[13px] font-medium"
+                style={{ flex: 1, opacity: tab==="basics"&&!canSubmit?0.35:1 }}
+                disabled={tab==="basics"&&!canSubmit}>
                 <span style={{ position: "relative", zIndex: 3 }}>Next</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}><path d="M9 18l6-6-6-6"/></svg>
               </button>
             ) : (
-              <button type="button" onClick={handleSubmit} disabled={!canSubmit||loading} className="cc-btn cc-btn-accent px-5 py-2 text-[12px]" style={{ opacity: !canSubmit||loading?0.35:1 }}>
-                {loading ? <span style={{ position: "relative", zIndex: 3 }}>Adding…</span> : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}><path d="M12 5v14M5 12h14"/></svg><span style={{ position: "relative", zIndex: 3 }}>Add task</span></>}
+              <button type="button" onClick={handleSubmit}
+                disabled={!canSubmit||loading}
+                className="cc-btn cc-btn-accent py-3 text-[13px] font-medium"
+                style={{ flex: 1, opacity: !canSubmit||loading?0.35:1 }}>
+                {loading
+                  ? <span style={{ position: "relative", zIndex: 3 }}>Adding…</span>
+                  : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ position: "relative", zIndex: 3 }}><path d="M12 5v14M5 12h14"/></svg><span style={{ position: "relative", zIndex: 3 }}>Add task</span></>}
               </button>
             )}
+
+            {/* Quick add shortcut when not on last tab */}
             {tab !== "resources" && canSubmit && (
-              <button type="button" onClick={handleSubmit} disabled={loading} className="text-[10px] font-mono" style={{ color: "var(--text-muted)", padding: "4px 8px" }}>{loading?"…":"Quick add"}</button>
+              <button type="button" onClick={handleSubmit} disabled={loading}
+                className="text-[10px] font-mono"
+                style={{ color: "var(--text-muted)", padding: "4px 8px", flexShrink: 0 }}>
+                {loading?"…":"Quick"}
+              </button>
             )}
           </div>
         </div>

@@ -17,8 +17,10 @@ export interface ResourceLink { title: string; url: string; type: ResourceLinkTy
 
 export interface Todo {
   id: string; title: string; description: string; status: TodoStatus; priority: TodoPriority;
-  assigned_agent: string; due_date: string | null; completed_at: string | null; sort_order: number;
+  assigned_agent: string; due_date: string | null; start_date: string | null;
+  completed_at: string | null; sort_order: number;
   category: TodoCategory; resource_links: ResourceLink[]; tags: string[]; estimated_mins: number | null;
+  deleted_at: string | null;
   created_at: string; updated_at: string;
 }
 export interface Subtask { id: string; todo_id: string; title: string; is_done: boolean; created_at: string; }
@@ -51,20 +53,11 @@ export interface LearningWeek     { label: string; goals: string[]; }
 export interface LearningPractice { title: string; problems: string[]; }
 
 export interface LearningPhase {
-  id: number;
-  sort_order: number;
-  title: string;
-  duration: string;
-  accent_color: string;
-  bg_color: string;
-  text_color: string;
-  milestone: string;
-  resources: LearningResource[];
-  tracks: LearningTrack[];
-  weeks: LearningWeek[];
-  practice: LearningPractice[];
-  created_at: string;
-  updated_at: string;
+  id: number; sort_order: number; title: string; duration: string;
+  accent_color: string; bg_color: string; text_color: string; milestone: string;
+  resources: LearningResource[]; tracks: LearningTrack[];
+  weeks: LearningWeek[]; practice: LearningPractice[];
+  created_at: string; updated_at: string;
 }
 
 export interface LearningWeekProgress {
@@ -73,15 +66,62 @@ export interface LearningWeekProgress {
   created_at: string; updated_at: string;
 }
 
-// ── Todo CRUD ──────────────────────────────────────────────
+// ── Todo CRUD (active todos — excludes soft-deleted) ───────
 export async function fetchTodos() {
-  const { data, error } = await supabase.from("todos").select("*").order("updated_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("todos").select("*")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false });
   if (error) throw error;
-  return (data as Todo[]).map((t) => ({ ...t, resource_links: t.resource_links ?? [], tags: t.tags ?? [], estimated_mins: t.estimated_mins ?? null }));
+  return (data as Todo[]).map((t) => ({
+    ...t,
+    resource_links: t.resource_links ?? [],
+    tags: t.tags ?? [],
+    estimated_mins: t.estimated_mins ?? null,
+    start_date: t.start_date ?? null,
+    deleted_at: t.deleted_at ?? null,
+  }));
 }
-export async function addTodo(todo: Partial<Todo>) { const payload = { ...todo, resource_links: todo.resource_links ?? [], tags: todo.tags ?? [], estimated_mins: todo.estimated_mins ?? null }; const { data, error } = await supabase.from("todos").insert(payload).select().single(); if (error) throw error; return data as Todo; }
-export async function updateTodo(id: string, updates: Partial<Todo>) { const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single(); if (error) throw error; return data as Todo; }
-export async function deleteTodo(id: string) { const { error } = await supabase.from("todos").delete().eq("id", id); if (error) throw error; }
+export async function addTodo(todo: Partial<Todo>) {
+  const payload = { ...todo, resource_links: todo.resource_links ?? [], tags: todo.tags ?? [], estimated_mins: todo.estimated_mins ?? null, start_date: todo.start_date ?? null, deleted_at: null };
+  const { data, error } = await supabase.from("todos").insert(payload).select().single();
+  if (error) throw error;
+  return data as Todo;
+}
+export async function updateTodo(id: string, updates: Partial<Todo>) {
+  const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single();
+  if (error) throw error;
+  return data as Todo;
+}
+// Soft delete — moves to recycle bin
+export async function deleteTodo(id: string) {
+  const { error } = await supabase.from("todos").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+// Hard delete — permanently removes from DB (used inside recycle bin)
+export async function hardDeleteTodo(id: string) {
+  const { error } = await supabase.from("todos").delete().eq("id", id);
+  if (error) throw error;
+}
+// Restore from recycle bin
+export async function restoreTodo(id: string) {
+  const { error } = await supabase.from("todos").update({ deleted_at: null }).eq("id", id);
+  if (error) throw error;
+}
+// Fetch recycle bin items (soft-deleted)
+export async function fetchDeletedTodos() {
+  const { data, error } = await supabase
+    .from("todos").select("*")
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+  if (error) throw error;
+  return (data as Todo[]).map((t) => ({ ...t, resource_links: t.resource_links ?? [], tags: t.tags ?? [], estimated_mins: t.estimated_mins ?? null, start_date: t.start_date ?? null }));
+}
+// Empty entire recycle bin
+export async function emptyRecycleBin() {
+  const { error } = await supabase.from("todos").delete().not("deleted_at", "is", null);
+  if (error) throw error;
+}
 
 // ── Subtasks ───────────────────────────────────────────────
 export async function fetchSubtasks(todoId: string) { const { data, error } = await supabase.from("subtasks").select("*").eq("todo_id", todoId).order("created_at", { ascending: true }); if (error) throw error; return data as Subtask[]; }
@@ -180,11 +220,7 @@ export async function toggleLearningWeek(phaseId: number, weekIndex: number, cur
   if (error) throw error;
 }
 export async function fetchLearningStats(): Promise<{ totalTopics: number; doneTopics: number; totalWeeks: number; doneWeeks: number }> {
-  const [phases, topicProgress, weekProgress] = await Promise.all([
-    fetchLearningPhases(),
-    fetchLearningProgress(),
-    fetchLearningWeekProgress(),
-  ]);
+  const [phases, topicProgress, weekProgress] = await Promise.all([fetchLearningPhases(), fetchLearningProgress(), fetchLearningWeekProgress()]);
   const totalTopics = phases.reduce((s, p) => s + p.tracks.reduce((ss, t) => ss + t.topics.length, 0), 0);
   const doneTopics  = topicProgress.filter((r) => r.is_done).length;
   const totalWeeks  = phases.reduce((s, p) => s + p.weeks.length, 0);
