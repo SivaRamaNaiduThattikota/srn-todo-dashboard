@@ -442,23 +442,23 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs" style={{ color: "var(--cc-text-muted)" }}>
-              <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
-            </button>
-            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-              <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
-            </button>
-            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-              <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
-            </button>
-            <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs"
-              style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
-              <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
-            </button>
-            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0">
-              <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
-            </button>
-          </div>
+  <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+    <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
+  </button>
+  <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+    <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
+  </button>
+  <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+    <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
+  </button>
+  <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
+    style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
+    <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
+  </button>
+  <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0">
+    <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
+  </button>
+</div>
         </div>
 
         <div className="relative mb-3">
