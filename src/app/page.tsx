@@ -550,7 +550,8 @@ export default function TasksPage() {
               <div key={todo.id} className="liquid-glass rounded-[20px] overflow-hidden animate-fade-in-up"
                 style={{ animationDelay: `${idx * 25}ms`, border: isSelected ? "0.5px solid var(--accent)" : undefined, opacity: todo.status === "done" ? 0.72 : 1, transition: "opacity 0.2s" }}>
 
-                <div className="flex items-center gap-2 px-3 sm:px-4 py-3">
+                {/* Task row — compact layout that fits on mobile without horizontal scroll */}
+                <div className="flex items-center gap-2 px-3 py-3">
                   {bulkMode && (
                     <button onClick={() => toggleSelect(todo.id)}
                       className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all"
@@ -559,12 +560,14 @@ export default function TasksPage() {
                     </button>
                   )}
 
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ background: sc.color, boxShadow: `0 0 6px ${sc.color}60` }} />
+                  {/* Colored status dot */}
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ background: sc.color, boxShadow: `0 0 5px ${sc.color}50` }} />
 
+                  {/* Title + badges — takes remaining space */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
-                    <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate"
-                        style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>
+                        style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none", minWidth: 0 }}>
                         {todo.title}
                       </span>
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
@@ -583,15 +586,25 @@ export default function TasksPage() {
                     )}
                   </button>
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* Right controls — status dropdown (icon only on mobile) + edit + delete + chevron */}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    {/* Status dropdown — icon only on mobile, full label on sm+ */}
                     <select
                       value={todo.status}
                       onChange={async (e) => {
                         const next = e.target.value as TodoStatus;
                         await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
                       }}
-                      className="rounded-[8px] text-[10px] font-mono cursor-pointer focus:outline-none transition-all"
-                      style={{ background: `${sc.color}18`, color: sc.color, border: `0.5px solid ${sc.color}45`, padding: "4px 6px", height: "28px", minWidth: "88px", maxWidth: "110px" }}
+                      className="rounded-[8px] text-[11px] font-mono cursor-pointer focus:outline-none transition-all"
+                      style={{
+                        background: `${sc.color}18`,
+                        color: sc.color,
+                        border: `0.5px solid ${sc.color}45`,
+                        padding: "4px 4px",
+                        height: "28px",
+                        width: "28px",       // icon-only on mobile
+                      }}
+                      title={sc.label}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {STATUS_OPTIONS.map((s) => (
@@ -600,23 +613,23 @@ export default function TasksPage() {
                     </select>
 
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
+                      className="w-7 h-7 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                       </svg>
                     </button>
                     <button onClick={() => handleDelete(todo.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
+                      className="w-7 h-7 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                         <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
                       </svg>
                     </button>
                     <button onClick={() => setExpandedId(isExpanded ? null : todo.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}>
+                      className="w-7 h-7 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.22s ease" }}>
                         <path d="M6 9l6 6 6-6"/>
@@ -672,7 +685,7 @@ export default function TasksPage() {
       )}
 
       {showModal && (
-        <TodoModal todo={editTodo} onSave={handleSave} onClose={() => { setShowModal(false); setEditTodo(null); }} />
+        <TodoModal key={editTodo?.id ?? "new"} todo={editTodo} onSave={handleSave} onClose={() => { setShowModal(false); setEditTodo(null); }} />
       )}
     </div>
   );
