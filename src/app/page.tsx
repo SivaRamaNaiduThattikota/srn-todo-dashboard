@@ -686,7 +686,7 @@ export default function TasksPage() {
 
                 {/* No priority stripe — clean card */}
 
-                <div className="flex items-center gap-2 px-3 sm:px-4 py-3">
+                <div className="flex items-center gap-2 px-3 sm:px-4 py-4">
 
                   {/* Bulk checkbox */}
                   {bulkMode && (
