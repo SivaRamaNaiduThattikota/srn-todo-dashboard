@@ -1,7 +1,25 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- SRN Command Center — COMPLETE MASTER MIGRATION v10.7
--- Run this single file in Supabase SQL Editor.
+-- SRN Command Center — COMPLETE MASTER MIGRATION v10.9
+-- Run this SINGLE file in Supabase SQL Editor.
 -- Safe to run multiple times — fully idempotent.
+-- Covers everything up to and including session v10.9
+--
+-- WHAT THIS FILE DOES (in order):
+--   PART 0  : todos — start_date + soft-delete
+--   PART 0b : notes — soft-delete
+--   PART 0c : decisions — soft-delete
+--   PART 0d : projects — soft-delete
+--   PART 0e : learning_phases — soft-delete
+--   PART 1  : learning_phases table
+--   PART 2  : learning_progress table
+--   PART 3  : learning_week_progress table
+--   PART 4  : Phase seeds 1–6 (original)
+--   PART 5  : Phase 5 UPDATE — MLOps expanded to full ML System Design
+--   PART 6  : Phase 7 — SQL + Data Engineering
+--   PART 7  : Phase 8 — Statistics + Probability
+--   PART 8  : Phase 9 — Cloud (AWS / GCP)
+--   PART 9  : Phase 10 — NLP / LLMs Expanded
+--   PART 10 : Sequence update
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────────────────────────────────────────────────────
@@ -36,118 +54,89 @@ ALTER TABLE learning_phases ADD COLUMN IF NOT EXISTS deleted_at timestamptz DEFA
 CREATE INDEX IF NOT EXISTS idx_learning_phases_deleted_at ON learning_phases (deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- ───────────────────────────────────────────────────────────────────────
--- PART 1: learning_progress
--- ───────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS learning_progress (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  phase_id     int  NOT NULL,
-  track_index  int  NOT NULL,
-  topic_index  int  NOT NULL,
-  is_done      boolean NOT NULL DEFAULT false,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (phase_id, track_index, topic_index)
-);
-CREATE INDEX IF NOT EXISTS idx_learning_progress_phase ON learning_progress (phase_id);
-CREATE OR REPLACE FUNCTION update_learning_progress_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
-DROP TRIGGER IF EXISTS trg_learning_progress_updated_at ON learning_progress;
-CREATE TRIGGER trg_learning_progress_updated_at
-  BEFORE UPDATE ON learning_progress FOR EACH ROW EXECUTE FUNCTION update_learning_progress_updated_at();
-ALTER TABLE learning_progress ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "allow_all_learning_progress" ON learning_progress;
-CREATE POLICY "allow_all_learning_progress" ON learning_progress FOR ALL USING (true) WITH CHECK (true);
-
--- ───────────────────────────────────────────────────────────────────────
--- PART 2: learning_phases
+-- PART 1: learning_phases table
 -- ───────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS learning_phases (
-  id            serial  PRIMARY KEY,
-  sort_order    int     NOT NULL DEFAULT 0,
-  title         text    NOT NULL,
-  duration      text    NOT NULL DEFAULT '',
-  accent_color  text    NOT NULL DEFAULT '#534AB7',
-  bg_color      text    NOT NULL DEFAULT 'rgba(83,74,183,0.13)',
-  text_color    text    NOT NULL DEFAULT '#a09aee',
-  milestone     text    NOT NULL DEFAULT '',
-  resources     jsonb   NOT NULL DEFAULT '[]',
-  tracks        jsonb   NOT NULL DEFAULT '[]',
-  weeks         jsonb   NOT NULL DEFAULT '[]',
-  practice      jsonb   NOT NULL DEFAULT '[]',
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  updated_at    timestamptz NOT NULL DEFAULT now()
+  id           serial PRIMARY KEY,
+  sort_order   int            NOT NULL DEFAULT 0,
+  title        text           NOT NULL,
+  duration     text           NOT NULL DEFAULT '',
+  accent_color text           NOT NULL DEFAULT '#534AB7',
+  bg_color     text           NOT NULL DEFAULT 'rgba(83,74,183,0.13)',
+  text_color   text           NOT NULL DEFAULT '#a09aee',
+  milestone    text           NOT NULL DEFAULT '',
+  resources    jsonb          NOT NULL DEFAULT '[]',
+  tracks       jsonb          NOT NULL DEFAULT '[]',
+  weeks        jsonb          NOT NULL DEFAULT '[]',
+  practice     jsonb          NOT NULL DEFAULT '[]',
+  created_at   timestamptz    NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_learning_phases_sort ON learning_phases (sort_order);
-CREATE OR REPLACE FUNCTION update_learning_phases_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
-DROP TRIGGER IF EXISTS trg_learning_phases_updated_at ON learning_phases;
-CREATE TRIGGER trg_learning_phases_updated_at
-  BEFORE UPDATE ON learning_phases FOR EACH ROW EXECUTE FUNCTION update_learning_phases_updated_at();
-ALTER TABLE learning_phases ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "allow_all_learning_phases" ON learning_phases;
-CREATE POLICY "allow_all_learning_phases" ON learning_phases FOR ALL USING (true) WITH CHECK (true);
 
 -- ───────────────────────────────────────────────────────────────────────
--- PART 3: learning_week_progress
+-- PART 2: learning_progress table
+-- ───────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS learning_progress (
+  id          bigserial PRIMARY KEY,
+  phase_id    int  NOT NULL REFERENCES learning_phases(id) ON DELETE CASCADE,
+  track_index int  NOT NULL,
+  topic_index int  NOT NULL,
+  is_done     bool NOT NULL DEFAULT false,
+  done_at     timestamptz,
+  UNIQUE (phase_id, track_index, topic_index)
+);
+
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 3: learning_week_progress table
 -- ───────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS learning_week_progress (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  phase_id    int  NOT NULL REFERENCES learning_phases(id) ON DELETE CASCADE,
-  week_index  int  NOT NULL,
-  is_done     boolean NOT NULL DEFAULT false,
-  done_at     timestamptz,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  updated_at  timestamptz NOT NULL DEFAULT now(),
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  phase_id   int         NOT NULL REFERENCES learning_phases(id) ON DELETE CASCADE,
+  week_index int         NOT NULL,
+  is_done    bool        NOT NULL DEFAULT false,
+  done_at    timestamptz,
   UNIQUE (phase_id, week_index)
 );
-CREATE INDEX IF NOT EXISTS idx_learning_week_progress_phase ON learning_week_progress (phase_id);
-CREATE OR REPLACE FUNCTION update_learning_week_progress_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
-DROP TRIGGER IF EXISTS trg_learning_week_progress_updated_at ON learning_week_progress;
-CREATE TRIGGER trg_learning_week_progress_updated_at
-  BEFORE UPDATE ON learning_week_progress FOR EACH ROW EXECUTE FUNCTION update_learning_week_progress_updated_at();
-ALTER TABLE learning_week_progress ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "allow_all_learning_week_progress" ON learning_week_progress;
-CREATE POLICY "allow_all_learning_week_progress" ON learning_week_progress FOR ALL USING (true) WITH CHECK (true);
 
 -- ───────────────────────────────────────────────────────────────────────
--- PART 4: Seed 6 default learning phases (idempotent)
+-- PART 4: Phase seeds 1–6
 -- ───────────────────────────────────────────────────────────────────────
 INSERT INTO learning_phases (id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice)
 VALUES
 (1, 0, 'Python for ML', 'Weeks 1–4', '#534AB7', 'rgba(83,74,183,0.13)', '#a09aee',
  'Solve 30 LeetCode Easy in Python',
  '[{"label":"Real Python","url":"https://realpython.com"},{"label":"Automate the Boring Stuff","url":"https://automatetheboringstuff.com"},{"label":"LeetCode","url":"https://leetcode.com"},{"label":"Kaggle Learn Python","url":"https://www.kaggle.com/learn/python"}]',
- '[{"label":"Python Foundations","topics":["OOP — classes, inheritance, dunder methods","List comprehensions, generators, decorators","File I/O, JSON, CSV handling","Error handling & logging","Virtual envs, pip, packaging"]},{"label":"Python for Data","topics":["NumPy — arrays, broadcasting, vectorization","Pandas — DataFrame, groupby, merge, pivot","Matplotlib & Seaborn — EDA plots","Jupyter notebooks — best practices","Regular expressions for text cleaning"]}]',
- '[{"label":"Week 1","goals":["Revise OOP: write 3 classes with inheritance","NumPy arrays: 20 exercises","10 LeetCode Easy (arrays & strings)"]},{"label":"Week 2","goals":["Pandas: load, clean, merge 2 real datasets","List comprehensions & generators deep dive","10 LeetCode Easy (hashmaps & sets)"]},{"label":"Week 3","goals":["Matplotlib EDA: visualize a Kaggle dataset","Decorators & context managers","10 LeetCode Easy (two pointers)"]},{"label":"Week 4","goals":["Full EDA project: end-to-end on a real dataset","Error handling, logging, virtual envs","Review & refactor all 30 LeetCode solutions"]}]',
- '[{"title":"Python OOP","problems":["Build a BankAccount class with deposit, withdraw, and overdraft protection","Implement a Stack and Queue using Python classes","Write a decorator that caches function results (memoization)","Create a context manager for safe file handling using __enter__/__exit__","Build a simple linked list with insert, delete, search methods"]},{"title":"NumPy & Pandas","problems":["Normalize a NumPy array to range [0, 1] without using sklearn","Find all rows in a DataFrame where salary > mean and department = Engineering","Pivot a sales dataset to show monthly totals per product","Merge two DataFrames on a fuzzy key (approximate string match)","Compute a 7-day rolling average of stock prices using pandas"]}]'),
+ '[{"label":"Python Foundations","topics":["Data types, variables, operators — drill 10 problems","Control flow — if/elif/else, for/while loops","Functions — args, kwargs, default params, return values","OOP — classes, __init__, methods, inheritance","List comprehensions + generators","File I/O — read, write, CSV parsing","Error handling — try/except, custom exceptions","Modules + pip — importing, virtual environments"]},{"label":"Python for Data","topics":["NumPy — arrays, broadcasting, vectorised ops","Pandas — DataFrame, Series, groupby, merge, pivot","Matplotlib / Seaborn — line, bar, scatter, heatmap","EDA checklist — shape, dtypes, nulls, describe, value_counts","Scikit-learn API — fit, predict, score pipeline","Decorators and context managers (bonus)","Type hints and docstrings (clean code habit)","Jupyter notebooks — shortcuts, magic commands"]}]',
+ '[{"label":"Week 1","goals":["Python basics: complete 20 HackerRank Easy problems","OOP: implement a BankAccount class with deposit, withdraw, balance","File I/O: parse a CSV of student grades, compute class average"]},{"label":"Week 2","goals":["NumPy: implement matrix multiply from scratch, benchmark vs np.dot","Pandas: load Titanic dataset, answer 10 EDA questions","Matplotlib: plot survival rate by class + age histogram"]},{"label":"Week 3","goals":["LeetCode: 10 Easy in Python — Two Sum, Valid Parentheses, Reverse Linked List, etc.","Comprehensions: rewrite 5 for-loops as list/dict comprehensions","Generators: implement infinite Fibonacci using yield"]},{"label":"Week 4","goals":["Full EDA notebook: Kaggle Housing dataset — 10 visualisations + 5 findings","Scikit-learn: fit Linear Regression, evaluate with cross_val_score","LeetCode milestone: 30 Easy total — all passed in Python"]}]',
+ '[{"title":"Python OOP","problems":["Implement a Stack class with push, pop, peek, is_empty using a list internally","Build a LRU Cache class using OrderedDict — get and put in O(1)","Create a Vector class with __add__, __mul__ (dot product), __len__, __repr__","Implement a simple CSV reader/writer class with context manager support (__enter__/__exit__)","Write a decorator @retry(n) that retries a function up to n times on exception"]},{"title":"NumPy & Pandas","problems":["Implement k-Means clustering from scratch using only NumPy (no sklearn)","Given a DataFrame of sales data: compute MoM growth %, rolling 7-day avg, flag outliers > 2σ","Merge two DataFrames on fuzzy date match (within 3 days) without any join library","Vectorise a nested Python for-loop that computes pairwise cosine similarity — achieve 50× speedup","Load a 1GB CSV in chunks using Pandas, filter rows, aggregate, write result without loading full file"]}]'),
+
 (2, 1, 'DSA for Interviews', 'Weeks 3–18 (daily)', '#185FA5', 'rgba(24,95,165,0.13)', '#6aaee8',
- '100 LC problems · 1 mock interview session',
- '[{"label":"NeetCode 150","url":"https://neetcode.io"},{"label":"Striver SDE Sheet","url":"https://takeuforward.org/interviews/strivers-sde-sheet-top-coding-interview-problems"},{"label":"LeetCode","url":"https://leetcode.com"},{"label":"AlgoExpert","url":"https://www.algoexpert.io"}]',
- '[{"label":"Core Data Structures","topics":["Arrays, strings, sliding window","Hashmaps, sets — O(1) lookups","Linked lists — fast/slow pointer","Stacks, queues, monotonic stack","Trees, BST, traversals (BFS/DFS)","Heaps & priority queues","Tries & Union-Find"]},{"label":"Algorithms","topics":["Two pointers & binary search","Recursion & backtracking","Dynamic programming (1D → 2D)","Graphs — Dijkstra, BFS, DFS","Greedy algorithms","Sorting internals (merge, quick)","Time/space complexity analysis"]}]',
- '[{"label":"Weeks 3–4","goals":["Arrays & strings: 15 LC Easy/Medium","Sliding window pattern — 5 problems","Two pointers — 5 problems"]},{"label":"Weeks 5–6","goals":["Hashmaps & sets — 10 problems","Linked list + fast/slow pointer — 8 problems","Stack & queue — 8 problems"]},{"label":"Weeks 7–8","goals":["Trees & BST — 10 problems (BFS + DFS)","Binary search — 8 problems","Heaps — 5 problems"]},{"label":"Weeks 9–10","goals":["Recursion & backtracking — 8 problems","1D DP — 8 problems (Fibonacci, coin change)","Graphs BFS/DFS — 8 problems"]},{"label":"Weeks 11–12","goals":["2D DP — 6 problems (knapsack, LCS)","Greedy — 6 problems","Tries & Union-Find — 5 problems"]},{"label":"Weeks 13–18","goals":["Mixed mock sessions: 2 problems in 45 min","Dijkstra & advanced graph problems","Review & optimize weak areas","Full mock interview on Pramp every 2 weeks"]}]',
+ '100 LC problems solved · 1 mock interview session completed',
+ '[{"label":"NeetCode 150","url":"https://neetcode.io/practice"},{"label":"Striver SDE Sheet","url":"https://takeuforward.org/interviews/strivers-sde-sheet-top-coding-interview-problems"},{"label":"LeetCode","url":"https://leetcode.com"},{"label":"AlgoExpert","url":"https://www.algoexpert.io"}]',
+ '[{"label":"Core Data Structures","topics":["Arrays & strings — two pointers, sliding window","Hashmaps & sets — frequency count, anagram patterns","Linked lists — reverse, detect cycle, merge sorted","Stacks & queues — monotonic stack, BFS queue","Trees & BST — inorder, preorder, DFS, BFS","Heaps — min/max heap, top-K problems","Graphs — adjacency list, BFS, DFS, topological sort"]},{"label":"Algorithms","topics":["Binary search — on sorted array + on answer space","Recursion & backtracking — subsets, permutations","Dynamic programming — memoisation, tabulation, 1D/2D DP","Greedy — interval scheduling, activity selection","Divide and conquer — merge sort, quick select","Graph algorithms — Dijkstra, Union-Find, Kahn topological","Bit manipulation — XOR tricks, power of 2 checks"]}]',
+ '[{"label":"Weeks 1–2","goals":["Arrays & strings: 15 LC Easy/Medium","Sliding window pattern — 5 problems","Two pointers — 5 problems"]},{"label":"Weeks 3–4","goals":["Hashmaps & sets — 10 problems","Linked list + fast/slow pointer — 8 problems","Stack & queue — 8 problems"]},{"label":"Weeks 5–6","goals":["Trees & BST — 10 problems (BFS + DFS)","Binary search — 8 problems","Heaps — 5 problems"]},{"label":"Weeks 7–8","goals":["Recursion & backtracking — 8 problems","1D DP — 8 problems (Fibonacci, coin change)","Graphs BFS/DFS — 8 problems"]},{"label":"Weeks 9–10","goals":["2D DP — 6 problems (knapsack, LCS)","Greedy — 6 problems","Tries & Union-Find — 5 problems"]},{"label":"Weeks 11–18","goals":["Mixed mock sessions: 2 problems in 45 min","Dijkstra & advanced graph problems","Review & optimise weak areas","Full mock interview on Pramp every 2 weeks"]}]',
  '[{"title":"Must-Solve Problems (NeetCode 150)","problems":["Two Sum, Best Time to Buy/Sell Stock, Contains Duplicate","Valid Anagram, Group Anagrams, Top K Frequent Elements","Reverse Linked List, Merge Two Sorted Lists, LRU Cache","Invert Binary Tree, Maximum Depth, Lowest Common Ancestor","Climbing Stairs, House Robber, Coin Change, Longest Increasing Subsequence"]},{"title":"Graph & Advanced","problems":["Number of Islands (BFS/DFS), Clone Graph, Pacific Atlantic Water Flow","Course Schedule I & II (topological sort)","Word Search (backtracking), N-Queens (backtracking)","Merge K Sorted Lists (heap), Find Median from Data Stream","Alien Dictionary (topological sort + graph)"]}]'),
+
 (3, 2, 'Core ML', 'Weeks 5–12', '#0F6E56', 'rgba(15,110,86,0.13)', '#4ecfa0',
  '3 Kaggle notebooks published',
  '[{"label":"Andrew Ng Coursera","url":"https://www.coursera.org/specializations/machine-learning-introduction"},{"label":"scikit-learn docs","url":"https://scikit-learn.org/stable/"},{"label":"Kaggle Learn ML","url":"https://www.kaggle.com/learn"},{"label":"Hands-On ML (Géron)","url":"https://www.oreilly.com/library/view/hands-on-machine-learning/9781492032632/"}]',
  '[{"label":"Supervised Learning","topics":["Linear & Logistic Regression from scratch","Decision Trees, Random Forest, XGBoost","SVM & KNN","Cross-validation & hyperparameter tuning","Imbalanced classes — SMOTE, class weights","Feature engineering & selection"]},{"label":"Unsupervised + Evaluation","topics":["K-Means, DBSCAN, hierarchical clustering","PCA & dimensionality reduction","Metrics — accuracy, F1, AUC-ROC, RMSE","Confusion matrix & classification report","Bias-variance tradeoff","Model interpretability — SHAP, LIME"]}]',
  '[{"label":"Week 5","goals":["Linear regression from scratch (numpy only)","Implement gradient descent manually","Andrew Ng Week 1–2"]},{"label":"Week 6","goals":["Logistic regression + sigmoid + cross-entropy","sklearn: fit, predict, score pipeline","Andrew Ng Week 3"]},{"label":"Week 7","goals":["Decision Trees + Random Forest on Titanic dataset","Cross-validation: k-fold, stratified","Feature importance analysis"]},{"label":"Week 8","goals":["XGBoost: hyperparameter tuning with GridSearchCV","SMOTE for imbalanced dataset (fraud detection)","Kaggle notebook #1 published"]},{"label":"Week 9","goals":["K-Means clustering: customer segmentation project","PCA: visualize high-dim data in 2D","Silhouette score, elbow method"]},{"label":"Week 10","goals":["SHAP values: explain a Random Forest model","AUC-ROC, precision-recall curves","Kaggle notebook #2 published"]},{"label":"Week 11","goals":["Full pipeline: EDA → feature eng → model → eval","SVM: kernel trick, support vectors concept","Bias-variance: overfit vs underfit examples"]},{"label":"Week 12","goals":["End-to-end ML project: house price prediction","Kaggle notebook #3 published","Core ML interview prep (top 50 questions)"]}]',
  '[{"title":"Implement from Scratch","problems":["Linear regression with gradient descent — no sklearn","Logistic regression with sigmoid, binary cross-entropy loss","Decision tree: implement Gini impurity split from scratch","K-Means: implement Lloyds algorithm with random initialization","PCA: compute using SVD on a real dataset"]},{"title":"Kaggle Competitions","problems":["Titanic — classification baseline with Random Forest","House Prices — regression with XGBoost + feature engineering","Chest X-Ray (Pneumonia) — image classification starter","SMS Spam — NLP text classification with TF-IDF + LogReg","Tabular Playground — feature engineering + ensemble methods"]}]'),
+
 (4, 3, 'Deep Learning', 'Weeks 13–20', '#993C1D', 'rgba(153,60,29,0.13)', '#e8895a',
  'End-to-end DL project on GitHub',
  '[{"label":"fast.ai","url":"https://course.fast.ai"},{"label":"PyTorch docs","url":"https://pytorch.org/docs/stable/index.html"},{"label":"d2l.ai","url":"https://d2l.ai"},{"label":"Deep Learning Specialization","url":"https://www.coursera.org/specializations/deep-learning"}]',
  '[{"label":"Neural Networks","topics":["Forward & backpropagation from scratch","PyTorch tensors, autograd, nn.Module","CNNs — conv, pooling, BatchNorm","Transfer learning — ResNet, EfficientNet","RNNs, LSTMs, GRUs"]},{"label":"Modern Architectures","topics":["Transformers & self-attention (theory)","HuggingFace — fine-tune BERT/DistilBERT","GPT-style generation basics","Training tricks — LR scheduling, dropout","GPU usage — CUDA, mixed precision"]}]',
  '[{"label":"Week 13","goals":["Backpropagation from scratch (numpy)","PyTorch basics: tensors, autograd, .backward()","Build a 2-layer NN on MNIST"]},{"label":"Week 14","goals":["CNN from scratch on CIFAR-10","BatchNorm, Dropout, weight initialization","fast.ai Lesson 1 & 2"]},{"label":"Week 15","goals":["Transfer learning: fine-tune ResNet18 on custom dataset","Data augmentation pipeline","fast.ai Lesson 3 & 4"]},{"label":"Week 16","goals":["LSTM: sentiment analysis on IMDB dataset","Sequence-to-sequence basics","Vanishing gradient & solutions"]},{"label":"Week 17","goals":["Transformers: implement scaled dot-product attention","HuggingFace: load & fine-tune DistilBERT","Text classification with BERT"]},{"label":"Week 18","goals":["Mixed precision training with torch.cuda.amp","Learning rate scheduling (cosine, OneCycle)","Model checkpointing & early stopping"]},{"label":"Weeks 19–20","goals":["End-to-end DL project: choose domain (NLP/CV/tabular)","Write clean README with results & plots","Push to GitHub — this is a portfolio piece"]}]',
  '[{"title":"PyTorch Exercises","problems":["Implement a 3-layer MLP from scratch (no nn.Sequential) with manual weight updates","Build a custom Dataset and DataLoader for a CSV file","Implement a CNN that achieves >90% on MNIST using only conv + pool + linear layers","Fine-tune a pretrained ResNet18 on a 5-class image dataset of your choice","Build a character-level language model with LSTM (generate text after training)"]},{"title":"HuggingFace & Transformers","problems":["Fine-tune DistilBERT on SST-2 sentiment dataset using Trainer API","Use a pipeline() for zero-shot classification on 5 custom categories","Load a tokenizer, tokenize a batch, inspect token IDs and attention masks","Use a generation model (GPT-2) to complete 5 different prompts","Evaluate a fine-tuned model using F1, precision, recall with datasets library"]}]'),
+
 (5, 4, 'MLOps + System Design', 'Weeks 17–22', '#854F0B', 'rgba(133,79,11,0.13)', '#d4924a',
  'Deploy 1 model as REST API',
  '[{"label":"Made With ML","url":"https://madewithml.com"},{"label":"Chip Huyen MLSys","url":"https://huyenchip.com/ml-interviews-book/"},{"label":"FastAPI docs","url":"https://fastapi.tiangolo.com"},{"label":"Docker docs","url":"https://docs.docker.com"}]',
  '[{"label":"MLOps Essentials","topics":["MLflow — experiment tracking","Docker basics — containerize model","FastAPI — build & deploy model API","CI/CD with GitHub Actions","Cloud basics — AWS SageMaker or GCP Vertex"]},{"label":"ML System Design","topics":["Recommendation systems design","Search ranking architecture","Feature stores & data pipelines","A/B testing & model monitoring","Scaling inference — batching, caching","Design interview framework (case study)"]}]',
  '[{"label":"Week 17","goals":["MLflow: log experiments, metrics, artifacts for a sklearn model","Understand run comparison and model registry"]},{"label":"Week 18","goals":["Docker: write Dockerfile, build image, run container","Containerize a trained model + inference script"]},{"label":"Week 19","goals":["FastAPI: build /predict endpoint for a model","Add input validation with Pydantic","Test with Postman or curl"]},{"label":"Week 20","goals":["GitHub Actions: CI pipeline that runs tests on push","Deploy Dockerized FastAPI to Render or Railway (free tier)"]},{"label":"Week 21","goals":["ML System Design: study recommendation system design","Read Chip Huyen Chapter 1–3","Practice: design a YouTube recommendation system (whiteboard)"]},{"label":"Week 22","goals":["A/B testing: how to compare model A vs B in production","Feature store concept: what, why, how (Feast intro)","Mock ML system design interview (45 min)"]}]',
  '[{"title":"MLOps Hands-On","problems":["Train a classifier, log all params/metrics to MLflow, compare 3 runs","Write a Dockerfile for a FastAPI app that loads a .pkl model and serves /predict","Build a GitHub Actions workflow: lint → test → build Docker image on PR","Create a FastAPI app with /health, /predict, and /metrics endpoints","Deploy a model API to a free cloud service and share the live URL"]},{"title":"System Design Scenarios","problems":["Design a real-time fraud detection system (latency < 50ms)","Design Netflix movie recommendations for 100M users","Design a document search engine with semantic similarity","Design a model monitoring system that detects data drift","Design the ML pipeline for Googles ad click-through rate prediction"]}]'),
+
 (6, 5, 'Portfolio + Interviews', 'Weeks 20–26', '#993556', 'rgba(153,53,86,0.13)', '#e07fa0',
  '3 portfolio projects · Resume + LinkedIn optimized',
  '[{"label":"GitHub","url":"https://github.com"},{"label":"Interview Kickstart","url":"https://www.interviewkickstart.com"},{"label":"Pramp","url":"https://www.pramp.com"},{"label":"Glassdoor","url":"https://www.glassdoor.com"}]',
@@ -156,4 +145,73 @@ VALUES
  '[{"title":"ML Interview Q&A","problems":["Explain bias-variance tradeoff with a concrete example","How does XGBoost differ from Random Forest? When do you prefer each?","Walk through how you would handle a severely imbalanced dataset (1:100 ratio)","What is the vanishing gradient problem and how do ResNets solve it?","How would you detect and handle data drift in a production model?"]},{"title":"Behavioral (STAR format)","problems":["Tell me about a time you owned a project end-to-end with ambiguous requirements","Describe a situation where your analysis/model was wrong — what did you do?","How have you explained a complex technical concept to a non-technical stakeholder?","Give an example of a time you disagreed with a team decision — what happened?","What is the most impactful thing you have built? Walk me through the outcome."]}]')
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval('learning_phases_id_seq', 10);
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 5: Update Phase 5 — expand to full MLOps + ML System Design
+-- (Chip Huyen full book, 10 case studies, Netflix/Uber/Airbnb, 45-min mock)
+-- ───────────────────────────────────────────────────────────────────────
+UPDATE learning_phases SET
+  title       = 'MLOps + ML System Design',
+  duration    = 'Weeks 17–24',
+  milestone   = 'Deploy 1 model as REST API · Record a 45-min ML system design mock',
+  resources   = '[{"label":"Made With ML","url":"https://madewithml.com"},{"label":"Chip Huyen — Designing ML Systems","url":"https://www.oreilly.com/library/view/designing-machine-learning/9781098107956/"},{"label":"FastAPI docs","url":"https://fastapi.tiangolo.com"},{"label":"Docker docs","url":"https://docs.docker.com"},{"label":"Netflix Tech Blog","url":"https://netflixtechblog.com"},{"label":"Uber Engineering","url":"https://www.uber.com/en-IN/blog/engineering/"},{"label":"Airbnb Engineering","url":"https://medium.com/airbnb-engineering"}]',
+  tracks      = '[{"label":"MLOps Essentials","topics":["MLflow — experiment tracking, model registry","Docker basics — containerize model","FastAPI — build & deploy model API","CI/CD with GitHub Actions","AWS SageMaker or GCP Vertex AI — end-to-end deployment","Model versioning and rollback strategies","Feature stores — what, why, how (Feast)","A/B testing and model monitoring in production"]},{"label":"ML System Design — Core Concepts","topics":["Training pipeline: data collection → preprocessing → training → serving","Online vs offline evaluation — metrics that matter","Handling data drift and concept drift in production","Designing for scale: low-latency inference, batching, caching","Feature store architecture — real-time vs batch features","Model serving patterns — shadow mode, canary, blue-green","Distributed training basics — data parallelism, model parallelism","Design interview framework — requirements → high-level → deep dive"]},{"label":"ML System Design — Case Studies","topics":["YouTube/Netflix recommendation system — two-tower model, ANN retrieval","Google/Uber ride pricing — real-time features, feedback loops","Instagram feed ranking — multi-stage ranking pipeline","Gmail spam detection — online learning, concept drift","Fraud detection system — latency constraints, imbalanced data","Airbnb search ranking — learning to rank, position bias","Twitter/X timeline — candidate generation, ranking, real-time serving","Ad click-through rate prediction — large sparse features, embedding tables"]}]',
+  weeks       = '[{"label":"Week 17","goals":["MLflow: log experiments, metrics, artifacts for a sklearn model","Understand run comparison and model registry","Docker: write Dockerfile, build image, run container"]},{"label":"Week 18","goals":["FastAPI: build /predict endpoint for a model","Add input validation with Pydantic","Build GitHub Actions CI pipeline that runs tests on push"]},{"label":"Week 19","goals":["Deploy Dockerized FastAPI to Render or Railway (free tier)","AWS/GCP: set up account, understand IAM, S3/GCS basics","Feature store concept: implement a simple version with Redis or dict"]},{"label":"Week 20","goals":["Chip Huyen Chapter 1–4: ML system lifecycle, data engineering","Chip Huyen Chapter 5–7: feature engineering, training, evaluation","Netflix Tech Blog: read 2 ML engineering case studies"]},{"label":"Week 21","goals":["ML System Design: YouTube recommendation — write full design doc","ML System Design: Fraud detection — write full design doc","Uber Engineering: read surge pricing / demand forecasting post"]},{"label":"Week 22","goals":["ML System Design: Instagram feed ranking — write full design doc","ML System Design: Gmail spam detection — write full design doc","Airbnb Engineering: read search ranking ML post"]},{"label":"Week 23","goals":["ML System Design: Ad CTR prediction — write full design doc","ML System Design: Twitter timeline — write full design doc","Chip Huyen Chapter 8–11: deployment, monitoring, infrastructure"]},{"label":"Week 24","goals":["Record a 45-min mock ML system design interview (YouTube recommendation or Ad CTR)","Review recording: identify gaps, time management issues","Full mock with a peer or self-review: do all 10 system designs from memory outline"]}]',
+  practice    = '[{"title":"MLOps Hands-On","problems":["Train a classifier, log all params/metrics to MLflow, compare 3 runs","Write a Dockerfile for a FastAPI app that loads a .pkl model and serves /predict","Build a GitHub Actions workflow: lint → test → build Docker image on PR","Deploy a model API to a free cloud service (Render/Railway) and share the live URL","Implement a simple feature store: precompute user features daily, serve in <5ms at inference"]},{"title":"ML System Design — 10 Must-Do Designs","problems":["Design YouTube/Netflix video recommendations (100M users, real-time personalization)","Design a fraud detection system (latency < 50ms, 1:1000 class imbalance)","Design Instagram/TikTok feed ranking (multi-stage: retrieval → ranking → re-ranking)","Design Google/Bing ad click-through rate prediction (sparse features, embedding tables)","Design a real-time ride pricing system like Uber Surge (demand forecasting + feedback loop)","Design a document search engine with semantic similarity (dense retrieval, ANN index)","Design Gmail spam detection (online learning, concept drift, low false positive rate)","Design a model monitoring system that detects data drift and triggers retraining","Design Airbnb search ranking (learning to rank, A/B testing, position bias correction)","Design Twitter/X timeline (candidate generation, diversity, real-time serving)"]}]'
+WHERE id = 5;
+
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 6: Phase 7 — SQL + Data Engineering
+-- ───────────────────────────────────────────────────────────────────────
+INSERT INTO learning_phases (id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice)
+VALUES
+(7, 6, 'SQL + Data Engineering', 'Weeks 5–8 (parallel)', '#1D6B8C', 'rgba(29,107,140,0.13)', '#56c3e8',
+ 'Solve 30 SQL Medium on DataLemur',
+ '[{"label":"DataLemur","url":"https://datalemur.com"},{"label":"StrataScratch","url":"https://platform.stratascratch.com"},{"label":"Mode SQL Tutorial","url":"https://mode.com/sql-tutorial"},{"label":"BigQuery Sandbox","url":"https://cloud.google.com/bigquery/docs/sandbox"},{"label":"PySpark Docs","url":"https://spark.apache.org/docs/latest/api/python"}]',
+ '[{"label":"Core SQL","topics":["SELECT, WHERE, GROUP BY, ORDER BY, HAVING — drill 20 problems","JOINs — INNER, LEFT, RIGHT, FULL OUTER, SELF JOIN","Subqueries and correlated subqueries","CTEs — WITH clause, recursive CTEs","Window functions — ROW_NUMBER, RANK, DENSE_RANK, NTILE","LAG, LEAD, FIRST_VALUE, LAST_VALUE","PARTITION BY + ORDER BY patterns","Date/time functions — DATEDIFF, DATE_TRUNC, EXTRACT"]},{"label":"Data Engineering Concepts","topics":["Data warehouse concepts — star schema, snowflake schema","Fact vs dimension tables — design patterns","ETL vs ELT pipelines — when to use each","Query optimization — EXPLAIN, indexes, partitioning","BigQuery basics — dataset, table, query cost","PySpark — RDDs vs DataFrames, transformations vs actions","Spark SQL — read/write Parquet, CSV, JSON","dbt basics — models, tests, sources (optional)"]},{"label":"Interview SQL Patterns","topics":["Consecutive days / streaks — window function pattern","Running totals and cumulative sums","Median, percentile, mode calculations","Pivoting rows to columns (CASE WHEN + GROUP BY)","Finding duplicates, gaps, and islands","Top-N per group pattern","Month-over-month growth calculations","Retention and cohort analysis queries"]}]',
+ '[{"label":"Week 5","goals":["DataLemur: 10 Easy SQL (warm-up)","Core JOINs: write 5 real queries on a dataset","CTE practice: rewrite 3 subqueries as CTEs"]},{"label":"Week 6","goals":["Window functions: ROW_NUMBER, RANK — 8 problems","LAG/LEAD: write MoM revenue growth query","StrataScratch: 10 Medium SQL problems"]},{"label":"Week 7","goals":["BigQuery sandbox: run 3 real queries on public datasets","PySpark: load CSV, filter, groupBy, write to Parquet","DataLemur: 10 more Medium problems"]},{"label":"Week 8","goals":["Full data pipeline: ingest CSV → transform with SQL → aggregate → output","Star schema design: model a retail dataset (fact/dim tables)","Review + DataLemur milestone: 30 Medium total"]}]',
+ '[{"title":"Must-Solve SQL Interview Problems","problems":["User activity streak — find users with 3+ consecutive active days using LAG","Top 3 products per category — ROW_NUMBER + PARTITION BY","Month-over-month revenue growth — LAG with DATE_TRUNC","Median salary per department — PERCENTILE_CONT window function","Customer retention — cohort analysis with DATE_DIFF and GROUP BY","Duplicate email detection with COUNT(*) > 1 and GROUP BY","Running balance: cumulative sum of transactions per user","Pivot monthly sales: CASE WHEN + MAX(CASE) pattern"]},{"title":"Data Engineering Exercises","problems":["Write a PySpark job: read CSV → filter nulls → groupBy → write Parquet","Design a star schema for an e-commerce dataset (orders, products, customers)","Write a BigQuery query on public dataset: top 10 NYC taxi pickup zones by revenue","Build a simple ETL: Python script that extracts from CSV, transforms with Pandas, loads to PostgreSQL","Write an EXPLAIN plan for a slow query and add appropriate index"]}]')
+ON CONFLICT (id) DO NOTHING;
+
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 7: Phase 8 — Statistics + Probability
+-- ───────────────────────────────────────────────────────────────────────
+INSERT INTO learning_phases (id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice)
+VALUES
+(8, 7, 'Statistics + Probability', 'Weeks 7–10 (parallel)', '#5A3B8C', 'rgba(90,59,140,0.13)', '#b088ef',
+ 'Design and analyze a full mock A/B test end to end',
+ '[{"label":"StatQuest (YouTube)","url":"https://www.youtube.com/@statquest"},{"label":"Khan Academy Stats","url":"https://www.khanacademy.org/math/statistics-probability"},{"label":"Seeing Theory","url":"https://seeing-theory.brown.edu"},{"label":"Think Stats (free book)","url":"https://greenteapress.com/wp/think-stats-2e"},{"label":"Naked Statistics","url":"https://www.goodreads.com/book/show/17986418-naked-statistics"}]',
+ '[{"label":"Probability Foundations","topics":["Sample space, events, probability axioms","Conditional probability — P(A|B) = P(A∩B)/P(B)","Bayes theorem — prior, likelihood, posterior","Independence vs mutual exclusivity","Counting: permutations, combinations","Discrete distributions — Binomial, Poisson, Geometric","Continuous distributions — Normal, Uniform, Exponential","Central Limit Theorem — why it matters for ML"]},{"label":"Statistical Inference","topics":["Point estimates vs interval estimates","Confidence intervals — construction and interpretation","Hypothesis testing — null vs alternative hypothesis","Type I error (false positive) and Type II error (false negative)","p-value — what it is and what it is NOT","Statistical power and sample size calculation","t-test, chi-squared test, z-test — when to use which","Bonferroni correction for multiple testing"]},{"label":"A/B Testing & Applied Stats","topics":["A/B test design: control vs treatment, randomization","Minimum detectable effect (MDE) and sample size","Novelty effect and peeking problem","Sequential testing and early stopping","CUPED — variance reduction technique","Multi-armed bandit vs A/B testing tradeoffs","Causal inference basics — confounding, selection bias","Regression to the mean — common interview pitfall"]}]',
+ '[{"label":"Week 7","goals":["Probability basics: 15 problems (Bayes, conditional probability, counting)","Distributions: Normal, Binomial, Poisson — compute by hand + Python","StatQuest: watch Probability Fundamentals playlist"]},{"label":"Week 8","goals":["Hypothesis testing: t-test on a real dataset in Python","Confidence intervals: compute for mean and proportion","StatQuest: p-value, hypothesis testing videos"]},{"label":"Week 9","goals":["Design a mock A/B test: define hypothesis, MDE, sample size, alpha/beta","Simulate the A/B test in Python (scipy.stats)","Chi-squared test: analyze categorical outcomes"]},{"label":"Week 10","goals":["Full mock A/B test analysis: collect simulated data → test → interpret → report","CLT demonstration: simulate sampling distributions in Python","Review: 20 statistics interview questions from Google/Meta style guides"]}]',
+ '[{"title":"Probability Problems (Interview Style)","problems":["You flip a fair coin 10 times. What is P(exactly 6 heads)? (Binomial)","Given P(rain)=0.3, P(umbrella|rain)=0.8, P(umbrella|no rain)=0.1 — find P(rain|umbrella) using Bayes","In a dataset of 1000 users, 50 have condition X. If a test has 90% sensitivity and 95% specificity, what is the PPV?","You roll two dice. What is P(sum > 9 | first die = 4)?","A website has 1000 visitors/day. On average 5 crash. Model this with Poisson. P(0 crashes in a day)?"]},{"title":"A/B Testing Scenarios","problems":["You run an A/B test for 2 weeks. Control CTR = 5%, Treatment CTR = 5.5%, n=10,000 per group. Is this significant? (z-test)","Your A/B test shows p=0.04 but business says the lift is too small to ship. What do you recommend?","Explain the peeking problem: why checking significance daily inflates Type I error","Calculate the minimum sample size needed to detect a 2% lift (from 10% baseline) with 80% power and α=0.05","You have 5 variants to test. Why does running 5 separate A/B tests inflate the false positive rate? How do you fix it?"]}]')
+ON CONFLICT (id) DO NOTHING;
+
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 8: Phase 9 — Cloud (AWS / GCP)
+-- ───────────────────────────────────────────────────────────────────────
+INSERT INTO learning_phases (id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice)
+VALUES
+(9, 8, 'Cloud — AWS / GCP', 'Weeks 19–24 (parallel)', '#0F6E56', 'rgba(15,110,86,0.13)', '#4ecfa0',
+ 'Deploy 1 ML model end-to-end on AWS SageMaker or GCP Vertex AI',
+ '[{"label":"AWS Free Tier","url":"https://aws.amazon.com/free"},{"label":"AWS SageMaker docs","url":"https://docs.aws.amazon.com/sagemaker"},{"label":"GCP Free Tier","url":"https://cloud.google.com/free"},{"label":"GCP Vertex AI docs","url":"https://cloud.google.com/vertex-ai/docs"},{"label":"A Cloud Guru","url":"https://acloudguru.com"},{"label":"AWS ML Specialty","url":"https://aws.amazon.com/certification/certified-machine-learning-specialty"}]',
+ '[{"label":"Cloud Fundamentals","topics":["IaaS vs PaaS vs SaaS — when to use each","Cloud resource hierarchy — accounts, projects, regions, zones","IAM — roles, policies, service accounts, least privilege","VPC basics — subnets, security groups, firewall rules","Object storage — S3 (AWS) or GCS (GCP) — buckets, versioning, lifecycle","Compute — EC2 / Compute Engine — instance types for ML","Serverless — Lambda / Cloud Functions — event-driven inference","Cost management — billing alerts, spot instances, preemptible VMs"]},{"label":"ML on Cloud","topics":["SageMaker / Vertex AI — managed training jobs","Managed notebooks — SageMaker Studio / Vertex Workbench","Model registry — versioning, staging, production","Batch inference vs real-time endpoint deployment","Auto-scaling inference endpoints","Cloud-based feature store — SageMaker Feature Store / Vertex Feature Store","ML Pipelines — SageMaker Pipelines / Vertex Pipelines","Model monitoring — data drift detection, performance alerts"]},{"label":"Data Engineering on Cloud","topics":["Cloud data warehouse — Redshift (AWS) or BigQuery (GCP)","Managed Kafka — MSK (AWS) or Pub/Sub (GCP) — real-time streaming","ETL pipelines — AWS Glue or Dataflow (GCP)","Data lake architecture — S3 + Glue catalog or GCS + Dataplex","Orchestration — MWAA (Managed Airflow AWS) or Cloud Composer","Infrastructure as Code basics — Terraform or CloudFormation","CI/CD for ML — CodePipeline (AWS) or Cloud Build (GCP)","Security for ML — encryption at rest/transit, VPC endpoints"]}]',
+ '[{"label":"Week 19","goals":["Set up AWS Free Tier or GCP Free Tier account","IAM: create roles, attach policies, test least privilege","S3/GCS: create bucket, upload data, set lifecycle policy"]},{"label":"Week 20","goals":["SageMaker or Vertex: run a managed training job on a real dataset","Save model artifact to S3/GCS, register in model registry","Deploy model as real-time endpoint, test with curl/Postman"]},{"label":"Week 21","goals":["Build a SageMaker Pipeline or Vertex Pipeline: data → train → eval → deploy","Add model monitoring: enable data capture, set drift threshold","Write Terraform or CloudFormation for one resource (S3 bucket + Lambda)"]},{"label":"Week 22","goals":["BigQuery or Redshift: run 5 analytical queries on public dataset","Set up streaming pipeline: Pub/Sub → Dataflow → BigQuery (or Kinesis → Lambda → Redshift)","Cloud CI/CD: auto-deploy model on new training run via Cloud Build or CodePipeline"]},{"label":"Week 23","goals":["Cost review: analyze your cloud bill, identify optimisation opportunities","Spot/preemptible instances: retrain model using cost-saving compute","Full end-to-end: raw data in S3/GCS → training → endpoint → monitoring — all automated"]},{"label":"Week 24","goals":["Write README for your cloud ML project — architecture diagram, cost breakdown, results","Study AWS ML Specialty or GCP Professional ML Engineer exam guide (first 3 topics)","Mock: explain your cloud architecture to a non-technical person in 5 minutes"]}]',
+ '[{"title":"Cloud Hands-On Exercises","problems":["Deploy a sklearn model as a real-time SageMaker or Vertex AI endpoint (not just notebook — production endpoint)","Build a SageMaker Pipeline / Vertex Pipeline with 4 stages: data validation → training → evaluation → conditional deployment","Set up data drift monitoring on a deployed endpoint — trigger alert when feature distribution shifts","Write a Lambda / Cloud Function that triggers model retraining when new data lands in S3/GCS","Create a Terraform config that provisions: S3 bucket + IAM role + SageMaker endpoint + CloudWatch alert"]},{"title":"Cloud Architecture Design Questions","problems":["Design a real-time recommendation system using AWS (Kinesis → Lambda → SageMaker endpoint → DynamoDB)","How would you reduce inference cost by 60% for a model getting 10M requests/day? (batching, caching, distillation, spot)","A model in production has degrading accuracy over 3 months — what cloud-native tools detect and fix this automatically?","Design a multi-region ML deployment with failover — how do you handle model consistency across regions?","You have 1TB of new training data weekly — design the automated retraining pipeline on GCP end to end"]}]')
+ON CONFLICT (id) DO NOTHING;
+
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 9: Phase 10 — NLP / LLMs Expanded
+-- ───────────────────────────────────────────────────────────────────────
+INSERT INTO learning_phases (id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice)
+VALUES
+(10, 9, 'NLP / LLMs Expanded', 'Weeks 18–23 (parallel)', '#854F0B', 'rgba(133,79,11,0.13)', '#d4924a',
+ 'Build and deploy a RAG application with a vector database',
+ '[{"label":"HuggingFace docs","url":"https://huggingface.co/docs"},{"label":"LangChain docs","url":"https://python.langchain.com/docs"},{"label":"OpenAI Cookbook","url":"https://cookbook.openai.com"},{"label":"Pinecone Learning Center","url":"https://www.pinecone.io/learn"},{"label":"LMSYS Chatbot Arena","url":"https://lmsys.org"},{"label":"Chip Huyen AI Engineering","url":"https://huyenchip.com/2023/04/11/llm-engineering.html"},{"label":"Papers With Code NLP","url":"https://paperswithcode.com/area/natural-language-processing"}]',
+ '[{"label":"NLP Foundations + Modern Transformers","topics":["Text preprocessing — tokenization, BPE, WordPiece, SentencePiece","Word embeddings — Word2Vec, GloVe, FastText (conceptual)","Attention mechanism — scaled dot-product, multi-head attention","BERT architecture — bidirectional, MLM, NSP pretraining","GPT architecture — autoregressive, causal attention, next token prediction","T5 / BART — encoder-decoder, seq2seq tasks","Sentence Transformers — bi-encoders for semantic similarity","Evaluation metrics — BLEU, ROUGE, BERTScore, Perplexity"]},{"label":"LLM Engineering","topics":["Prompt engineering — zero-shot, few-shot, chain-of-thought, ReAct","LLM fine-tuning — full fine-tune vs parameter-efficient methods","LoRA and QLoRA — low-rank adaptation, quantization basics","Instruction tuning and RLHF — high-level concepts","LLM evaluation — hallucination detection, faithfulness, factuality","Context window management — chunking, summarization, sliding window","LLM serving — vLLM, TGI, batch inference, latency vs throughput","AI safety basics — alignment, red-teaming, guardrails"]},{"label":"RAG + Vector Databases","topics":["RAG architecture — retrieval augmented generation pipeline","Dense retrieval — DPR, bi-encoders, FAISS, approximate nearest neighbour","Vector databases — Pinecone, Weaviate, Chroma, pgvector — when to use each","Embedding models — text-embedding-ada-002, instructor, E5, BGE","Chunking strategies — fixed, semantic, hierarchical, sliding window","Hybrid search — dense + sparse (BM25) retrieval, reranking","Advanced RAG — HyDE, multi-query, self-RAG, corrective RAG","Evaluation of RAG — RAGAS framework, context relevance, answer faithfulness"]}]',
+ '[{"label":"Week 18","goals":["Fine-tune DistilBERT on a custom classification task (not SST-2 — pick healthcare or finance domain)","Implement sentence similarity with sentence-transformers, build a semantic search over 1000 documents","BLEU and ROUGE: compute scores for a text summarization model"]},{"label":"Week 19","goals":["Prompt engineering: implement chain-of-thought on 5 reasoning problems, measure accuracy improvement","Build a simple RAG pipeline: PDF → chunk → embed → store in Chroma → retrieve → generate","LangChain: build a conversational Q&A bot with memory over a document set"]},{"label":"Week 20","goals":["LoRA fine-tuning: fine-tune a small LLM (Mistral 7B or LLaMA 3) on a custom dataset using QLoRA + 4-bit quantization","Evaluate hallucination: run 20 factual questions, measure hallucination rate before and after RAG","Vector database: migrate your RAG from Chroma to Pinecone or Weaviate, compare retrieval speed"]},{"label":"Week 21","goals":["Advanced RAG: implement HyDE (Hypothetical Document Embeddings) and measure retrieval quality improvement","Hybrid search: add BM25 sparse retrieval alongside dense, rerank with cross-encoder","Deploy your RAG app as a FastAPI endpoint — /ask endpoint that accepts question, returns answer + sources"]},{"label":"Week 22","goals":["RAGAS evaluation: run full evaluation suite (context precision, recall, answer faithfulness, answer relevance)","LLM serving: benchmark your model with vLLM vs naive inference — measure throughput improvement","Write a technical blog post or README about your RAG system — architecture, evaluation results, lessons learned"]},{"label":"Week 23","goals":["Full project: end-to-end RAG application deployed on cloud (AWS/GCP) with monitoring, evaluation, and CI/CD","Study 10 NLP interview questions (tokenization, attention, BERT vs GPT, fine-tuning trade-offs)","Mock: explain RAG architecture, trade-offs, and failure modes in 10 minutes to a non-ML audience"]}]',
+ '[{"title":"NLP + LLM Hands-On","problems":["Fine-tune a BERT model on a domain-specific classification task — achieve >85% F1 — deploy as FastAPI endpoint","Build a semantic search engine over 5000 Wikipedia articles using sentence-transformers + FAISS — sub-100ms retrieval","Implement a RAG pipeline from scratch (no LangChain) — PDF ingestion → chunking → embedding → FAISS → GPT generation","QLoRA fine-tune Mistral 7B on a 1000-row instruction dataset — measure perplexity before and after","Evaluate a RAG system with RAGAS: report context precision, recall, answer faithfulness, and answer relevance scores"]},{"title":"LLM System Design","problems":["Design a customer support bot for a bank: 100K daily queries, <2s latency, must cite policy documents, zero hallucination on numbers","Design a code review assistant: ingests PR diffs, retrieves relevant coding standards, generates review comments — handle 500 PRs/day","Design a medical Q&A RAG system: how do you handle hallucination risk on drug dosage questions? What guardrails?","You have a fine-tuned LLM that costs $0.05 per query. Traffic is 10M queries/day. Design a caching + routing strategy to cut cost by 70%","How would you detect and mitigate prompt injection attacks in a production LLM application?"]}]')
+ON CONFLICT (id) DO NOTHING;
+
+-- ───────────────────────────────────────────────────────────────────────
+-- PART 10: Sequence — stay ahead of all 10 phases
+-- ───────────────────────────────────────────────────────────────────────
+SELECT setval('learning_phases_id_seq', 15);

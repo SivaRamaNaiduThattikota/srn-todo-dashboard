@@ -499,7 +499,7 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                 </div>
                 <div>
                   <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Duration</label>
-                  <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. Weeks 1–4" className="w-full rounded-[14px] px-3 py-2.5 text-sm focus:outline-none font-mono" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. ~4 weeks" className="w-full rounded-[14px] px-3 py-2.5 text-sm focus:outline-none font-mono" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
                 </div>
               </div>
               <div>
@@ -655,6 +655,7 @@ export default function LearningPage() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const [openPhase, setOpenPhase]   = useState<number | null>(null);
+  const initialLoadDone = useRef(false); // prevents auto-opening Python on every loadAll() call
   const [tabMap, setTabMap]         = useState<Record<number, "topics" | "weeks" | "practice">>({});
   const [editPhase, setEditPhase]   = useState<Partial<LearningPhase> | null | false>(false);
   const [infoPhase, setInfoPhase]   = useState<LearningPhase | null>(null);
@@ -676,7 +677,11 @@ export default function LearningPage() {
     const wm: WeekMap = {};
     wp.forEach((r: LearningWeekProgress) => { if (r.is_done) wm[weekKey(r.phase_id, r.week_index)] = true; });
     setWeeksMap(wm);
-    if (p.length > 0 && openPhase === null) setOpenPhase(p[0].id);
+    // Only on the very first load — start with everything collapsed, let the user open what they want
+    if (!initialLoadDone.current && p.length > 0) {
+      setOpenPhase(null);
+      initialLoadDone.current = true;
+    }
   }, []); // eslint-disable-line
 
   useEffect(() => { loadAll().finally(() => setLoading(false)); }, [loadAll]);
@@ -702,6 +707,11 @@ export default function LearningPage() {
   }, [weeksMap]);
 
   const handleSavePhase = async (payload: Partial<LearningPhase>) => {
+    // New phase — assign sort_order = max existing + 1 so it always goes to the END of the list
+    if (!payload.id) {
+      const maxOrder = phases.length > 0 ? Math.max(...phases.map((p) => p.sort_order ?? 0)) : 0;
+      payload = { ...payload, sort_order: maxOrder + 1 };
+    }
     await upsertLearningPhase(payload);
     await loadAll();
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: payload.id ? "Phase updated" : "Phase created", type: "success" } }));
