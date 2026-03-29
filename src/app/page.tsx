@@ -33,12 +33,15 @@ const CATEGORY_OPTIONS: { value: TodoCategory; label: string }[] = [
   { value: "general",        label: "General" },
 ];
 const RESOURCE_TYPE_OPTIONS = ["article", "video", "github", "doc", "tool", "course", "other"] as const;
+const TABS = ["basics", "details", "resources"] as const;
+type TabId = typeof TABS[number];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
-function statusColor(s: TodoStatus)  { return STATUS_OPTIONS.find((o) => o.value === s)?.color ?? "#94a3b8"; }
-function statusIcon(s: TodoStatus)   { return STATUS_OPTIONS.find((o) => o.value === s)?.icon  ?? "○"; }
+function statusColor(s: TodoStatus)     { return STATUS_OPTIONS.find((o) => o.value === s)?.color ?? "#94a3b8"; }
+function statusIcon(s: TodoStatus)      { return STATUS_OPTIONS.find((o) => o.value === s)?.icon  ?? "○"; }
+function statusLabel(s: TodoStatus)     { return STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s; }
 function priorityColor(p: TodoPriority) { return PRIORITY_OPTIONS.find((o) => o.value === p)?.color ?? "#94a3b8"; }
 function formatDate(d: string | null) {
   if (!d) return null;
@@ -51,6 +54,7 @@ function formatDate(d: string | null) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ADD / EDIT MODAL  — 3 tabs: Basics · Details · Resources
+// Footer has Back / Next / Add task navigation
 // ─────────────────────────────────────────────────────────────────────────────
 interface ModalProps {
   todo?: Todo | null;
@@ -60,10 +64,11 @@ interface ModalProps {
 
 function TodoModal({ todo, onSave, onClose }: ModalProps) {
   const isEdit = !!todo;
-  const [saving, setSaving]   = useState(false);
-  const [tab, setTab]         = useState<"basics" | "details" | "resources">("basics");
+  const [saving, setSaving]       = useState(false);
+  const [tabIdx, setTabIdx]       = useState(0);           // 0=basics 1=details 2=resources
+  const tab: TabId                = TABS[tabIdx];
 
-  // Basics
+  // ── Basics ──
   const [title, setTitle]             = useState(todo?.title ?? "");
   const [description, setDescription] = useState(todo?.description ?? "");
   const [status, setStatus]           = useState<TodoStatus>(todo?.status ?? "pending");
@@ -71,13 +76,13 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
   const [category, setCategory]       = useState<TodoCategory>(todo?.category ?? "general");
   const [agent, setAgent]             = useState(todo?.assigned_agent ?? "");
 
-  // Details
+  // ── Details ──
   const [dueDate, setDueDate]         = useState(todo?.due_date?.slice(0, 10) ?? "");
   const [startDate, setStartDate]     = useState((todo as any)?.start_date?.slice(0, 10) ?? "");
   const [estimatedMins, setEstimatedMins] = useState(todo?.estimated_mins?.toString() ?? "");
   const [tags, setTags]               = useState(todo?.tags?.join(", ") ?? "");
 
-  // Resources
+  // ── Resources ──
   const [resources, setResources]     = useState<ResourceLink[]>(todo?.resource_links ?? []);
   const [newResTitle, setNewResTitle] = useState("");
   const [newResUrl, setNewResUrl]     = useState("");
@@ -109,11 +114,15 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
     } catch { setSaving(false); }
   };
 
-  const TABS = [
-    { id: "basics",    label: "Basics",    icon: "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 8v4M12 16h.01" },
-    { id: "details",   label: "Details",   icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" },
-    { id: "resources", label: "Resources", icon: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" },
-  ] as const;
+  const isLastTab = tabIdx === TABS.length - 1;
+  const isFirstTab = tabIdx === 0;
+
+  const TAB_LABELS: Record<TabId, string> = { basics: "Basics", details: "Details", resources: "Resources" };
+  const TAB_ICONS: Record<TabId, string>  = {
+    basics:    "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 8v4M12 16h.01",
+    details:   "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
+    resources: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71",
+  };
 
   return (
     <div
@@ -159,44 +168,54 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
           </button>
         </div>
 
-        {/* Tab bar */}
+        {/* Tab bar — clickable tabs */}
         <div className="flex gap-1 px-5 pt-3 pb-1 flex-shrink-0">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+          {TABS.map((t, i) => (
+            <button key={t} onClick={() => setTabIdx(i)}
               className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium rounded-xl transition-all"
               style={{
-                background: tab === t.id ? "var(--accent-muted)" : "transparent",
-                color: tab === t.id ? "var(--accent)" : "var(--text-muted)",
-                border: `0.5px solid ${tab === t.id ? "var(--accent-dim)" : "transparent"}`,
+                background: tab === t ? "var(--accent-muted)" : "transparent",
+                color: tab === t ? "var(--accent)" : "var(--text-muted)",
+                border: `0.5px solid ${tab === t ? "var(--accent-dim)" : "transparent"}`,
               }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d={t.icon}/>
+                <path d={TAB_ICONS[t]}/>
               </svg>
-              {t.label}
+              {TAB_LABELS[t]}
             </button>
           ))}
+          {/* Progress dots */}
+          <div className="flex items-center gap-1 ml-auto">
+            {TABS.map((_, i) => (
+              <div key={i} style={{
+                width: i === tabIdx ? "16px" : "6px",
+                height: "6px",
+                borderRadius: "100px",
+                background: i === tabIdx ? "var(--accent)" : i < tabIdx ? "var(--accent-dim)" : "var(--glass-border)",
+                transition: "all 0.22s ease",
+              }} />
+            ))}
+          </div>
         </div>
 
-        {/* Scrollable body — THIS IS THE KEY FIX for mobile scroll */}
+        {/* ── Scrollable body ── */}
         <div
           className="flex-1 overflow-y-auto px-5 py-3 space-y-4"
           style={{ WebkitOverflowScrolling: "touch", minHeight: 0 }}
         >
-          {/* ── BASICS TAB ── */}
+          {/* ══════════ BASICS TAB ══════════ */}
           {tab === "basics" && (
             <>
-              {/* Title */}
               <input
                 autoFocus
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSave(); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); setTabIdx(1); } }}
                 placeholder="Task title *"
                 className="w-full rounded-[14px] px-4 py-3 text-sm font-mono focus:outline-none"
                 style={{ background: "var(--bg-input)", border: `0.5px solid ${title ? "var(--accent)" : "var(--glass-border)"}`, color: "var(--text-primary)" }}
               />
 
-              {/* Description */}
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -206,7 +225,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}
               />
 
-              {/* Status + Priority row */}
+              {/* Status + Priority side by side */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Status</label>
@@ -214,8 +233,8 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                     {STATUS_OPTIONS.map((s) => (
                       <button key={s.value} onClick={() => setStatus(s.value)}
                         className="w-full flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-[11px] font-mono transition-all text-left"
-                        style={{ background: status === s.value ? `${s.color}18` : "var(--glass-fill)", color: status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${status === s.value ? s.color + "40" : "var(--glass-border)"}` }}>
-                        <span style={{ fontSize: "13px" }}>{s.icon}</span>
+                        style={{ background: status === s.value ? `${s.color}20` : "var(--glass-fill)", color: status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${status === s.value ? s.color + "55" : "var(--glass-border)"}`, fontWeight: status === s.value ? 600 : 400 }}>
+                        <span style={{ fontSize: "14px" }}>{s.icon}</span>
                         <span>{s.label}</span>
                       </button>
                     ))}
@@ -228,7 +247,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                     {PRIORITY_OPTIONS.map((p) => (
                       <button key={p.value} onClick={() => setPriority(p.value)}
                         className="w-full px-2.5 py-2 rounded-[10px] text-[11px] font-mono capitalize transition-all text-left"
-                        style={{ background: priority === p.value ? `${p.color}18` : "var(--glass-fill)", color: priority === p.value ? p.color : "var(--text-muted)", border: `0.5px solid ${priority === p.value ? p.color + "40" : "var(--glass-border)"}` }}>
+                        style={{ background: priority === p.value ? `${p.color}20` : "var(--glass-fill)", color: priority === p.value ? p.color : "var(--text-muted)", border: `0.5px solid ${priority === p.value ? p.color + "55" : "var(--glass-border)"}`, fontWeight: priority === p.value ? 600 : 400 }}>
                         {p.label}
                       </button>
                     ))}
@@ -243,7 +262,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                   {CATEGORY_OPTIONS.map((c) => (
                     <button key={c.value} onClick={() => setCategory(c.value)}
                       className="px-3 py-1.5 rounded-[10px] text-[11px] font-mono transition-all"
-                      style={{ background: category === c.value ? "var(--accent-muted)" : "var(--glass-fill)", color: category === c.value ? "var(--accent)" : "var(--text-muted)", border: `0.5px solid ${category === c.value ? "var(--accent-dim)" : "var(--glass-border)"}` }}>
+                      style={{ background: category === c.value ? "var(--accent-muted)" : "var(--glass-fill)", color: category === c.value ? "var(--accent)" : "var(--text-muted)", border: `0.5px solid ${category === c.value ? "var(--accent-dim)" : "var(--glass-border)"}`, fontWeight: category === c.value ? 600 : 400 }}>
                       {c.label}
                     </button>
                   ))}
@@ -261,7 +280,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
             </>
           )}
 
-          {/* ── DETAILS TAB ── */}
+          {/* ══════════ DETAILS TAB ══════════ */}
           {tab === "details" && (
             <>
               <div className="grid grid-cols-2 gap-3">
@@ -293,14 +312,23 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                   placeholder="python, ml, urgent (comma-separated)"
                   className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
                   style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                {tags && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                      <span key={t} className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                        style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
 
-          {/* ── RESOURCES TAB ── */}
+          {/* ══════════ RESOURCES TAB ══════════ */}
           {tab === "resources" && (
             <>
-              {/* Existing resources */}
               {resources.length > 0 && (
                 <div className="space-y-1.5">
                   {resources.map((r, i) => (
@@ -324,7 +352,6 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 </div>
               )}
 
-              {/* Add new resource */}
               <div className="rounded-[16px] p-3 space-y-2.5"
                 style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
                 <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
@@ -354,35 +381,65 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
               </div>
 
               {resources.length === 0 && (
-                <div className="text-center py-6">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                    className="mx-auto mb-2" style={{ color: "var(--text-muted)" }}>
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                  </svg>
+                <div className="text-center py-4">
                   <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>No resources yet</p>
                   <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)", opacity: 0.7 }}>Add articles, videos, GitHub links…</p>
                 </div>
               )}
             </>
           )}
-
-          {/* Bottom padding so content clears the footer */}
           <div style={{ height: "4px" }} />
         </div>
 
-        {/* Footer — always pinned */}
-        <div className="flex gap-2 px-5 py-4 flex-shrink-0"
+        {/* ── Footer: Back / Next / Add task ── */}
+        <div className="px-5 py-4 flex-shrink-0"
           style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
-          <button onClick={handleSave} disabled={!title.trim() || saving}
-            className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all"
-            style={{ background: "var(--accent)", color: "#0a0a0b" }}>
-            {saving ? "Saving…" : isEdit ? "Save changes" : "Add task"}
-          </button>
-          <button onClick={onClose} className="px-5 py-3 text-xs rounded-[16px]"
-            style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
-            Cancel
-          </button>
+
+          {/* On last tab — show Back + Add task */}
+          {isLastTab ? (
+            <div className="flex gap-2">
+              <button onClick={() => setTabIdx(tabIdx - 1)}
+                className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all"
+                style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)", background: "var(--glass-fill)" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+                Back
+              </button>
+              <button onClick={handleSave} disabled={!title.trim() || saving}
+                className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all"
+                style={{ background: "var(--accent)", color: "#0a0a0b" }}>
+                {saving ? "Saving…" : isEdit ? "Save changes" : "Add task"}
+              </button>
+            </div>
+          ) : (
+            /* On first / middle tabs — show Back (disabled on first) + Next */
+            <div className="flex gap-2">
+              {!isFirstTab ? (
+                <button onClick={() => setTabIdx(tabIdx - 1)}
+                  className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all"
+                  style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)", background: "var(--glass-fill)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M15 18l-6-6 6-6"/>
+                  </svg>
+                  Back
+                </button>
+              ) : (
+                <button onClick={onClose} className="px-4 py-3 text-xs rounded-[16px] flex-shrink-0"
+                  style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                  Cancel
+                </button>
+              )}
+              <button onClick={() => setTabIdx(tabIdx + 1)} disabled={tab === "basics" && !title.trim()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all"
+                style={{ background: "var(--accent)", color: "#0a0a0b" }}>
+                Next — {TABS[tabIdx + 1] ? TAB_LABELS[TABS[tabIdx + 1]] : ""}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -406,9 +463,7 @@ export default function TasksPage() {
   const [templates, setTemplates]         = useState<TaskTemplate[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  useEffect(() => {
-    fetchTemplates().then(setTemplates).catch(() => {});
-  }, []);
+  useEffect(() => { fetchTemplates().then(setTemplates).catch(() => {}); }, []);
 
   const filtered = todos.filter((t) => {
     if (filterStatus   && t.status   !== filterStatus)   return false;
@@ -431,9 +486,7 @@ export default function TasksPage() {
     setEditTodo(null);
   }, [editTodo]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    await deleteTodo(id);
-  }, []);
+  const handleDelete = useCallback(async (id: string) => { await deleteTodo(id); }, []);
 
   const handleStatusCycle = useCallback(async (t: Todo) => {
     const order: TodoStatus[] = ["pending", "in_progress", "done", "blocked"];
@@ -487,29 +540,24 @@ export default function TasksPage() {
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Tasks</h1>
             <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {done}/{total} done
-              {overdue > 0 && <span style={{ color: "#f87171" }}> · {overdue} overdue</span>}
+              {done}/{total} done{overdue > 0 && <span style={{ color: "#f87171" }}> · {overdue} overdue</span>}
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
-            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs"
-              style={{ color: "var(--cc-text-muted)" }} title="Templates">
+            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs" style={{ color: "var(--cc-text-muted)" }} title="Templates">
               <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
             </button>
-            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
-              style={{ color: "var(--cc-text-muted)" }}>
+            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
               <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
             </button>
-            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
-              style={{ color: "var(--cc-text-muted)" }}>
+            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
               <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
             </button>
             <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs"
               style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
               <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
             </button>
-            <button onClick={() => { setEditTodo(null); setShowModal(true); }}
-              className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs">
+            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs">
               <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
             </button>
           </div>
@@ -521,12 +569,10 @@ export default function TasksPage() {
             className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-muted)" }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
-          <input
-            value={search} onChange={(e) => setSearch(e.target.value)}
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tasks, tags…"
             className="w-full rounded-[14px] pl-9 pr-4 py-2.5 text-xs font-mono focus:outline-none"
-            style={{ background: "var(--bg-input)", border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`, color: "var(--text-primary)" }}
-          />
+            style={{ background: "var(--bg-input)", border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`, color: "var(--text-primary)" }} />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2"
               style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>
@@ -625,8 +671,7 @@ export default function TasksPage() {
             {todos.length === 0 ? "Add your first task to get started." : "Try clearing your search or filters."}
           </p>
           {todos.length === 0 && (
-            <button onClick={() => { setEditTodo(null); setShowModal(true); }}
-              className="cc-btn cc-btn-accent px-4 py-2 text-xs">
+            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-4 py-2 text-xs">
               <span style={{ position: "relative", zIndex: 3 }}>+ Add first task</span>
             </button>
           )}
@@ -637,6 +682,8 @@ export default function TasksPage() {
             const isExpanded = expandedId === todo.id;
             const isSelected = selectedIds.has(todo.id);
             const due = formatDate(todo.due_date);
+            const sc  = STATUS_OPTIONS.find((s) => s.value === todo.status)!;
+
             return (
               <div key={todo.id}
                 className="liquid-glass rounded-[20px] overflow-hidden animate-fade-in-up"
@@ -646,6 +693,8 @@ export default function TasksPage() {
                 <div style={{ height: "2px", background: `linear-gradient(90deg, ${priorityColor(todo.priority)}, transparent)` }} />
 
                 <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3">
+
+                  {/* Bulk checkbox */}
                   {bulkMode && (
                     <button onClick={() => toggleSelect(todo.id)}
                       className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all"
@@ -654,15 +703,17 @@ export default function TasksPage() {
                     </button>
                   )}
 
+                  {/* Left: Status cycle icon */}
                   <button onClick={() => handleStatusCycle(todo)}
                     className="flex-shrink-0 text-base leading-none transition-all"
-                    style={{ color: statusColor(todo.status), width: "22px", textAlign: "center" }}
-                    title={`Status: ${todo.status} — click to advance`}>
-                    {statusIcon(todo.status)}
+                    style={{ color: sc.color, width: "22px", textAlign: "center" }}
+                    title={`Status: ${sc.label} — click to advance`}>
+                    {sc.icon}
                   </button>
 
+                  {/* Middle: title + badges */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-sm font-medium"
                         style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>
                         {todo.title}
@@ -697,7 +748,17 @@ export default function TasksPage() {
                     )}
                   </button>
 
+                  {/* Right: Status pill + edit + delete + chevron */}
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* Status pill — clickable to cycle, always visible */}
+                    <button onClick={() => handleStatusCycle(todo)}
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-[8px] text-[10px] font-mono transition-all flex-shrink-0"
+                      style={{ background: `${sc.color}15`, color: sc.color, border: `0.5px solid ${sc.color}35` }}
+                      title="Click to change status">
+                      <span style={{ fontSize: "11px" }}>{sc.icon}</span>
+                      <span>{sc.label}</span>
+                    </button>
+
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
@@ -725,7 +786,7 @@ export default function TasksPage() {
                   </div>
                 </div>
 
-                {/* Expanded */}
+                {/* Expanded details */}
                 {isExpanded && (
                   <div className="px-4 pb-4 space-y-3 animate-fade-in" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
                     {todo.description && (
@@ -734,6 +795,7 @@ export default function TasksPage() {
                       </p>
                     )}
                     <div className="flex flex-wrap gap-3 text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+                      <span>Status: <span style={{ color: sc.color }}>{sc.label}</span></span>
                       <span>Category: <span style={{ color: "var(--text-secondary)" }}>{todo.category}</span></span>
                       <span>Agent: <span style={{ color: "var(--text-secondary)" }}>@{todo.assigned_agent}</span></span>
                       {todo.estimated_mins && <span>Est: <span style={{ color: "var(--text-secondary)" }}>{todo.estimated_mins}m</span></span>}
