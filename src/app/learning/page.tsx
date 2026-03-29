@@ -36,14 +36,243 @@ function weeksDonePct(phases: LearningPhase[], weeks: WeekMap) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EDIT PHASE MODAL
+// PHASE INFO MODAL  (click ⓘ → beautiful card)
 // ─────────────────────────────────────────────────────────────────────────────
-interface EditPhaseModalProps {
-  phase: Partial<LearningPhase> | null;
-  onSave: (p: Partial<LearningPhase>) => Promise<void>;
+function PhaseInfoModal({
+  phase,
+  phaseIndex,
+  pct,
+  weeksDone,
+  totalWeeks,
+  doneTopics,
+  totalTopics,
+  onClose,
+}: {
+  phase: LearningPhase;
+  phaseIndex: number;
+  pct: number;
+  weeksDone: number;
+  totalWeeks: number;
+  doneTopics: number;
+  totalTopics: number;
   onClose: () => void;
+}) {
+  const circumference = 2 * Math.PI * 36;
+  const dashOffset    = circumference - (pct / 100) * circumference;
+
+  return (
+    <div
+      className="fixed inset-0 z-[62] flex items-end sm:items-center justify-center px-0 sm:px-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[26px] flex flex-col animate-slide-up overflow-hidden"
+        style={{
+          background: "var(--cc-glass-base)",
+          border: `0.5px solid ${phase.accent_color}40`,
+          backdropFilter: "blur(56px) saturate(2.4)",
+          boxShadow: `var(--shadow-xl), 0 0 60px ${phase.accent_color}20`,
+          maxHeight: "92dvh",
+        }}
+      >
+        {/* Drag handle (mobile) */}
+        <div className="flex justify-center pt-3 flex-shrink-0 sm:hidden">
+          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.35 }} />
+        </div>
+
+        {/* Accent stripe */}
+        <div style={{ height: "2px", background: `linear-gradient(90deg, ${phase.accent_color}, ${phase.accent_color}00)`, flexShrink: 0 }} />
+
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: phase.bg_color, color: phase.text_color, border: `0.5px solid ${phase.accent_color}30` }}
+                >
+                  Phase {phaseIndex + 1}
+                </span>
+                <span
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}
+                >
+                  {phase.duration}
+                </span>
+                {pct === 100 && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(94,207,149,0.14)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.30)" }}>
+                    ✓ Completed
+                  </span>
+                )}
+              </div>
+              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>{phase.title}</h2>
+            </div>
+
+            {/* Circular progress */}
+            <div className="relative flex-shrink-0 w-[88px] h-[88px] flex items-center justify-center">
+              <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="44" cy="44" r="36" fill="none" stroke={`${phase.accent_color}18`} strokeWidth="6" />
+                <circle
+                  cx="44" cy="44" r="36" fill="none"
+                  stroke={phase.accent_color} strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={dashOffset}
+                  style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-lg font-semibold font-mono leading-none" style={{ color: phase.accent_color }}>{pct}%</span>
+                <span className="text-[9px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>topics</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Milestone */}
+          <div
+            className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-[14px]"
+            style={{ background: phase.bg_color, border: `0.5px solid ${phase.accent_color}25` }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ color: phase.text_color, flexShrink: 0 }}>
+              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+            </svg>
+            <span className="text-[11px] font-medium" style={{ color: phase.text_color }}>Milestone: {phase.milestone}</span>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex gap-2 px-5 mb-4 flex-shrink-0">
+          {[
+            { label: "Topics", val: `${doneTopics}/${totalTopics}`, sub: `${pct}% done`, color: phase.accent_color },
+            { label: "Weeks", val: `${weeksDone}/${totalWeeks}`, sub: `${totalWeeks === 0 ? 0 : Math.round((weeksDone / totalWeeks) * 100)}% done`, color: "#5ecf95" },
+            { label: "Tracks", val: `${phase.tracks.length}`, sub: "learning tracks", color: phase.text_color },
+            { label: "Resources", val: `${phase.resources.length}`, sub: "links", color: "#d4924a" },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="flex-1 rounded-[14px] px-3 py-2.5 text-center"
+              style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}
+            >
+              <div className="text-base font-semibold font-mono leading-none" style={{ color: s.color }}>{s.val}</div>
+              <div className="text-[9px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4" style={{ WebkitOverflowScrolling: "touch" }}>
+
+          {/* Topics progress bars per track */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>Topics by track</p>
+            <div className="space-y-2">
+              {phase.tracks.map((track, ti) => {
+                const total = track.topics.length;
+                return (
+                  <div key={ti} className="rounded-[12px] overflow-hidden" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                    <div className="px-3 py-2 flex items-center gap-3">
+                      <span className="text-[11px] font-medium flex-1 truncate" style={{ color: phase.text_color }}>{track.label}</span>
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)" }}>{total} topics</span>
+                    </div>
+                    <div className="mx-3 mb-2 h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
+                      <div style={{ height: "100%", background: phase.accent_color, borderRadius: "100px", width: "100%", opacity: 0.25 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Weeks timeline */}
+          {phase.weeks.length > 0 && (
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>Week-by-week plan</p>
+              <div className="space-y-1.5">
+                {phase.weeks.map((week, wi) => (
+                  <div
+                    key={wi}
+                    className="flex items-start gap-3 px-3 py-2.5 rounded-[12px]"
+                    style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}
+                  >
+                    <div
+                      className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold font-mono mt-0.5"
+                      style={{ background: `${phase.accent_color}18`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}35` }}
+                    >
+                      {wi + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium mb-0.5" style={{ color: "var(--text-secondary)" }}>{week.label}</p>
+                      <div className="space-y-0.5">
+                        {week.goals.map((goal, gi) => (
+                          <p key={gi} className="text-[10px] font-mono" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+                            <span style={{ color: phase.accent_color, marginRight: "5px" }}>›</span>{goal}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Resources */}
+          {phase.resources.length > 0 && (
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2.5" style={{ color: "var(--text-muted)" }}>Resources & links</p>
+              <div className="flex flex-wrap gap-1.5">
+                {phase.resources.map((r) => (
+                  r.url
+                    ? (
+                      <a
+                        key={r.label}
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener"
+                        className="flex items-center gap-1.5 text-[10px] font-mono px-3 py-2 rounded-[11px] transition-all hover:opacity-80"
+                        style={{ background: `${phase.accent_color}15`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}30`, textDecoration: "none" }}
+                      >
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        {r.label}
+                      </a>
+                    ) : (
+                      <span
+                        key={r.label}
+                        className="text-[10px] font-mono px-3 py-2 rounded-[11px]"
+                        style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}
+                      >
+                        {r.label}
+                      </span>
+                    )
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
+          <button
+            onClick={onClose}
+            className="w-full py-3 text-sm font-medium rounded-[16px] transition-all"
+            style={{ background: `${phase.accent_color}18`, color: phase.text_color, border: `0.5px solid ${phase.accent_color}35` }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EDIT PHASE MODAL
+// ─────────────────────────────────────────────────────────────────────────────
 const ACCENT_PRESETS = [
   { accent: "#534AB7", bg: "rgba(83,74,183,0.13)",  text: "#a09aee" },
   { accent: "#185FA5", bg: "rgba(24,95,165,0.13)",  text: "#6aaee8" },
@@ -55,27 +284,28 @@ const ACCENT_PRESETS = [
   { accent: "#5A3B8C", bg: "rgba(90,59,140,0.13)",  text: "#b088ef" },
 ];
 
+interface EditPhaseModalProps {
+  phase: Partial<LearningPhase> | null;
+  onSave: (p: Partial<LearningPhase>) => Promise<void>;
+  onClose: () => void;
+}
+
 function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
   const isNew = !phase?.id;
   const [saving, setSaving] = useState(false);
-
   const [title, setTitle]         = useState(phase?.title ?? "");
   const [duration, setDuration]   = useState(phase?.duration ?? "");
   const [milestone, setMilestone] = useState(phase?.milestone ?? "");
   const [accentColor, setAccentColor] = useState(phase?.accent_color ?? "#534AB7");
   const [bgColor, setBgColor]     = useState(phase?.bg_color ?? "rgba(83,74,183,0.13)");
   const [textColor, setTextColor] = useState(phase?.text_color ?? "#a09aee");
-
   const [resources, setResources]     = useState<LearningResource[]>(phase?.resources ?? []);
   const [newResLabel, setNewResLabel] = useState("");
   const [newResUrl, setNewResUrl]     = useState("");
-
   const [tracks, setTracks]     = useState<LearningTrack[]>(phase?.tracks ?? [{ label: "", topics: [] }]);
   const [weeks, setWeeks]       = useState<LearningWeek[]>(phase?.weeks ?? [{ label: "", goals: [] }]);
   const [practice, setPractice] = useState<LearningPractice[]>(phase?.practice ?? [{ title: "", problems: [] }]);
-
   const applyPreset = (p: typeof ACCENT_PRESETS[0]) => { setAccentColor(p.accent); setBgColor(p.bg); setTextColor(p.text); };
-
   const handleSave = async () => {
     if (!title.trim() || saving) return;
     setSaving(true);
@@ -84,38 +314,31 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
       onClose();
     } catch { setSaving(false); }
   };
-
   const addTrack = () => setTracks((p) => [...p, { label: "", topics: [] }]);
   const removeTrack = (i: number) => setTracks((p) => p.filter((_, idx) => idx !== i));
   const updateTrackLabel = (i: number, v: string) => setTracks((p) => p.map((t, idx) => idx === i ? { ...t, label: v } : t));
   const addTopic = (ti: number, v: string) => { if (!v.trim()) return; setTracks((p) => p.map((t, idx) => idx === ti ? { ...t, topics: [...t.topics, v.trim()] } : t)); };
   const removeTopic = (ti: number, i: number) => setTracks((p) => p.map((t, idx) => idx === ti ? { ...t, topics: t.topics.filter((_, ii) => ii !== i) } : t));
-
   const addWeek = () => setWeeks((p) => [...p, { label: "", goals: [] }]);
   const removeWeek = (i: number) => setWeeks((p) => p.filter((_, idx) => idx !== i));
   const updateWeekLabel = (i: number, v: string) => setWeeks((p) => p.map((w, idx) => idx === i ? { ...w, label: v } : w));
   const addGoal = (wi: number, v: string) => { if (!v.trim()) return; setWeeks((p) => p.map((w, idx) => idx === wi ? { ...w, goals: [...w.goals, v.trim()] } : w)); };
   const removeGoal = (wi: number, gi: number) => setWeeks((p) => p.map((w, idx) => idx === wi ? { ...w, goals: w.goals.filter((_, ii) => ii !== gi) } : w));
-
   const addPracticeSet = () => setPractice((p) => [...p, { title: "", problems: [] }]);
   const removePracticeSet = (i: number) => setPractice((p) => p.filter((_, idx) => idx !== i));
   const updatePracticeTitle = (i: number, v: string) => setPractice((p) => p.map((s, idx) => idx === i ? { ...s, title: v } : s));
   const addProblem = (si: number, v: string) => { if (!v.trim()) return; setPractice((p) => p.map((s, idx) => idx === si ? { ...s, problems: [...s.problems, v.trim()] } : s)); };
   const removeProblem = (si: number, pi: number) => setPractice((p) => p.map((s, idx) => idx === si ? { ...s, problems: s.problems.filter((_, ii) => ii !== pi) } : s));
-
   const [modalTab, setModalTab] = useState<"basic" | "topics" | "weeks" | "practice">("basic");
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full sm:max-w-2xl rounded-t-[28px] sm:rounded-[24px] flex flex-col animate-slide-up"
         style={{ background: "var(--cc-glass-base)", border: "0.5px solid var(--cc-tile-border)", backdropFilter: "blur(48px) saturate(2.2)", boxShadow: "var(--shadow-xl)", maxHeight: "92dvh", overflow: "hidden" }}>
-
         <div className="flex justify-center pt-3 pb-1 sm:hidden flex-shrink-0">
           <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.4 }} />
         </div>
-
         <div className="flex items-center justify-between px-5 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
           <div>
             <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{isNew ? "Add new phase" : `Edit — ${phase?.title}`}</h3>
@@ -124,7 +347,6 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
           <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl"
             style={{ color: "var(--cc-text-muted)", fontSize: "18px", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>×</button>
         </div>
-
         <div className="flex gap-1 px-5 pt-3 flex-shrink-0">
           {(["basic", "topics", "weeks", "practice"] as const).map((t) => (
             <button key={t} onClick={() => setModalTab(t)}
@@ -134,9 +356,7 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
             </button>
           ))}
         </div>
-
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4" style={{ WebkitOverflowScrolling: "touch" }}>
-
           {modalTab === "basic" && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -185,14 +405,13 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <input value={newResLabel} onChange={(e) => setNewResLabel(e.target.value)} placeholder="Label (e.g. NeetCode)" className="flex-1 rounded-[12px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  <input value={newResLabel} onChange={(e) => setNewResLabel(e.target.value)} placeholder="Label" className="flex-1 rounded-[12px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
                   <input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="URL (optional)" className="flex-1 rounded-[12px] px-3 py-2 text-xs font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} onKeyDown={(e) => { if (e.key === "Enter" && newResLabel.trim()) { setResources((p) => [...p, { label: newResLabel.trim(), url: newResUrl.trim() }]); setNewResLabel(""); setNewResUrl(""); } }} />
                   <button onClick={() => { if (!newResLabel.trim()) return; setResources((p) => [...p, { label: newResLabel.trim(), url: newResUrl.trim() }]); setNewResLabel(""); setNewResUrl(""); }} disabled={!newResLabel.trim()} className="px-3 py-2 text-xs font-medium rounded-[12px] flex-shrink-0 disabled:opacity-30" style={{ background: `${accentColor}22`, color: accentColor, border: `0.5px solid ${accentColor}44` }}>+ Add</button>
                 </div>
               </div>
             </>
           )}
-
           {modalTab === "topics" && (
             <div className="space-y-4">
               {tracks.map((track, ti) => (
@@ -216,13 +435,12 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
               <button onClick={addTrack} className="w-full py-2.5 text-xs font-medium rounded-[14px] transition-all" style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add track</button>
             </div>
           )}
-
           {modalTab === "weeks" && (
             <div className="space-y-3">
               {weeks.map((week, wi) => (
                 <div key={wi} className="rounded-[16px] overflow-hidden" style={{ border: "0.5px solid var(--glass-border-subtle)", background: "var(--glass-fill-deep)" }}>
                   <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
-                    <input value={week.label} onChange={(e) => updateWeekLabel(wi, e.target.value)} placeholder="Week label (e.g. Week 1)..." className="flex-1 bg-transparent text-xs font-semibold focus:outline-none" style={{ color: accentColor }} />
+                    <input value={week.label} onChange={(e) => updateWeekLabel(wi, e.target.value)} placeholder="Week label..." className="flex-1 bg-transparent text-xs font-semibold focus:outline-none" style={{ color: accentColor }} />
                     {weeks.length > 1 && <button onClick={() => removeWeek(wi)} style={{ color: "#f87171", fontSize: "14px" }}>×</button>}
                   </div>
                   <div className="px-4 py-2 space-y-1">
@@ -240,13 +458,12 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
               <button onClick={addWeek} className="w-full py-2.5 text-xs font-medium rounded-[14px] transition-all" style={{ background: `${accentColor}12`, color: accentColor, border: `0.5px solid ${accentColor}35` }}>+ Add week</button>
             </div>
           )}
-
           {modalTab === "practice" && (
             <div className="space-y-4">
               {practice.map((set, si) => (
                 <div key={si} className="rounded-[16px] overflow-hidden" style={{ border: "0.5px solid var(--glass-border-subtle)", background: "var(--glass-fill-deep)" }}>
                   <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
-                    <input value={set.title} onChange={(e) => updatePracticeTitle(si, e.target.value)} placeholder="Set name (e.g. Python OOP)..." className="flex-1 bg-transparent text-xs font-semibold focus:outline-none" style={{ color: accentColor }} />
+                    <input value={set.title} onChange={(e) => updatePracticeTitle(si, e.target.value)} placeholder="Set name..." className="flex-1 bg-transparent text-xs font-semibold focus:outline-none" style={{ color: accentColor }} />
                     {practice.length > 1 && <button onClick={() => removePracticeSet(si)} style={{ color: "#f87171", fontSize: "14px" }}>×</button>}
                   </div>
                   <div className="px-4 py-2 space-y-1">
@@ -265,7 +482,6 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
             </div>
           )}
         </div>
-
         <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
           <button onClick={handleSave} disabled={!title.trim() || saving} className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all" style={{ background: accentColor, color: "#fff" }}>
             {saving ? "Saving…" : isNew ? "Create phase" : "Save changes"}
@@ -294,17 +510,17 @@ function InlineAdder({ placeholder, accentColor, onAdd }: { placeholder: string;
 export default function LearningPage() {
   const [phases, setPhases]       = useState<LearningPhase[]>([]);
   const [done, setDone]           = useState<DoneMap>({});
-  const [weeks, setWeeks]         = useState<WeekMap>({});
+  const [weeksMap, setWeeksMap]   = useState<WeekMap>({});
   const [loading, setLoading]     = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const [openPhase, setOpenPhase] = useState<number | null>(null);
   const [tabMap, setTabMap]       = useState<Record<number, "topics" | "weeks" | "practice">>({});
 
-  const [editPhase, setEditPhase] = useState<Partial<LearningPhase> | null | false>(false);
-  const [showBin, setShowBin]     = useState(false);
+  const [editPhase, setEditPhase]   = useState<Partial<LearningPhase> | null | false>(false);
+  const [infoPhase, setInfoPhase]   = useState<LearningPhase | null>(null);
+  const [showBin, setShowBin]       = useState(false);
 
-  // ── Double-confirm + 5-second undo delete ──────────────────────────────
   const [deleteStep, setDeleteStep]       = useState<Record<number, 1 | 2>>({});
   const [pendingDelete, setPendingDelete] = useState<LearningPhase | null>(null);
   const [undoProgress, setUndoProgress]   = useState(100);
@@ -319,7 +535,7 @@ export default function LearningPage() {
     setDone(dm);
     const wm: WeekMap = {};
     wp.forEach((r: LearningWeekProgress) => { if (r.is_done) wm[weekKey(r.phase_id, r.week_index)] = true; });
-    setWeeks(wm);
+    setWeeksMap(wm);
     if (p.length > 0 && openPhase === null) setOpenPhase(p[0].id);
   }, []); // eslint-disable-line
 
@@ -337,13 +553,13 @@ export default function LearningPage() {
 
   const handleWeekToggle = useCallback(async (phaseId: number, wi: number) => {
     const key = weekKey(phaseId, wi);
-    const cur = !!weeks[key];
-    setWeeks((p) => ({ ...p, [key]: !cur }));
+    const cur = !!weeksMap[key];
+    setWeeksMap((p) => ({ ...p, [key]: !cur }));
     setSavingKey(key);
     try { await toggleLearningWeek(phaseId, wi, cur); }
-    catch { setWeeks((p) => ({ ...p, [key]: cur })); window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Save failed", type: "error" } })); }
+    catch { setWeeksMap((p) => ({ ...p, [key]: cur })); window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Save failed", type: "error" } })); }
     finally { setSavingKey(null); }
-  }, [weeks]);
+  }, [weeksMap]);
 
   const handleSavePhase = async (payload: Partial<LearningPhase>) => {
     await upsertLearningPhase(payload);
@@ -352,63 +568,41 @@ export default function LearningPage() {
   };
 
   const handleDeleteStep1 = (phase: LearningPhase) => {
-    if (deleteStep[phase.id] === 1) {
-      setDeleteStep((p) => { const n = { ...p }; delete n[phase.id]; return n; });
-      return;
-    }
-    clearDeleteTimers();
-    setPendingDelete(null);
-    setDeleteStep({ [phase.id]: 1 });
+    if (deleteStep[phase.id] === 1) { setDeleteStep((p) => { const n = { ...p }; delete n[phase.id]; return n; }); return; }
+    clearDeleteTimers(); setPendingDelete(null); setDeleteStep({ [phase.id]: 1 });
   };
-
   const handleDeleteStep2 = (phase: LearningPhase) => {
-    clearDeleteTimers();
-    setPendingDelete(phase);
-    setDeleteStep((p) => ({ ...p, [phase.id]: 2 }));
-    setUndoProgress(100);
+    clearDeleteTimers(); setPendingDelete(phase); setDeleteStep((p) => ({ ...p, [phase.id]: 2 })); setUndoProgress(100);
     let pct = 100;
-    deleteIntervalRef.current = setInterval(() => {
-      pct -= 2;
-      setUndoProgress(Math.max(0, pct));
-      if (pct <= 0 && deleteIntervalRef.current) clearInterval(deleteIntervalRef.current);
-    }, 100);
+    deleteIntervalRef.current = setInterval(() => { pct -= 2; setUndoProgress(Math.max(0, pct)); if (pct <= 0 && deleteIntervalRef.current) clearInterval(deleteIntervalRef.current); }, 100);
     deleteTimerRef.current = setTimeout(async () => {
-      clearDeleteTimers();
-      await deleteLearningPhase(phase.id);
-      setPendingDelete(null);
+      clearDeleteTimers(); await deleteLearningPhase(phase.id); setPendingDelete(null);
       setDeleteStep((p) => { const n = { ...p }; delete n[phase.id]; return n; });
       await loadAll();
       window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `"${phase.title}" deleted`, type: "success" } }));
     }, 5000);
   };
-
   const handleDeleteUndo = () => {
     clearDeleteTimers();
     if (pendingDelete) setDeleteStep((p) => { const n = { ...p }; delete n[pendingDelete.id]; return n; });
-    setPendingDelete(null);
-    setUndoProgress(100);
+    setPendingDelete(null); setUndoProgress(100);
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Delete cancelled", type: "success" } }));
   };
-
   const handleCancelDelete = (phaseId: number) => {
-    clearDeleteTimers();
-    setPendingDelete(null);
-    setUndoProgress(100);
+    clearDeleteTimers(); setPendingDelete(null); setUndoProgress(100);
     setDeleteStep((p) => { const n = { ...p }; delete n[phaseId]; return n; });
   };
-
   const clearDeleteTimers = () => {
     if (deleteTimerRef.current)    clearTimeout(deleteTimerRef.current);
     if (deleteIntervalRef.current) clearInterval(deleteIntervalRef.current);
-    deleteTimerRef.current    = null;
-    deleteIntervalRef.current = null;
+    deleteTimerRef.current = null; deleteIntervalRef.current = null;
   };
 
   const getTab = (id: number) => tabMap[id] ?? "topics";
   const setPhaseTab = (id: number, t: "topics" | "weeks" | "practice") => setTabMap((p) => ({ ...p, [id]: t }));
 
   const overall     = overallPct(phases, done);
-  const weeksDone   = weeksDonePct(phases, weeks);
+  const weeksDone   = weeksDonePct(phases, weeksMap);
   const totalTopics = phases.reduce((s, p) => s + p.tracks.reduce((ss, t) => ss + t.topics.length, 0), 0);
   const doneTopics  = Object.values(done).filter(Boolean).length;
 
@@ -501,6 +695,12 @@ export default function LearningPage() {
             const dStep       = deleteStep[phase.id];
             const isCountdown = dStep === 2 && pendingDelete?.id === phase.id;
 
+            // Per-phase topic/week stats for info modal
+            const phaseTopicTotal = phase.tracks.reduce((s, t) => s + t.topics.length, 0);
+            const phaseTopicDone  = phase.tracks.reduce((s, t, ti) => s + t.topics.filter((_, i) => done[topicKey(phase.id, ti, i)]).length, 0);
+            const phaseWeekTotal  = phase.weeks.length;
+            const phaseWeekDone   = phase.weeks.filter((_, wi) => weeksMap[weekKey(phase.id, wi)]).length;
+
             return (
               <div key={phase.id}
                 className="liquid-glass rounded-[22px] overflow-hidden animate-fade-in-up"
@@ -536,6 +736,19 @@ export default function LearningPage() {
                   </button>
 
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* ⓘ Info button */}
+                    <button
+                      onClick={() => setInfoPhase(phase)}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
+                      title="Phase info"
+                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="8" strokeWidth="2.5" strokeLinecap="round"/>
+                        <line x1="12" y1="12" x2="12" y2="16"/>
+                      </svg>
+                    </button>
                     <button onClick={() => setEditPhase(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
@@ -561,9 +774,7 @@ export default function LearningPage() {
                   <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] p-3 animate-fade-in"
                     style={{ background: "rgba(248,65,65,0.07)", border: "0.5px solid rgba(248,65,65,0.22)" }}>
                     <p className="text-xs font-mono mb-0.5" style={{ color: "#f87171" }}>Delete phase "{phase.title}"?</p>
-                    <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>
-                      All topic + week progress will be erased. You will have 5 seconds to undo.
-                    </p>
+                    <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>All topic + week progress will be erased. You will have 5 seconds to undo.</p>
                     <div className="flex gap-2">
                       <button onClick={() => handleDeleteStep2(phase)} className="flex-1 py-2.5 text-xs font-medium rounded-[10px]"
                         style={{ background: "rgba(248,65,65,0.18)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.30)" }}>Yes, delete</button>
@@ -574,8 +785,7 @@ export default function LearningPage() {
                 )}
 
                 {isCountdown && (
-                  <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] overflow-hidden animate-fade-in"
-                    style={{ border: "0.5px solid rgba(248,65,65,0.35)" }}>
+                  <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] overflow-hidden animate-fade-in" style={{ border: "0.5px solid rgba(248,65,65,0.35)" }}>
                     <div style={{ height: "3px", background: "rgba(248,65,65,0.15)", position: "relative" }}>
                       <div style={{ position: "absolute", top: 0, left: 0, height: "100%", background: "#f87171", width: `${undoProgress}%`, transition: "width 0.1s linear" }} />
                     </div>
@@ -661,7 +871,7 @@ export default function LearningPage() {
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-2">
                         {phase.weeks.map((week, wi) => {
                           const wKey   = weekKey(phase.id, wi);
-                          const isDone = !!weeks[wKey];
+                          const isDone = !!weeksMap[wKey];
                           const isSave = savingKey === wKey;
                           return (
                             <div key={wi} className="rounded-[16px] overflow-hidden animate-fade-in-up"
@@ -728,13 +938,32 @@ export default function LearningPage() {
         </div>
       )}
 
+      {/* ── MODALS ── */}
       {editPhase !== false && (
-        <EditPhaseModal
-          phase={editPhase}
-          onSave={handleSavePhase}
-          onClose={() => setEditPhase(false)}
-        />
+        <EditPhaseModal phase={editPhase} onSave={handleSavePhase} onClose={() => setEditPhase(false)} />
       )}
+
+      {infoPhase && (() => {
+        const pi = phases.findIndex((p) => p.id === infoPhase.id);
+        const pct = phasePct(infoPhase, done);
+        const phaseTopicTotal = infoPhase.tracks.reduce((s, t) => s + t.topics.length, 0);
+        const phaseTopicDone  = infoPhase.tracks.reduce((s, t, ti) => s + t.topics.filter((_, i) => done[topicKey(infoPhase.id, ti, i)]).length, 0);
+        const phaseWeekTotal  = infoPhase.weeks.length;
+        const phaseWeekDone   = infoPhase.weeks.filter((_, wi) => weeksMap[weekKey(infoPhase.id, wi)]).length;
+        return (
+          <PhaseInfoModal
+            phase={infoPhase}
+            phaseIndex={pi}
+            pct={pct}
+            weeksDone={phaseWeekDone}
+            totalWeeks={phaseWeekTotal}
+            doneTopics={phaseTopicDone}
+            totalTopics={phaseTopicTotal}
+            onClose={() => setInfoPhase(null)}
+          />
+        );
+      })()}
+
       {showBin && <RecycleBinModal table="learning_phases" onClose={() => setShowBin(false)} onRestored={loadAll} />}
     </div>
   );
