@@ -45,6 +45,103 @@ function weeksDonePct(phases: LearningPhase[], weeks: WeekMap) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// REALISTIC TIMELINE MODAL  — click ⏱ in header
+// ─────────────────────────────────────────────────────────────────────────────
+const TIMELINE_ROWS = [
+  { phase: "SQL + Data Engineering",   time: "3–4 weeks",  priority: "Start now",         dot: "#f87171" },
+  { phase: "Stats + Probability",      time: "3–4 weeks",  priority: "High",              dot: "#f87171" },
+  { phase: "Core ML (existing)",       time: "8 weeks",    priority: "High",              dot: "#f87171" },
+  { phase: "DSA daily (ongoing)",      time: "15 months",  priority: "Never stop",        dot: "#f87171" },
+  { phase: "Deep Learning (existing)", time: "8 weeks",    priority: "Medium",            dot: "#fbbf24" },
+  { phase: "Cloud (new)",              time: "4–6 weeks",  priority: "Medium",            dot: "#fbbf24" },
+  { phase: "MLOps (existing)",         time: "6 weeks",    priority: "Medium",            dot: "#fbbf24" },
+  { phase: "NLP/LLMs expanded",        time: "4–6 weeks",  priority: "Medium",            dot: "#fbbf24" },
+  { phase: "ML System Design",         time: "6–8 weeks",  priority: "Before interviews", dot: "#fbbf24" },
+  { phase: "Portfolio + Interviews",   time: "6 weeks",    priority: "Last stretch",      dot: "#5ecf95" },
+];
+
+function TimelineModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[62] flex items-end sm:items-center justify-center px-0 sm:px-4"
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[26px] flex flex-col animate-slide-up overflow-hidden"
+        style={{
+          background: "var(--cc-glass-base)",
+          border: "0.5px solid rgba(94,207,149,0.30)",
+          backdropFilter: "blur(56px) saturate(2.4)",
+          boxShadow: "var(--shadow-xl), 0 0 80px rgba(94,207,149,0.10)",
+          maxHeight: "92dvh",
+        }}
+      >
+        <div className="flex justify-center pt-3 flex-shrink-0 sm:hidden">
+          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "#5ecf95", opacity: 0.4 }} />
+        </div>
+        <div style={{ height: "2.5px", background: "linear-gradient(90deg, #5ecf95, #5ecf9500)", flexShrink: 0 }} />
+
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "#5ecf95" }}>
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Realistic Timeline</h2>
+              <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>18–22 months → Google · Microsoft · Amazon</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl"
+            style={{ color: "var(--cc-text-muted)", fontSize: "18px", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>×</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pt-3 pb-5" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-0">
+            {/* Header row */}
+            <div className="contents">
+              {["Phase", "Time needed", "Priority"].map((h) => (
+                <div key={h} className="pb-2 mb-1" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{h}</span>
+                </div>
+              ))}
+            </div>
+            {/* Data rows */}
+            {TIMELINE_ROWS.map((row, i) => (
+              <div key={i} className="contents">
+                <div className="py-2.5 flex items-center" style={{ borderBottom: i < TIMELINE_ROWS.length - 1 ? "0.5px solid var(--glass-border-subtle)" : "none" }}>
+                  <span className="text-xs font-mono" style={{ color: "var(--text-secondary)" }}>{row.phase}</span>
+                </div>
+                <div className="py-2.5 flex items-center justify-end" style={{ borderBottom: i < TIMELINE_ROWS.length - 1 ? "0.5px solid var(--glass-border-subtle)" : "none" }}>
+                  <span className="text-[11px] font-mono whitespace-nowrap" style={{ color: "var(--text-muted)" }}>{row.time}</span>
+                </div>
+                <div className="py-2.5 flex items-center gap-1.5 justify-end" style={{ borderBottom: i < TIMELINE_ROWS.length - 1 ? "0.5px solid var(--glass-border-subtle)" : "none" }}>
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: row.dot }} />
+                  <span className="text-[11px] font-mono whitespace-nowrap" style={{ color: row.dot }}>{row.priority}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 px-3 py-2.5 rounded-[12px]" style={{ background: "rgba(94,207,149,0.07)", border: "0.5px solid rgba(94,207,149,0.20)" }}>
+            <p className="text-[10px] font-mono" style={{ color: "#5ecf95", lineHeight: 1.6 }}>
+              💡 Start SQL now — your Power BI background means you are already close. 3–4 weeks gets you interview-ready.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
+          <button onClick={onClose} className="w-full py-3 text-sm font-medium rounded-[16px] transition-all"
+            style={{ background: "rgba(94,207,149,0.12)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.28)" }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PHASE INFO MODAL  — click ⓘ to see the full phase card
 // ─────────────────────────────────────────────────────────────────────────────
 interface PhaseInfoModalProps {
@@ -499,7 +596,8 @@ export default function LearningPage() {
   const [tabMap, setTabMap]         = useState<Record<number, "topics" | "weeks" | "practice">>({});
   const [editPhase, setEditPhase]   = useState<Partial<LearningPhase> | null | false>(false);
   const [infoPhase, setInfoPhase]   = useState<LearningPhase | null>(null);
-  const [showBin, setShowBin]       = useState(false);
+  const [showBin, setShowBin]         = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const [deleteStep, setDeleteStep]       = useState<Record<number, 1 | 2>>({});
   const [pendingDelete, setPendingDelete] = useState<LearningPhase | null>(null);
@@ -591,8 +689,9 @@ export default function LearningPage() {
 
       {/* ── HEADER ── */}
       <header className="mb-5 animate-fade-in-up">
-        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-          <div>
+        <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+          {/* Title + subtitle */}
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
               ML/DS Learning Roadmap
             </h1>
@@ -600,11 +699,22 @@ export default function LearningPage() {
               {phases.length} phases · Python + ML + DSA + MLOps → Top MNC
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="text-right">
-              <div className="text-xl sm:text-2xl font-semibold font-mono leading-none" style={{ color: "var(--accent)" }}>{overall}%</div>
-              <div className="text-[9px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>{doneTopics}/{totalTopics}</div>
+          {/* Right side: percent + count + buttons — all on same line */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Overall % + count */}
+            <div className="flex items-baseline gap-1.5 mr-1">
+              <span className="text-xl sm:text-2xl font-bold font-mono leading-none" style={{ color: "var(--accent)" }}>{overall}%</span>
+              <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{doneTopics}/{totalTopics}</span>
             </div>
+            {/* Timeline ⏱ */}
+            <button onClick={() => setShowTimeline(true)} className="cc-btn px-3 py-2 text-xs flex-shrink-0" title="Realistic timeline">
+              <span style={{ position: "relative", zIndex: 3 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </span>
+            </button>
+            {/* Bin */}
             <button onClick={() => setShowBin(true)} className="cc-btn px-3 py-2 text-xs flex-shrink-0" title="Recycle bin">
               <span style={{ position: "relative", zIndex: 3 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -613,6 +723,7 @@ export default function LearningPage() {
                 </svg>
               </span>
             </button>
+            {/* + Phase */}
             <button onClick={() => setEditPhase(null)} className="cc-btn cc-btn-accent px-3 py-2 text-xs flex-shrink-0">
               <span style={{ position: "relative", zIndex: 3 }}>+ Phase</span>
             </button>
@@ -970,6 +1081,7 @@ export default function LearningPage() {
         );
       })()}
 
+      {showTimeline && <TimelineModal onClose={() => setShowTimeline(false)} />}
       {showBin && <RecycleBinModal table="learning_phases" onClose={() => setShowBin(false)} onRestored={loadAll} />}
     </div>
   );
