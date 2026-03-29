@@ -77,6 +77,8 @@ export function ClientLayout({ children }: { children: ReactNode }) {
           style={{
             marginLeft,
             transition: "margin-left 0.28s cubic-bezier(0.2,0.8,0.2,1)",
+            overflowX: "hidden",   // ← ADD THIS
+            maxWidth: "100vw",     // ← ADD THIS
           }}
         >
           <PageTransition>{children}</PageTransition>

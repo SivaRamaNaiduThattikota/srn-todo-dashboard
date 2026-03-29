@@ -417,7 +417,7 @@ export default function TasksPage() {
   const overdue = todos.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "done").length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10" style={{ overflowX: "hidden", position: "relative" }}>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10" style={{ overflowX: "clip", position: "relative", maxWidth: "100vw" }}>
       <header className="mb-6 animate-fade-in-up">
         <div className="flex items-center justify-between gap-2 mb-4">
           <div className="min-w-0">
@@ -643,8 +643,7 @@ export default function TasksPage() {
                           minWidth: "28px",
                           whiteSpace: "nowrap",
                         }}>
-                        <span style={{ fontSize: "12px" }}>{sc.icon}</span>
-                        <span className="hidden sm:inline">{sc.label}</span>
+                        <span style={{ fontSize: "10px" }}>{sc.label}</span>
                       </div>
                       <select
                         value={todo.status}
