@@ -65,7 +65,7 @@ interface ModalProps {
 function TodoModal({ todo, onSave, onClose }: ModalProps) {
   const isEdit = !!todo;
   const [saving, setSaving]       = useState(false);
-  const [tabIdx, setTabIdx]       = useState(0);           // 0=basics 1=details 2=resources
+  const [tabIdx, setTabIdx]       = useState(0);
   const tab: TabId                = TABS[tabIdx];
 
   // ── Basics ──
@@ -114,7 +114,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
     } catch { setSaving(false); }
   };
 
-  const isLastTab = tabIdx === TABS.length - 1;
+  const isLastTab  = tabIdx === TABS.length - 1;
   const isFirstTab = tabIdx === 0;
 
   const TAB_LABELS: Record<TabId, string> = { basics: "Basics", details: "Details", resources: "Resources" };
@@ -127,56 +127,59 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-0 sm:px-4"
-      style={{ background: "rgba(0,0,0,0.58)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+      style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[26px] flex flex-col animate-slide-up"
         style={{
-          background: "var(--cc-glass-base)",
-          border: "0.5px solid var(--cc-tile-border)",
-          backdropFilter: "blur(56px) saturate(2.4)",
-          WebkitBackdropFilter: "blur(56px) saturate(2.4)",
-          boxShadow: "var(--shadow-xl)",
+          background: "rgba(12,12,22,0.82)",
+          border: "0.5px solid rgba(255,255,255,0.18)",
+          backdropFilter: "blur(64px) saturate(2.8) brightness(1.08)",
+          WebkitBackdropFilter: "blur(64px) saturate(2.8) brightness(1.08)",
+          boxShadow: "0 32px 96px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.18)",
           maxHeight: "calc(100dvh - 32px)",
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {/* Mobile drag handle */}
         <div className="flex justify-center pt-3 flex-shrink-0 sm:hidden">
-          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "var(--cc-text-muted)", opacity: 0.35 }} />
+          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "rgba(255,255,255,0.25)", opacity: 0.5 }} />
         </div>
 
-        {/* Top accent stripe */}
-        <div style={{ height: "2px", background: "linear-gradient(90deg, var(--accent), transparent)", flexShrink: 0 }} />
+        {/* Top specular highlight — iOS glass effect */}
+        <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.40), transparent)", pointerEvents: "none", zIndex: 1 }} />
+        {/* Accent stripe */}
+        <div style={{ height: "2px", background: `linear-gradient(90deg, var(--accent), transparent)`, flexShrink: 0 }} />
 
         {/* Header */}
         <div className="flex items-start justify-between px-5 pt-4 pb-3 flex-shrink-0"
-          style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
+          style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}>
           <div>
-            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            <h3 className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.94)" }}>
               {isEdit ? "Edit task" : "New task"}
             </h3>
-            <p className="text-[11px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+            <p className="text-[11px] font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.42)" }}>
               Fill in the details below
             </p>
           </div>
           <button onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0"
-            style={{ color: "var(--cc-text-muted)", fontSize: "18px", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
+            style={{ color: "rgba(255,255,255,0.55)", fontSize: "18px", background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.14)" }}>
             ×
           </button>
         </div>
 
-        {/* Tab bar — clickable tabs */}
+        {/* Tab bar */}
         <div className="flex gap-1 px-5 pt-3 pb-1 flex-shrink-0">
           {TABS.map((t, i) => (
             <button key={t} onClick={() => setTabIdx(i)}
               className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium rounded-xl transition-all"
               style={{
-                background: tab === t ? "var(--accent-muted)" : "transparent",
-                color: tab === t ? "var(--accent)" : "var(--text-muted)",
-                border: `0.5px solid ${tab === t ? "var(--accent-dim)" : "transparent"}`,
+                background: tab === t ? "var(--accent-muted)" : "rgba(255,255,255,0.06)",
+                color: tab === t ? "var(--accent)" : "rgba(255,255,255,0.50)",
+                border: `0.5px solid ${tab === t ? "var(--accent-dim)" : "rgba(255,255,255,0.10)"}`,
               }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d={TAB_ICONS[t]}/>
@@ -191,7 +194,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 width: i === tabIdx ? "16px" : "6px",
                 height: "6px",
                 borderRadius: "100px",
-                background: i === tabIdx ? "var(--accent)" : i < tabIdx ? "var(--accent-dim)" : "var(--glass-border)",
+                background: i === tabIdx ? "var(--accent)" : i < tabIdx ? "var(--accent-dim)" : "rgba(255,255,255,0.15)",
                 transition: "all 0.22s ease",
               }} />
             ))}
@@ -213,7 +216,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); setTabIdx(1); } }}
                 placeholder="Task title *"
                 className="w-full rounded-[14px] px-4 py-3 text-sm font-mono focus:outline-none"
-                style={{ background: "var(--bg-input)", border: `0.5px solid ${title ? "var(--accent)" : "var(--glass-border)"}`, color: "var(--text-primary)" }}
+                style={{ background: "rgba(255,255,255,0.07)", border: `0.5px solid ${title ? "var(--accent)" : "rgba(255,255,255,0.12)"}`, color: "rgba(255,255,255,0.94)" }}
               />
 
               <textarea
@@ -222,18 +225,18 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 placeholder="Description (optional)"
                 rows={2}
                 className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none resize-none"
-                style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}
+                style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }}
               />
 
               {/* Status + Priority side by side */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Status</label>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Status</label>
                   <div className="space-y-1">
                     {STATUS_OPTIONS.map((s) => (
                       <button key={s.value} onClick={() => setStatus(s.value)}
                         className="w-full flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-[11px] font-mono transition-all text-left"
-                        style={{ background: status === s.value ? `${s.color}20` : "var(--glass-fill)", color: status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${status === s.value ? s.color + "55" : "var(--glass-border)"}`, fontWeight: status === s.value ? 600 : 400 }}>
+                        style={{ background: status === s.value ? `${s.color}20` : "rgba(255,255,255,0.05)", color: status === s.value ? s.color : "rgba(255,255,255,0.50)", border: `0.5px solid ${status === s.value ? s.color + "55" : "rgba(255,255,255,0.10)"}`, fontWeight: status === s.value ? 600 : 400 }}>
                         <span style={{ fontSize: "14px" }}>{s.icon}</span>
                         <span>{s.label}</span>
                       </button>
@@ -242,12 +245,12 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Priority</label>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Priority</label>
                   <div className="space-y-1">
                     {PRIORITY_OPTIONS.map((p) => (
                       <button key={p.value} onClick={() => setPriority(p.value)}
                         className="w-full px-2.5 py-2 rounded-[10px] text-[11px] font-mono capitalize transition-all text-left"
-                        style={{ background: priority === p.value ? `${p.color}20` : "var(--glass-fill)", color: priority === p.value ? p.color : "var(--text-muted)", border: `0.5px solid ${priority === p.value ? p.color + "55" : "var(--glass-border)"}`, fontWeight: priority === p.value ? 600 : 400 }}>
+                        style={{ background: priority === p.value ? `${p.color}20` : "rgba(255,255,255,0.05)", color: priority === p.value ? p.color : "rgba(255,255,255,0.50)", border: `0.5px solid ${priority === p.value ? p.color + "55" : "rgba(255,255,255,0.10)"}`, fontWeight: priority === p.value ? 600 : 400 }}>
                         {p.label}
                       </button>
                     ))}
@@ -257,12 +260,12 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
 
               {/* Category */}
               <div>
-                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Category</label>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Category</label>
                 <div className="flex flex-wrap gap-1.5">
                   {CATEGORY_OPTIONS.map((c) => (
                     <button key={c.value} onClick={() => setCategory(c.value)}
                       className="px-3 py-1.5 rounded-[10px] text-[11px] font-mono transition-all"
-                      style={{ background: category === c.value ? "var(--accent-muted)" : "var(--glass-fill)", color: category === c.value ? "var(--accent)" : "var(--text-muted)", border: `0.5px solid ${category === c.value ? "var(--accent-dim)" : "var(--glass-border)"}`, fontWeight: category === c.value ? 600 : 400 }}>
+                      style={{ background: category === c.value ? "var(--accent-muted)" : "rgba(255,255,255,0.05)", color: category === c.value ? "var(--accent)" : "rgba(255,255,255,0.50)", border: `0.5px solid ${category === c.value ? "var(--accent-dim)" : "rgba(255,255,255,0.10)"}`, fontWeight: category === c.value ? 600 : 400 }}>
                       {c.label}
                     </button>
                   ))}
@@ -271,11 +274,11 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
 
               {/* Assigned to */}
               <div>
-                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Assigned to</label>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Assigned to</label>
                 <input value={agent} onChange={(e) => setAgent(e.target.value)}
                   placeholder="developer, designer, yourself…"
                   className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
               </div>
             </>
           )}
@@ -285,33 +288,33 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Start date</label>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Start date</label>
                   <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                     className="w-full rounded-[14px] px-3 py-2.5 text-xs font-mono focus:outline-none"
-                    style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                    style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Due date</label>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Due date</label>
                   <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
                     className="w-full rounded-[14px] px-3 py-2.5 text-xs font-mono focus:outline-none"
-                    style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                    style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Estimated minutes</label>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Estimated minutes</label>
                 <input type="number" value={estimatedMins} onChange={(e) => setEstimatedMins(e.target.value)}
                   placeholder="e.g. 60"
                   className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
               </div>
 
               <div>
-                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>Tags</label>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Tags</label>
                 <input value={tags} onChange={(e) => setTags(e.target.value)}
                   placeholder="python, ml, urgent (comma-separated)"
                   className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
                 {tags && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
@@ -333,10 +336,10 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 <div className="space-y-1.5">
                   {resources.map((r, i) => (
                     <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-[12px]"
-                      style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                      style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.10)" }}>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{r.title}</div>
-                        <div className="text-[10px] font-mono truncate" style={{ color: "var(--text-muted)" }}>{r.url}</div>
+                        <div className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.88)" }}>{r.title}</div>
+                        <div className="text-[10px] font-mono truncate" style={{ color: "rgba(255,255,255,0.38)" }}>{r.url}</div>
                       </div>
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
                         style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
@@ -353,23 +356,23 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
               )}
 
               <div className="rounded-[16px] p-3 space-y-2.5"
-                style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
-                <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                style={{ background: "rgba(255,255,255,0.04)", border: "0.5px solid rgba(255,255,255,0.10)" }}>
+                <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.38)" }}>
                   Add resource link
                 </p>
                 <input value={newResTitle} onChange={(e) => setNewResTitle(e.target.value)}
                   placeholder="Title (e.g. Andrew Ng Course)"
                   className="w-full rounded-[12px] px-3 py-2.5 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
                 <input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)}
                   placeholder="URL (https://...)"
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addResource(); } }}
                   className="w-full rounded-[12px] px-3 py-2.5 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
                 <div className="flex gap-2">
                   <select value={newResType} onChange={(e) => setNewResType(e.target.value as any)}
-                    className="flex-1 glass rounded-[12px] px-3 text-[11px] font-mono focus:outline-none cursor-pointer"
-                    style={{ color: "var(--text-secondary)", height: "36px" }}>
+                    className="flex-1 rounded-[12px] px-3 text-[11px] font-mono focus:outline-none cursor-pointer"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.70)", height: "36px" }}>
                     {RESOURCE_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                   <button onClick={addResource} disabled={!newResTitle.trim() || !newResUrl.trim()}
@@ -382,8 +385,8 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
 
               {resources.length === 0 && (
                 <div className="text-center py-4">
-                  <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>No resources yet</p>
-                  <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)", opacity: 0.7 }}>Add articles, videos, GitHub links…</p>
+                  <p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.35)" }}>No resources yet</p>
+                  <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>Add articles, videos, GitHub links…</p>
                 </div>
               )}
             </>
@@ -393,14 +396,13 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
 
         {/* ── Footer: Back / Next / Add task ── */}
         <div className="px-5 py-4 flex-shrink-0"
-          style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
+          style={{ borderTop: "0.5px solid rgba(255,255,255,0.08)" }}>
 
-          {/* On last tab — show Back + Add task */}
           {isLastTab ? (
             <div className="flex gap-2">
               <button onClick={() => setTabIdx(tabIdx - 1)}
                 className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all"
-                style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)", background: "var(--glass-fill)" }}>
+                style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M15 18l-6-6 6-6"/>
                 </svg>
@@ -413,12 +415,11 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
               </button>
             </div>
           ) : (
-            /* On first / middle tabs — show Back (disabled on first) + Next */
             <div className="flex gap-2">
               {!isFirstTab ? (
                 <button onClick={() => setTabIdx(tabIdx - 1)}
                   className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all"
-                  style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)", background: "var(--glass-fill)" }}>
+                  style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M15 18l-6-6 6-6"/>
                   </svg>
@@ -426,7 +427,7 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
                 </button>
               ) : (
                 <button onClick={onClose} className="px-4 py-3 text-xs rounded-[16px] flex-shrink-0"
-                  style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                  style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)" }}>
                   Cancel
                 </button>
               )}
@@ -689,8 +690,7 @@ export default function TasksPage() {
                 className="liquid-glass rounded-[20px] overflow-hidden animate-fade-in-up"
                 style={{ animationDelay: `${idx * 25}ms`, border: isSelected ? "0.5px solid var(--accent)" : undefined, opacity: todo.status === "done" ? 0.72 : 1, transition: "opacity 0.2s" }}>
 
-                {/* Priority stripe */}
-                <div style={{ height: "2px", background: `linear-gradient(90deg, ${priorityColor(todo.priority)}, transparent)` }} />
+                {/* No priority stripe — clean card */}
 
                 <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3">
 
@@ -750,7 +750,6 @@ export default function TasksPage() {
 
                   {/* Right: Status pill + edit + delete + chevron */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* Status pill — clickable to cycle, always visible */}
                     <button onClick={() => handleStatusCycle(todo)}
                       className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-[8px] text-[10px] font-mono transition-all flex-shrink-0"
                       style={{ background: `${sc.color}15`, color: sc.color, border: `0.5px solid ${sc.color}35` }}
