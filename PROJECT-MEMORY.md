@@ -1,5 +1,5 @@
 # SRN Command Center — PROJECT-MEMORY.md
-> **Last updated:** Session v10.3 — Learning page added (15th page), Supabase migration, sidebar updated
+> **Last updated:** Session v10.4 — Learning page v2: DB-driven phases, edit modal, mobile fix, week checkboxes, Today + Analytics integration
 > **Stack:** Next.js 14 · Supabase · Tailwind CSS · TypeScript · Framer Motion
 
 ---
@@ -13,75 +13,30 @@
 | Live URL | https://srn-todo-dashboard.vercel.app/ |
 | Local path | `C:\Users\2321764\Downloads\00 - SRN Command Center\todo-dashboard` |
 | Supabase project ID | `azpjxezbackhzuoznccg` (Mumbai region) |
-| Design version | **v10.3** — iOS 26 Liquid Glass |
+| Design version | **v10.4** — iOS 26 Liquid Glass |
 | CSS framework | **Tailwind CSS** (NOT Bootstrap) + custom CSS vars |
 | Font system | `-apple-system / SF Pro Display` + `JetBrains Mono` |
 
 ---
 
-## 🎨 Design System — v10.3 (unchanged from v10.2)
-
-### globals.css — Key rules
-
-**Typography (v10.1+)**
-```css
-html { font-size: 16px; }
---font-base:  clamp(15px, ..., 16px)
---text-xs:    13px
---text-sm:    clamp(13.5px, ..., 14.5px)
---text-md:    clamp(15.5px, ..., 17px)
---text-mono:  clamp(12px, ..., 13px)
-```
-
-**Accent button text fix (v10.1)**
-```css
---accent-btn-text: rgba(255,255,255,0.95);   /* dark mode */
---accent-btn-text: rgba(10,10,20,0.90);      /* light mode */
-.cc-btn-accent { color: var(--accent-btn-text) !important; }
-```
-
-**Sidebar scroll fix (v10)**
-```css
-html, body { overflow: hidden; height: 100%; }
-main { overflow-y: auto; height: 100vh; }
-@media (max-width: 767px) { html, body { overflow: auto; height: auto; } main { height: auto; } }
-```
-
-### Glass Classes
-`.glass` · `.liquid-glass` · `.liquid-glass-sweep` · `.glass-heavy` · `.glass-sidebar`
-`.glass-modal` · `.spatial` · `.skeuo-raised` · `.clay`
-`.cc-tile` · `.cc-btn` · `.cc-btn-accent` · `.cc-btn-danger` · `.cc-chip` · `.cc-habit`
+## 🎨 Design System — v10.4 (unchanged from v10.2)
+See globals.css. All CSS vars, glass classes, cc-btn, cc-tile etc. unchanged.
 
 ---
 
-## 🧩 Sidebar Architecture (v10.3)
-
-### Files
-- `src/components/Sidebar.tsx` — sidebar panel + floating collapse button
-- `src/components/ClientLayout.tsx` — layout wrapper, margin management
-
-### Learning nav entry (v10.3)
-Learning is in `PRIMARY_NAV` (not More), positioned after Projects:
-```tsx
-{ href: "/learning", label: "Learning", icon: LEARNING_ICON }
-```
-Icon: graduation cap SVG (`M22 10v6M2 10l10-5 10 5-10 5z` + `M6 12v5c3 3 9 3 12 0v-5`).
-
----
-
-## 📁 All 15 Pages — Current Status (v10.3)
+## 📁 All 15 Pages — Current Status (v10.4)
 
 | Page | Route | Status | Key features |
 |---|---|---|---|
 | Tasks | `/` | ✅ | Realtime, search, bulk ops, CSV/JSON export |
-| Today | `/today` | ✅ | Inline status cycle, habit tiles, quick actions |
+| Today | `/today` | ✅ | Habits, tasks, **ML Roadmap progress card**, quick actions |
 | Streaks | `/streaks` | ✅ | Heatmap, 5s undo delete |
 | Focus | `/focus` | ✅ | 280px ring on desktop, 3×2 chips mobile, manual log |
 | Notes | `/notes` | ✅ | Search + highlight, tag counts, undo delete, grid/list |
 | Projects | `/projects` | ✅ | Search, deadline badge, section undo |
-| **Learning** | `/learning` | ✅ | **6-phase ML/DSA roadmap, Supabase checkboxes, week schedules, practice problems** |
+| **Learning** | `/learning` | ✅ | **v2: DB-driven phases, edit modal, week checkboxes, mobile responsive, clickable resource links** |
 | Board | `/board` | ✅ | Drag desktop, tap-to-move mobile |
-| Analytics | `/analytics` | ✅ | 14-day chart, velocity, agent workload |
+| Analytics | `/analytics` | ✅ | **ML Roadmap progress section**, 14-day chart, velocity |
 | AI Assistant | `/assistant` | ✅ | Smart rules engine, insight cards |
 | Review | `/review` | ✅ | Fetches focus + habit data correctly |
 | Decisions | `/decisions` | ✅ | Search + category filter + 5s undo |
@@ -91,7 +46,7 @@ Icon: graduation cap SVG (`M22 10v6M2 10l10-5 10 5-10 5z` + `M6 12v5c3 3 9 3 12 
 
 ---
 
-## 🗃 Database Schema v10.3 (12 tables)
+## 🗃 Database Schema v10.4 (14 tables)
 
 | Table | Key columns |
 |---|---|
@@ -106,105 +61,83 @@ Icon: graduation cap SVG (`M22 10v6M2 10l10-5 10 5-10 5z` + `M6 12v5c3 3 9 3 12 
 | `decisions` | id, decision, reasoning, expected_outcome, category, status, review_date, review_notes |
 | `activity_log` | id, todo_id, action, old_value, new_value, created_at |
 | `task_templates` | id, title, priority, recurrence |
-| **`learning_progress`** | **id, phase_id, track_index, topic_index, is_done** · UNIQUE(phase_id,track_index,topic_index) |
+| `learning_progress` | id, phase_id, track_index, topic_index, is_done — UNIQUE(phase_id,track_index,topic_index) |
+| **`learning_phases`** | **id (serial), sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources (jsonb), tracks (jsonb), weeks (jsonb), practice (jsonb)** |
+| **`learning_week_progress`** | **id (uuid), phase_id (FK→learning_phases), week_index, is_done, done_at** |
 
 ---
 
-## 📚 Learning Page — Architecture (v10.3)
+## 📚 Learning Page v2 Architecture (v10.4)
 
-**File:** `src/app/learning/page.tsx`
+**Files changed this session:**
+- `learning-v2-migration.sql` — creates learning_phases + learning_week_progress, seeds 6 phases
+- `src/lib/supabase.ts` — added LearningPhase, LearningWeekProgress types + 6 new functions
+- `src/app/learning/page.tsx` — full rewrite: DB-driven, edit modal, week checkboxes, mobile responsive
+- `src/app/today/page.tsx` — added ML Roadmap progress card (topics + weeks bars, links to /learning)
+- `src/app/analytics/page.tsx` — added ML Roadmap progress section at top
 
-**Data flow:**
-```
-Supabase learning_progress table
-  ↕ fetchLearningProgress() / toggleLearningTopic()
-LearningPage (client component)
-  → DoneMap: Record<"phaseId-trackIdx-topicIdx", boolean>
-  → Optimistic updates (instant UI, revert on error)
-  → Saving indicator per-checkbox while Supabase writes
-```
-
-**Page structure:**
-- Header with overall % + topic count + animated progress bar
-- Phase summary pills (click to jump to phase)
-- 6 expandable phase cards (liquid-glass)
-  - Each card: Topics tab | Weeks tab | Practice tab
-  - Topics: 2-column grid, checkboxes write to Supabase
-  - Weeks: week-by-week schedule with daily goals
-  - Practice: numbered problem sets
-
-**Phases:**
-| ID | Title | Duration | Color |
-|---|---|---|---|
-| 0 | Python for ML | Weeks 1–4 | Purple #534AB7 |
-| 1 | DSA for Interviews | Weeks 3–18 (daily) | Blue #185FA5 |
-| 2 | Core ML | Weeks 5–12 | Teal #0F6E56 |
-| 3 | Deep Learning | Weeks 13–20 | Coral #993C1D |
-| 4 | MLOps + System Design | Weeks 17–22 | Amber #854F0B |
-| 5 | Portfolio + Interviews | Weeks 20–26 | Pink #993556 |
-
-**Total topics tracked:** 62 (across all phases)
-
-**Supabase functions (in supabase.ts):**
+**New supabase.ts functions:**
 ```ts
-fetchLearningProgress(): Promise<LearningProgress[]>
-toggleLearningTopic(phaseId, trackIndex, topicIndex, currentDone): Promise<void>
-// Uses upsert with onConflict: "phase_id,track_index,topic_index"
+fetchLearningPhases()           → LearningPhase[]
+upsertLearningPhase(payload)    → LearningPhase   (insert or update)
+deleteLearningPhase(id)         → void
+fetchLearningWeekProgress()     → LearningWeekProgress[]
+toggleLearningWeek(phaseId, weekIndex, currentDone) → void
+fetchLearningStats()            → { totalTopics, doneTopics, totalWeeks, doneWeeks }
 ```
 
----
+**Learning page features:**
+- Phases fetched from Supabase — no hardcoding
+- Edit modal: 4 tabs (basic / topics / weeks / practice) with inline add/remove for all fields
+- Color presets (8 presets) + custom color pickers
+- Resources are `{label, url}[]` — rendered as clickable `↗` links when URL provided
+- Week checkboxes — each week can be individually marked done, stored in learning_week_progress
+- Week cards turn highlighted when done
+- Two progress bars in header: Topics % + Weeks %
+- Edit (✏) and Delete (🗑) buttons per phase — delete has inline confirm
+- Mobile: all fixed px replaced with Tailwind responsive classes, resource chips wrap properly
 
-## 🔧 Complete Bug Fix History
+**Today page additions:**
+- ML Roadmap card shows topics done/total + weeks done/total with progress bars
+- Clicking card navigates to /learning
+- Quick actions now has "Learning" tile instead of "Streaks"
 
-### v10.3 — This session (Learning page)
-- [x] **learning-progress-migration.sql** — new `learning_progress` table, index, trigger, RLS policy
-- [x] **supabase.ts** — added `LearningProgress` interface, `fetchLearningProgress`, `toggleLearningTopic`
-- [x] **src/app/learning/page.tsx** — full 15th page, 6 phases, 3 tabs, Supabase checkboxes
-- [x] **Sidebar.tsx** — added `/learning` to PRIMARY_NAV with graduation cap icon
-
-### v10.2 — Sidebar collapse/expand, nav scroll, content margin fix
-- [x] ClientLayout.tsx — marginLeft pure JS state, no CSS var injection
-- [x] Sidebar.tsx — collapse/expand button position:fixed outside aside
-- [x] Sidebar.tsx — nav flex:1 minHeight:0 overflowY:auto
-- [x] Sidebar.tsx — Settings flexShrink:0 outside nav
-
-### v10.1 — Font + button visibility
-- [x] globals.css — html font-size:16px stable rem base
-- [x] globals.css — --accent-btn-text var, .cc-btn-accent readable
-- [x] Sidebar.tsx — nav label font-size 13.5px
-
-### v10 — Design system + critical bugs
-- [x] globals.css — select option dark bg fix
-- [x] globals.css — html/body overflow:hidden + main overflow-y:auto
+**Analytics page additions:**
+- New "ML/DS Roadmap progress" section at top with 4 stat cards + 2 progress bars
+- Clicking navigates to /learning
 
 ---
 
-## 🚀 Deployment — v10.3 Steps
+## 🚀 Deployment — v10.4 Steps
 
-### Step 1 — Run Supabase migration (2 min)
+### Step 1 — Run SQL migration (3 min)
 ```
 Supabase Dashboard → azpjxezbackhzuoznccg → SQL Editor → New query
-Paste: learning-progress-migration.sql (at project root)
+Paste: learning-v2-migration.sql (at project root)
 Click Run
 ```
+This creates learning_phases + learning_week_progress tables and seeds all 6 phases.
 
 ### Step 2 — Push to GitHub (2 min)
 ```bash
 cd "C:\Users\2321764\Downloads\00 - SRN Command Center\todo-dashboard"
 git add -A
-git commit -m "feat: add Learning page v10.3 — ML/DSA roadmap with Supabase progress tracking"
+git commit -m "feat: learning page v2 — DB-driven phases, edit modal, week checkboxes, mobile fix, Today+Analytics integration"
 git push origin main
 ```
-Vercel auto-deploys. Check https://srn-todo-dashboard.vercel.app/learning after ~2 min.
 
 ### Step 3 — Verify in browser
-| Check | Expected result |
+| Check | Expected |
 |---|---|
-| Sidebar | "Learning" entry visible after Projects, graduation cap icon |
-| /learning loads | 6 phase cards visible, 0% initially |
-| Checkbox click | Optimistic update instant, Supabase saves |
-| Refresh page | Checked items persist |
-| Topics / Weeks / Practice tabs | All 3 tabs work in every phase |
+| /learning loads | 6 phases from Supabase, correct colors |
+| Phase pills on header | Show 0% initially if no topics checked |
+| ✏ edit button | Opens modal with 4 tabs, all fields editable |
+| Resource links | Show as clickable `↗` chips |
+| Week checkbox | Click marks done, card turns highlighted |
+| Two progress bars | Topics % and Weeks % both update |
+| /today | ML Roadmap card visible in right column |
+| /analytics | Roadmap section visible at top |
+| Mobile view | No overflow, resources wrap, grid stacks to 1 col |
 
 ---
 
@@ -212,22 +145,21 @@ Vercel auto-deploys. Check https://srn-todo-dashboard.vercel.app/learning after 
 - ❌ No "Claude" branding anywhere — use "AI assistant" or "agent"
 - ✅ Every session ends with a summary table
 - ✅ Build first, then explain
-- ✅ Complete working files — no skeletons or placeholders
+- ✅ Complete working files — no skeletons
 - ✅ Inline styles using CSS vars (never hardcoded Tailwind colour classes)
 - ✅ Always check PROJECT-MEMORY.md at session start
 
 ---
 
-## ⏳ Feature Backlog (future sessions)
+## ⏳ Feature Backlog
 
 | Priority | Feature | Notes |
 |---|---|---|
 | 🔴 High | Hackathon project | Azure IoT Hub + Azure ML + FastAPI patient monitoring |
 | 🔴 High | ML portfolio on Projects page | Run `ds-projects-seed.sql` first |
-| 🟡 Medium | Learning page: streak integration | Auto-log habit when topic checked |
-| 🟡 Medium | Learning page: weekly progress chart | Show topics completed per week |
+| 🟡 Medium | Learning: streak integration | Auto-log habit when topic checked |
+| 🟡 Medium | Learning: phase reorder | Drag to reorder phases (update sort_order) |
 | 🟡 Medium | Analytics category filter | Filter 14-day chart by task category |
-| 🟡 Medium | Briefing interactive priorities | Mark priority done from Briefing |
+| 🟡 Medium | Briefing: interactive priorities | Mark priority done from Briefing |
 | 🟡 Medium | Data export | Export notes, focus sessions, habits to CSV |
-| 🟢 Low | PDF documentation v10.3 | Regenerate with latest features |
-| 🟢 Low | PPT presentation v10.3 | Regenerate with latest features |
+| 🟢 Low | PDF documentation v10.4 | Regenerate with latest features |

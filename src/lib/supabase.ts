@@ -40,13 +40,37 @@ export interface Decision {
 }
 
 export interface LearningProgress {
-  id: string;
-  phase_id: number;
-  track_index: number;
-  topic_index: number;
-  is_done: boolean;
+  id: string; phase_id: number; track_index: number; topic_index: number;
+  is_done: boolean; created_at: string; updated_at: string;
+}
+
+// Learning v2 types
+export interface LearningResource { label: string; url: string; }
+export interface LearningTrack    { label: string; topics: string[]; }
+export interface LearningWeek     { label: string; goals: string[]; }
+export interface LearningPractice { title: string; problems: string[]; }
+
+export interface LearningPhase {
+  id: number;
+  sort_order: number;
+  title: string;
+  duration: string;
+  accent_color: string;
+  bg_color: string;
+  text_color: string;
+  milestone: string;
+  resources: LearningResource[];
+  tracks: LearningTrack[];
+  weeks: LearningWeek[];
+  practice: LearningPractice[];
   created_at: string;
   updated_at: string;
+}
+
+export interface LearningWeekProgress {
+  id: string; phase_id: number; week_index: number;
+  is_done: boolean; done_at: string | null;
+  created_at: string; updated_at: string;
 }
 
 // ── Todo CRUD ──────────────────────────────────────────────
@@ -108,27 +132,62 @@ export async function deleteDecision(id: string) { await supabase.from("decision
 // ── Analytics ──────────────────────────────────────────────
 export async function fetchActivityLog(days: number = 30) { const since = new Date(); since.setDate(since.getDate() - days); const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", since.toISOString()).order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
 
-// ── Learning Progress ──────────────────────────────────────
+// ── Learning Progress (topic-level) ───────────────────────
 export async function fetchLearningProgress(): Promise<LearningProgress[]> {
-  const { data, error } = await supabase
-    .from("learning_progress")
-    .select("*")
-    .order("phase_id", { ascending: true });
+  const { data, error } = await supabase.from("learning_progress").select("*").order("phase_id", { ascending: true });
   if (error) throw error;
   return data as LearningProgress[];
 }
-
-export async function toggleLearningTopic(
-  phaseId: number,
-  trackIndex: number,
-  topicIndex: number,
-  currentDone: boolean
-): Promise<void> {
-  const { error } = await supabase
-    .from("learning_progress")
-    .upsert(
-      { phase_id: phaseId, track_index: trackIndex, topic_index: topicIndex, is_done: !currentDone },
-      { onConflict: "phase_id,track_index,topic_index" }
-    );
+export async function toggleLearningTopic(phaseId: number, trackIndex: number, topicIndex: number, currentDone: boolean): Promise<void> {
+  const { error } = await supabase.from("learning_progress").upsert(
+    { phase_id: phaseId, track_index: trackIndex, topic_index: topicIndex, is_done: !currentDone },
+    { onConflict: "phase_id,track_index,topic_index" }
+  );
   if (error) throw error;
+}
+
+// ── Learning Phases (v2 — DB-driven) ──────────────────────
+export async function fetchLearningPhases(): Promise<LearningPhase[]> {
+  const { data, error } = await supabase.from("learning_phases").select("*").order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data as LearningPhase[];
+}
+export async function upsertLearningPhase(phase: Partial<LearningPhase> & { id?: number }): Promise<LearningPhase> {
+  const payload = { ...phase };
+  if (!payload.id) delete payload.id;
+  const { data, error } = payload.id
+    ? await supabase.from("learning_phases").update(payload).eq("id", payload.id).select().single()
+    : await supabase.from("learning_phases").insert(payload).select().single();
+  if (error) throw error;
+  return data as LearningPhase;
+}
+export async function deleteLearningPhase(id: number): Promise<void> {
+  const { error } = await supabase.from("learning_phases").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ── Learning Week Progress ────────────────────────────────
+export async function fetchLearningWeekProgress(): Promise<LearningWeekProgress[]> {
+  const { data, error } = await supabase.from("learning_week_progress").select("*").order("phase_id", { ascending: true });
+  if (error) throw error;
+  return data as LearningWeekProgress[];
+}
+export async function toggleLearningWeek(phaseId: number, weekIndex: number, currentDone: boolean): Promise<void> {
+  const { error } = await supabase.from("learning_week_progress").upsert(
+    { phase_id: phaseId, week_index: weekIndex, is_done: !currentDone, done_at: !currentDone ? new Date().toISOString() : null },
+    { onConflict: "phase_id,week_index" }
+  );
+  if (error) throw error;
+}
+export async function fetchLearningStats(): Promise<{ totalTopics: number; doneTopics: number; totalWeeks: number; doneWeeks: number }> {
+  const [phases, topicProgress, weekProgress] = await Promise.all([
+    fetchLearningPhases(),
+    fetchLearningProgress(),
+    fetchLearningWeekProgress(),
+  ]);
+  const totalTopics = phases.reduce((s, p) => s + p.tracks.reduce((ss, t) => ss + t.topics.length, 0), 0);
+  const doneTopics  = topicProgress.filter((r) => r.is_done).length;
+  const totalWeeks  = phases.reduce((s, p) => s + p.weeks.length, 0);
+  const doneWeeks   = weekProgress.filter((r) => r.is_done).length;
+  return { totalTopics, doneTopics, totalWeeks, doneWeeks };
 }
