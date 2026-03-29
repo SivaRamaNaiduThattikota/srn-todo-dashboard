@@ -34,7 +34,6 @@ function ColoredSlider({ value, color, onChange }: { value: number; color: strin
   return <input type="range" min="0" max="100" step="5" value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" style={{ background: `linear-gradient(to right,${color} 0%,${color} ${value}%,var(--bg-input) ${value}%,var(--bg-input) 100%)` }} />;
 }
 
-/* ── Search bar ── */
 function SearchBar({ value, onChange, resultCount, totalCount }: { value: string; onChange: (v: string) => void; resultCount: number; totalCount: number }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -98,8 +97,8 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
   const [newLabel, setNewLabel]   = useState("");
   const [newDesc, setNewDesc]     = useState("");
   const [newColor, setNewColor]   = useState("#94a3b8");
-  const [sectionUndo, setSectionUndo]                   = useState<SectionUndoState | null>(null);
-  const [sectionUndoProgress, setSectionUndoProgress]   = useState(100);
+  const [sectionUndo, setSectionUndo]                 = useState<SectionUndoState | null>(null);
+  const [sectionUndoProgress, setSectionUndoProgress] = useState(100);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { return () => { if (sectionUndo) { clearTimeout(sectionUndo.timeoutId); clearInterval(sectionUndo.intervalId); } }; }, [sectionUndo]);
@@ -225,16 +224,13 @@ export default function ProjectsPage() {
   const [sections, setSections]               = useState<Section[]>(DEFAULT_SECTIONS);
   const [activeSection, setActiveSection]     = useState<string>("foundation");
   const [showSectionModal, setShowSectionModal] = useState(false);
-
-  // CHANGE 4: description "show more" state per section
-  const [descExpanded, setDescExpanded] = useState<Record<string, boolean>>({});
+  const [descExpanded, setDescExpanded]         = useState<Record<string, boolean>>({});
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [undoState, setUndoState]             = useState<UndoState | null>(null);
   const [undoProgress, setUndoProgress]       = useState(100);
   const undoProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* form */
   const [title, setTitle]                     = useState("");
   const [description, setDescription]         = useState("");
   const [category, setCategory]               = useState("");
@@ -360,12 +356,11 @@ export default function ProjectsPage() {
         )}
       </header>
 
-      {/* Search bar */}
+      {/* Search */}
       {projects.length > 0 && (
         <SearchBar value={searchQuery} onChange={setSearchQuery} resultCount={visibleProjects.length} totalCount={activeSection === "__all__" ? projects.length : (tabs.find((t) => t.id === activeSection)?.count || 0)} />
       )}
 
-      {/* Cross-section search hint */}
       {searchQuery && visibleProjects.length === 0 && globalSearchResults.length > 0 && (
         <div className="mt-2 px-3 py-2.5 rounded-[12px] flex items-center gap-2 animate-fade-in" style={{ background: "var(--accent-muted)", border: "0.5px solid var(--accent-dim)" }}>
           <span className="text-[10px] font-mono" style={{ color: "var(--accent)" }}>Found {globalSearchResults.length} result{globalSearchResults.length > 1 ? "s" : ""} in other sections.</span>
@@ -373,10 +368,9 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* ── CHANGE 3: Status filters — 2×2 grid on mobile, row on desktop ── */}
+      {/* Status filters — 2×2 grid on mobile */}
       {projects.length > 0 && (
         <div className="mt-3 mb-3 animate-fade-in-up" style={{ animationDelay: "20ms" }}>
-          {/* CHANGE 5: Sort on its own row, full-width on mobile */}
           <div className="mb-2">
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}
               className="w-full sm:w-auto glass rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none cursor-pointer"
@@ -384,7 +378,6 @@ export default function ProjectsPage() {
               {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          {/* 2×2 grid on mobile, flex row on sm+ */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5">
             {STATUS_OPTIONS.map((s) => {
               const count = statusCounts[s.value] || 0; const active = filterStatus === s.value;
@@ -392,9 +385,7 @@ export default function ProjectsPage() {
                 <button key={s.value} onClick={() => setFilterStatus(active ? "" : s.value)}
                   className="flex items-center justify-center gap-1.5 rounded-[12px] text-[10px] font-mono transition-all"
                   style={{ padding: "9px 12px", background: active ? `${s.color}18` : "var(--glass-fill)", border: `0.5px solid ${active ? `${s.color}40` : "var(--glass-border)"}`, color: active ? s.color : "var(--text-muted)" }}>
-                  <span>{s.emoji}</span>
-                  <span>{s.label}</span>
-                  <span style={{ opacity: 0.6 }}>({count})</span>
+                  <span>{s.emoji}</span><span>{s.label}</span><span style={{ opacity: 0.6 }}>({count})</span>
                 </button>
               );
             })}
@@ -402,10 +393,9 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* ── CHANGE 1: Section tabs — wrap grid on mobile, single row on desktop ── */}
+      {/* Section tabs — 2×2 grid on mobile */}
       <div className="mb-4 animate-fade-in-up" style={{ animationDelay: "35ms" }}>
         <div className="p-1 rounded-[16px]" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border)" }}>
-          {/* Mobile: wrap into rows of 2. Desktop: single flex row */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1">
             {tabs.map((tab) => {
               const isActive = activeSection === tab.id;
@@ -416,8 +406,7 @@ export default function ProjectsPage() {
                 return sec ? sec.categories.includes(p.category || "") : false;
               }) : false;
               return (
-                <button key={tab.id}
-                  onClick={() => { setActiveSection(tab.id); setExpandedId(null); }}
+                <button key={tab.id} onClick={() => { setActiveSection(tab.id); setExpandedId(null); }}
                   className="flex items-center justify-center gap-1.5 rounded-[11px] transition-all duration-200 relative overflow-hidden"
                   style={{ padding: "10px 10px", background: isActive ? "var(--cc-glass-hover)" : "transparent", border: `0.5px solid ${isActive ? `${tab.color}40` : searchQuery && hasSearchResults ? `${tab.color}25` : "transparent"}`, backdropFilter: isActive ? "blur(20px) saturate(1.8)" : "none", boxShadow: isActive ? `inset 0 1px 0 var(--specular-top), 0 2px 10px ${tab.color}18` : "none" }}>
                   {isActive && <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "0.5px", background: `linear-gradient(90deg,transparent,${tab.color}70,transparent)`, pointerEvents: "none" }} />}
@@ -430,7 +419,7 @@ export default function ProjectsPage() {
           </div>
         </div>
 
-        {/* CHANGE 4: Description banner — clamp to 2 lines with "more" toggle */}
+        {/* Section description — clamped with show more */}
         {activeSectionData && activeSection !== "__all__" && activeSection !== "__uncategorised__" && (
           <div className="mt-2 px-3 py-2.5 rounded-[11px] animate-fade-in" style={{ background: `${activeSectionData.color}0d`, border: `0.5px solid ${activeSectionData.color}28` }}>
             <div className="flex items-start gap-2">
@@ -439,10 +428,8 @@ export default function ProjectsPage() {
                 style={{ color: "var(--text-secondary)", lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: descExpanded[activeSectionData.id] ? 99 : 2, WebkitBoxOrient: "vertical" }}>
                 {activeSectionData.description}
               </p>
-              {/* Only show toggle if description is long enough to overflow */}
               {activeSectionData.description.length > 80 && (
-                <button
-                  onClick={() => setDescExpanded((p) => ({ ...p, [activeSectionData.id]: !p[activeSectionData.id] }))}
+                <button onClick={() => setDescExpanded((p) => ({ ...p, [activeSectionData.id]: !p[activeSectionData.id] }))}
                   className="flex-shrink-0 text-[9px] font-mono mt-0.5"
                   style={{ color: activeSectionData.color, opacity: 0.8 }}>
                   {descExpanded[activeSectionData.id] ? "less" : "more"}
@@ -548,12 +535,17 @@ export default function ProjectsPage() {
                         <span className="text-sm flex-shrink-0 mt-0.5">{sc.emoji}</span>
                         <h3 className="text-sm font-medium leading-snug" style={{ color: "var(--text-primary)" }}>{p.title}</h3>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
                         <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${sc.color}12`, color: sc.color, border: `0.5px solid ${sc.color}30` }}>{sc.label}</span>
                         {p.category && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${secColor}10`, color: secColor, border: `0.5px solid ${secColor}28` }}>{p.category}</span>}
                         {deadline   && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${deadline.color}12`, color: deadline.color, border: `0.5px solid ${deadline.color}28` }}>{deadline.label}</span>}
                       </div>
-                      {p.description && <p className="text-[11px] sm:text-xs line-clamp-2" style={{ color: "var(--text-secondary)", lineHeight: 1.55 }}>{p.description}</p>}
+                      {/* ── FIX: removed line-clamp-2 — full description always visible ── */}
+                      {p.description && (
+                        <p className="text-[11px] sm:text-xs" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                          {p.description}
+                        </p>
+                      )}
                     </div>
                     <svg width="44" height="44" viewBox="0 0 52 52" className="flex-shrink-0">
                       <circle cx="26" cy="26" r="22" fill="none" strokeWidth="3" style={{ stroke: "var(--border-default)" }} />
@@ -563,7 +555,7 @@ export default function ProjectsPage() {
                   </div>
                   <div className="mt-3"><ColoredSlider value={p.progress} color={sc.color} onChange={(v) => handleProgressUpdate(p.id, v)} /></div>
 
-                  {/* CHANGE 2: Tech chips always wrap — never scroll */}
+                  {/* Tech chips — always wrap, never scroll */}
                   {p.tech && p.tech.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {p.tech.map((t) => (
