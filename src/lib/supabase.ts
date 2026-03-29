@@ -39,6 +39,16 @@ export interface Decision {
   created_at: string; updated_at: string;
 }
 
+export interface LearningProgress {
+  id: string;
+  phase_id: number;
+  track_index: number;
+  topic_index: number;
+  is_done: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Todo CRUD ──────────────────────────────────────────────
 export async function fetchTodos() {
   const { data, error } = await supabase.from("todos").select("*").order("updated_at", { ascending: false });
@@ -97,3 +107,28 @@ export async function deleteDecision(id: string) { await supabase.from("decision
 
 // ── Analytics ──────────────────────────────────────────────
 export async function fetchActivityLog(days: number = 30) { const since = new Date(); since.setDate(since.getDate() - days); const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", since.toISOString()).order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
+
+// ── Learning Progress ──────────────────────────────────────
+export async function fetchLearningProgress(): Promise<LearningProgress[]> {
+  const { data, error } = await supabase
+    .from("learning_progress")
+    .select("*")
+    .order("phase_id", { ascending: true });
+  if (error) throw error;
+  return data as LearningProgress[];
+}
+
+export async function toggleLearningTopic(
+  phaseId: number,
+  trackIndex: number,
+  topicIndex: number,
+  currentDone: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("learning_progress")
+    .upsert(
+      { phase_id: phaseId, track_index: trackIndex, topic_index: topicIndex, is_done: !currentDone },
+      { onConflict: "phase_id,track_index,topic_index" }
+    );
+  if (error) throw error;
+}

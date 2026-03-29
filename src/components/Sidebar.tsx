@@ -11,6 +11,13 @@ const ICON = (d: string) => (
   </svg>
 );
 
+const LEARNING_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+    <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+  </svg>
+);
+
 const PRIMARY_NAV = [
   { href: "/today",    label: "Today",    icon: ICON("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 6v6l4 2") },
   { href: "/",         label: "Tasks",    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
@@ -18,6 +25,7 @@ const PRIMARY_NAV = [
   { href: "/focus",    label: "Focus",    icon: ICON("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 8v4M12 16v0") },
   { href: "/notes",    label: "Notes",    icon: ICON("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8") },
   { href: "/projects", label: "Projects", icon: ICON("M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z") },
+  { href: "/learning", label: "Learning", icon: LEARNING_ICON },
 ];
 
 const MORE_NAV = [
@@ -61,7 +69,7 @@ function NavLink({ href, label, icon, pathname, showLabel }: {
         boxShadow:            isActive ? "var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)" : "none",
         border:               isActive ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent",
         textDecoration: "none",
-        flexShrink: 0, // never shrink — important for scroll to work
+        flexShrink: 0,
       }}
     >
       {isActive && (
@@ -121,7 +129,7 @@ export function Sidebar() {
           flexDirection: "column",
         }}
       >
-        {/* Logo header — fixed height, never scrolls */}
+        {/* Logo header */}
         <div style={{
           flexShrink: 0,
           display: "flex", alignItems: "center",
@@ -145,29 +153,20 @@ export function Sidebar() {
         {/* Divider */}
         <div style={{ flexShrink: 0, height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 4px" }} />
 
-        {/* ════════════════════════════════════════════
-            SCROLLABLE NAV
-            Critical rules:
-            - flex: 1   → takes all available vertical space
-            - minHeight: 0  → allows flex child to shrink below content size
-            - overflowY: auto  → scrolls when items exceed height
-            - NO flex spacer inside — that prevents scrolling
-            ════════════════════════════════════════════ */}
+        {/* ── SCROLLABLE NAV ── */}
         <nav style={{
           flex: 1,
-          minHeight: 0,          /* ← CRITICAL: without this, overflow:auto doesn't work in flex */
+          minHeight: 0,
           overflowY: "auto",
           overflowX: "hidden",
           padding: "4px 8px 4px",
           scrollbarWidth: "none",
         }}>
-
-          {/* Primary nav items */}
+          {/* Primary nav items — includes Learning */}
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
           ))}
 
-          {/* Spacer between primary and more */}
           <div style={{ height: "8px" }} />
 
           {/* More toggle */}
@@ -200,24 +199,19 @@ export function Sidebar() {
             <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
           ))}
 
-          {/* Bottom padding so last item isn't flush against the divider */}
           <div style={{ height: "8px" }} />
         </nav>
 
-        {/* Divider above Settings — fixed, never scrolls */}
+        {/* Divider above Settings */}
         <div style={{ flexShrink: 0, height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 4px" }} />
 
-        {/* Settings — always pinned at bottom, never scrolled away */}
+        {/* Settings — always pinned at bottom */}
         <div style={{ flexShrink: 0, padding: "0 8px 16px" }}>
           <NavLink href="/settings" label="Settings" icon={SETTINGS_ICON} pathname={pathname} showLabel={showLabels} />
         </div>
       </aside>
 
-      {/* ── Floating collapse/expand button ──
-          Positioned at the right edge of the sidebar.
-          Completely outside <aside> so it's never clipped.
-          Only on desktop (lg+).
-      ── */}
+      {/* ── Floating collapse/expand button ── */}
       {isLg && (
         <button
           onClick={() => setCollapsed(!collapsed)}
