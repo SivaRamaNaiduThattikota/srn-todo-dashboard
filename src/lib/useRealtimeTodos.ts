@@ -37,15 +37,41 @@ export function useRealtimeTodos() {
 
           if (payload.eventType === "INSERT") {
             const t = payload.new as Todo;
-            setTodos((prev) => [t, ...prev]);
-            setLastEvent(`[${ts}] + New: "${t.title}"`);
-            playAddSound();
-            window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `New task: ${t.title}`, type: "success" } }));
+            // Only add to list if not already soft-deleted
+            if (!t.deleted_at) {
+              setTodos((prev) => [t, ...prev]);
+              setLastEvent(`[${ts}] + New: "${t.title}"`);
+              playAddSound();
+              window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `New task: ${t.title}`, type: "success" } }));
+            }
           }
 
           if (payload.eventType === "UPDATE") {
             const t = payload.new as Todo;
             const old = payload.old as Todo;
+
+            // ── KEY FIX: soft-delete means deleted_at just became non-null ──
+            // Remove it from the active list immediately — it's now in the bin.
+            if (t.deleted_at) {
+              setTodos((prev) => prev.filter((x) => x.id !== t.id));
+              setLastEvent(`[${ts}] − "${t.title}" moved to bin`);
+              playDeleteSound();
+              return;
+            }
+
+            // Restore from bin: deleted_at cleared → add back to active list
+            if (!t.deleted_at && (old as any).deleted_at) {
+              setTodos((prev) => {
+                // avoid duplicates
+                const exists = prev.some((x) => x.id === t.id);
+                return exists ? prev.map((x) => (x.id === t.id ? t : x)) : [t, ...prev];
+              });
+              setLastEvent(`[${ts}] ↩ "${t.title}" restored`);
+              window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Restored: ${t.title}`, type: "success" } }));
+              return;
+            }
+
+            // Normal field update (status change, title edit, etc.)
             setTodos((prev) => prev.map((x) => (x.id === t.id ? t : x)));
             setLastEvent(`[${ts}] ~ "${t.title}" → ${t.status}`);
             if (t.status === "done" && old.status !== "done") {
@@ -55,6 +81,7 @@ export function useRealtimeTodos() {
           }
 
           if (payload.eventType === "DELETE") {
+            // Hard delete (from recycle bin)
             const t = payload.old as Todo;
             setTodos((prev) => prev.filter((x) => x.id !== t.id));
             setLastEvent(`[${ts}] − Removed task`);
