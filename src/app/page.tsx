@@ -578,28 +578,16 @@ export default function TasksPage() {
                   background: "var(--glass-fill)",
                   backdropFilter: "blur(28px) saturate(1.8)",
                   WebkitBackdropFilter: "blur(28px) saturate(1.8)",
-                  border: isSelected
-                    ? "0.5px solid var(--accent)"
-                    : `0.5px solid var(--glass-border)`,
+                  border: isSelected ? "0.5px solid var(--accent)" : "0.5px solid var(--glass-border)",
                   boxShadow: isSelected
-                    ? `var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)`
-                    : `var(--shadow-md), inset 0 1px 0 var(--specular-top)`,
+                    ? "var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)"
+                    : "var(--shadow-md), inset 0 1px 0 var(--specular-top)",
                 }}>
 
-                {/* Specular inner highlight — top edge glow */}
-                <div style={{
-                  position: "absolute", top: 0, left: "6%", right: "6%", height: "0.5px",
-                  background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)",
-                  pointerEvents: "none", zIndex: 4,
-                }} />
-
+                {/* Specular highlight */}
+                <div style={{ position: "absolute", top: 0, left: "6%", right: "6%", height: "0.5px", background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)", pointerEvents: "none", zIndex: 4 }} />
                 {/* Inner glass overlay */}
-                <div style={{
-                  position: "absolute", top: 0, left: 0, right: 0, height: "42%",
-                  background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)",
-                  pointerEvents: "none", zIndex: 2, mixBlendMode: "overlay",
-                  borderRadius: "22px 22px 0 0",
-                }} />
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "42%", background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)", pointerEvents: "none", zIndex: 2, mixBlendMode: "overlay", borderRadius: "22px 22px 0 0" }} />
 
                 <div className="relative flex items-center gap-2 px-3 py-3" style={{ zIndex: 5 }}>
                   {bulkMode && (
@@ -610,35 +598,24 @@ export default function TasksPage() {
                     </button>
                   )}
 
-                  {/* Status indicator — visible ring + colored fill */}
-                  <div className="flex-shrink-0 relative" style={{ width: "20px", height: "20px" }}>
-                    {/* Outer ring */}
-                    <div style={{
-                      position: "absolute", inset: 0, borderRadius: "50%",
-                      border: `1.5px solid ${sc.color}70`,
-                      boxShadow: `0 0 8px ${sc.color}40`,
-                    }} />
-                    {/* Inner filled dot */}
-                    <div style={{
-                      position: "absolute", inset: "4px", borderRadius: "50%",
-                      background: sc.color,
-                      boxShadow: `0 0 6px ${sc.color}`,
-                    }} />
-                  </div>
+                  {/* Simple status dot */}
+                  <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
+                    style={{ background: sc.color, boxShadow: `0 0 6px ${sc.color}90`, flexShrink: 0 }} />
 
-                  {/* Title + badges */}
+                  {/* Title — always visible */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate"
-                        style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none", minWidth: 0 }}>
+                        style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>
                         {todo.title}
                       </span>
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                      {/* Badges — hidden on mobile, visible on sm+ */}
+                      <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
                         style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>
                         {todo.priority}
                       </span>
                       {due && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
                           style={{ background: `${due.color}15`, color: due.color, border: `0.5px solid ${due.color}30` }}>
                           {due.label}
                         </span>
@@ -651,9 +628,9 @@ export default function TasksPage() {
 
                   {/* Right controls */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
-                    {/* Status pill — shows icon on mobile, icon+label on sm+ */}
+
+                    {/* Status dropdown — always visible */}
                     <div className="relative flex-shrink-0" style={{ height: "28px" }}>
-                      {/* Visible styled pill */}
                       <div className="flex items-center gap-1 px-2 h-full rounded-[10px] pointer-events-none"
                         style={{
                           background: `${sc.color}18`,
@@ -669,7 +646,6 @@ export default function TasksPage() {
                         <span style={{ fontSize: "12px" }}>{sc.icon}</span>
                         <span className="hidden sm:inline">{sc.label}</span>
                       </div>
-                      {/* Invisible native select overlaid for functionality */}
                       <select
                         value={todo.status}
                         onChange={async (e) => {
@@ -686,36 +662,25 @@ export default function TasksPage() {
                       </select>
                     </div>
 
+                    {/* Edit + Delete — hidden on mobile, visible on sm+ */}
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
-                      className="w-7 h-7 flex items-center justify-center rounded-xl"
-                      style={{
-                        color: "var(--text-muted)",
-                        background: "var(--glass-fill)",
-                        backdropFilter: "blur(8px)",
-                        border: "0.5px solid var(--glass-border)",
-                        boxShadow: "inset 0 1px 0 var(--specular-inner), 0 1px 4px rgba(0,0,0,0.18)",
-                        transition: "all 0.18s ease",
-                      }}>
+                      className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl"
+                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", backdropFilter: "blur(8px)", border: "0.5px solid var(--glass-border)", boxShadow: "inset 0 1px 0 var(--specular-inner), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                       </svg>
                     </button>
                     <button onClick={() => handleDelete(todo.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-xl"
-                      style={{
-                        color: "#f87171",
-                        background: "rgba(248,65,65,0.10)",
-                        backdropFilter: "blur(8px)",
-                        border: "0.5px solid rgba(248,65,65,0.22)",
-                        boxShadow: "inset 0 1px 0 rgba(255,100,100,0.15), 0 1px 4px rgba(0,0,0,0.18)",
-                        transition: "all 0.18s ease",
-                      }}>
+                      className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl"
+                      style={{ color: "#f87171", background: "rgba(248,65,65,0.10)", backdropFilter: "blur(8px)", border: "0.5px solid rgba(248,65,65,0.22)", boxShadow: "inset 0 1px 0 rgba(255,100,100,0.15), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                         <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
                       </svg>
                     </button>
+
+                    {/* Chevron — always visible */}
                     <button onClick={() => setExpandedId(isExpanded ? null : todo.id)}
                       className="w-7 h-7 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
@@ -728,8 +693,43 @@ export default function TasksPage() {
 
                 {isExpanded && (
                   <div className="px-4 pb-4 space-y-3 animate-fade-in" style={{ borderTop: "0.5px solid var(--glass-border-subtle)", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(8px)" }}>
+
+                    {/* Mobile-only: badges + action buttons */}
+                    <div className="flex items-center gap-2 pt-3 flex-wrap sm:hidden">
+                      <span className="text-[9px] font-mono px-2 py-1 rounded-full"
+                        style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>
+                        {todo.priority}
+                      </span>
+                      {due && (
+                        <span className="text-[9px] font-mono px-2 py-1 rounded-full"
+                          style={{ background: `${due.color}15`, color: due.color, border: `0.5px solid ${due.color}30` }}>
+                          {due.label}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-mono"
+                          style={{ background: "var(--glass-fill)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          Edit
+                        </button>
+                        <button onClick={() => handleDelete(todo.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-mono"
+                          style={{ background: "rgba(248,65,65,0.10)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.22)" }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+
                     {todo.description && (
-                      <p className="text-xs font-mono pt-3" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{todo.description}</p>
+                      <p className="text-xs font-mono" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{todo.description}</p>
                     )}
                     <div className="flex flex-wrap gap-3 text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
                       <span>Status: <span style={{ color: sc.color }}>{sc.label}</span></span>
