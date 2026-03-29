@@ -8,6 +8,7 @@ import {
   type LearningPhase, type LearningProgress, type LearningWeekProgress,
   type LearningResource, type LearningTrack, type LearningWeek, type LearningPractice,
 } from "@/lib/supabase";
+import { RecycleBinModal } from "@/components/RecycleBinModal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES & HELPERS
@@ -58,19 +59,19 @@ function EditPhaseModal({ phase, onSave, onClose }: EditPhaseModalProps) {
   const isNew = !phase?.id;
   const [saving, setSaving] = useState(false);
 
-  const [title, setTitle]       = useState(phase?.title ?? "");
-  const [duration, setDuration] = useState(phase?.duration ?? "");
+  const [title, setTitle]         = useState(phase?.title ?? "");
+  const [duration, setDuration]   = useState(phase?.duration ?? "");
   const [milestone, setMilestone] = useState(phase?.milestone ?? "");
   const [accentColor, setAccentColor] = useState(phase?.accent_color ?? "#534AB7");
-  const [bgColor, setBgColor]   = useState(phase?.bg_color ?? "rgba(83,74,183,0.13)");
+  const [bgColor, setBgColor]     = useState(phase?.bg_color ?? "rgba(83,74,183,0.13)");
   const [textColor, setTextColor] = useState(phase?.text_color ?? "#a09aee");
 
-  const [resources, setResources] = useState<LearningResource[]>(phase?.resources ?? []);
+  const [resources, setResources]     = useState<LearningResource[]>(phase?.resources ?? []);
   const [newResLabel, setNewResLabel] = useState("");
   const [newResUrl, setNewResUrl]     = useState("");
 
-  const [tracks, setTracks]   = useState<LearningTrack[]>(phase?.tracks ?? [{ label: "", topics: [] }]);
-  const [weeks, setWeeks]     = useState<LearningWeek[]>(phase?.weeks ?? [{ label: "", goals: [] }]);
+  const [tracks, setTracks]     = useState<LearningTrack[]>(phase?.tracks ?? [{ label: "", topics: [] }]);
+  const [weeks, setWeeks]       = useState<LearningWeek[]>(phase?.weeks ?? [{ label: "", goals: [] }]);
   const [practice, setPractice] = useState<LearningPractice[]>(phase?.practice ?? [{ title: "", problems: [] }]);
 
   const applyPreset = (p: typeof ACCENT_PRESETS[0]) => { setAccentColor(p.accent); setBgColor(p.bg); setTextColor(p.text); };
@@ -291,20 +292,19 @@ function InlineAdder({ placeholder, accentColor, onAdd }: { placeholder: string;
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LearningPage() {
-  const [phases, setPhases]     = useState<LearningPhase[]>([]);
-  const [done, setDone]         = useState<DoneMap>({});
-  const [weeks, setWeeks]       = useState<WeekMap>({});
-  const [loading, setLoading]   = useState(true);
+  const [phases, setPhases]       = useState<LearningPhase[]>([]);
+  const [done, setDone]           = useState<DoneMap>({});
+  const [weeks, setWeeks]         = useState<WeekMap>({});
+  const [loading, setLoading]     = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const [openPhase, setOpenPhase] = useState<number | null>(null);
   const [tabMap, setTabMap]       = useState<Record<number, "topics" | "weeks" | "practice">>({});
 
   const [editPhase, setEditPhase] = useState<Partial<LearningPhase> | null | false>(false);
+  const [showBin, setShowBin]     = useState(false);
 
   // ── Double-confirm + 5-second undo delete ──────────────────────────────
-  // deleteStep[phaseId] === 1 → first "Are you sure?" shown
-  // deleteStep[phaseId] === 2 → second "Really?" shown + 5s countdown running
   const [deleteStep, setDeleteStep]       = useState<Record<number, 1 | 2>>({});
   const [pendingDelete, setPendingDelete] = useState<LearningPhase | null>(null);
   const [undoProgress, setUndoProgress]   = useState(100);
@@ -325,7 +325,6 @@ export default function LearningPage() {
 
   useEffect(() => { loadAll().finally(() => setLoading(false)); }, [loadAll]);
 
-  // Topic toggle
   const handleTopicToggle = useCallback(async (phaseId: number, ti: number, i: number) => {
     const key = topicKey(phaseId, ti, i);
     const cur = !!done[key];
@@ -336,7 +335,6 @@ export default function LearningPage() {
     finally { setSavingKey(null); }
   }, [done]);
 
-  // Week toggle
   const handleWeekToggle = useCallback(async (phaseId: number, wi: number) => {
     const key = weekKey(phaseId, wi);
     const cur = !!weeks[key];
@@ -347,41 +345,33 @@ export default function LearningPage() {
     finally { setSavingKey(null); }
   }, [weeks]);
 
-  // Save phase (create or update)
   const handleSavePhase = async (payload: Partial<LearningPhase>) => {
     await upsertLearningPhase(payload);
     await loadAll();
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: payload.id ? "Phase updated" : "Phase created", type: "success" } }));
   };
 
-  // ── Delete helpers ─────────────────────────────────────────────────────
-
-  // Step 1 — show first confirm (click again to cancel)
   const handleDeleteStep1 = (phase: LearningPhase) => {
     if (deleteStep[phase.id] === 1) {
       setDeleteStep((p) => { const n = { ...p }; delete n[phase.id]; return n; });
       return;
     }
-    // Cancel any other in-progress deletion first
     clearDeleteTimers();
     setPendingDelete(null);
     setDeleteStep({ [phase.id]: 1 });
   };
 
-  // Step 2 — show second confirm + start 5s countdown
   const handleDeleteStep2 = (phase: LearningPhase) => {
     clearDeleteTimers();
     setPendingDelete(phase);
     setDeleteStep((p) => ({ ...p, [phase.id]: 2 }));
     setUndoProgress(100);
-
     let pct = 100;
     deleteIntervalRef.current = setInterval(() => {
       pct -= 2;
       setUndoProgress(Math.max(0, pct));
       if (pct <= 0 && deleteIntervalRef.current) clearInterval(deleteIntervalRef.current);
     }, 100);
-
     deleteTimerRef.current = setTimeout(async () => {
       clearDeleteTimers();
       await deleteLearningPhase(phase.id);
@@ -394,9 +384,7 @@ export default function LearningPage() {
 
   const handleDeleteUndo = () => {
     clearDeleteTimers();
-    if (pendingDelete) {
-      setDeleteStep((p) => { const n = { ...p }; delete n[pendingDelete.id]; return n; });
-    }
+    if (pendingDelete) setDeleteStep((p) => { const n = { ...p }; delete n[pendingDelete.id]; return n; });
     setPendingDelete(null);
     setUndoProgress(100);
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Delete cancelled", type: "success" } }));
@@ -443,6 +431,14 @@ export default function LearningPage() {
               <div className="text-xl sm:text-2xl font-semibold font-mono leading-none" style={{ color: "var(--accent)" }}>{overall}%</div>
               <div className="text-[9px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>{doneTopics}/{totalTopics}</div>
             </div>
+            <button onClick={() => setShowBin(true)} className="cc-btn px-3 py-2 text-xs flex-shrink-0" title="Recycle bin">
+              <span style={{ position: "relative", zIndex: 3 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </span>
+            </button>
             <button onClick={() => setEditPhase(null)} className="cc-btn cc-btn-accent px-3 py-2 text-xs flex-shrink-0">
               <span style={{ position: "relative", zIndex: 3 }}>+ Phase</span>
             </button>
@@ -499,10 +495,10 @@ export default function LearningPage() {
       {!loading && (
         <div className="space-y-3">
           {phases.map((phase, pi) => {
-            const pct       = phasePct(phase, done);
-            const isOpen    = openPhase === phase.id;
-            const activeTab = getTab(phase.id);
-            const dStep     = deleteStep[phase.id];
+            const pct         = phasePct(phase, done);
+            const isOpen      = openPhase === phase.id;
+            const activeTab   = getTab(phase.id);
+            const dStep       = deleteStep[phase.id];
             const isCountdown = dStep === 2 && pendingDelete?.id === phase.id;
 
             return (
@@ -510,10 +506,8 @@ export default function LearningPage() {
                 className="liquid-glass rounded-[22px] overflow-hidden animate-fade-in-up"
                 style={{ animationDelay: `${pi * 35}ms`, border: isOpen ? `0.5px solid ${phase.accent_color}40` : undefined }}>
 
-                {/* Accent bar */}
                 <div style={{ height: "2px", background: `linear-gradient(90deg,${phase.accent_color},transparent)` }} />
 
-                {/* Phase header */}
                 <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4">
                   <button onClick={() => setOpenPhase(isOpen ? null : phase.id)}
                     className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-semibold font-mono"
@@ -542,21 +536,16 @@ export default function LearningPage() {
                   </button>
 
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* Edit */}
                     <button onClick={() => setEditPhase(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
-                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}
-                      title="Edit phase">
+                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
-                    {/* Delete — turns red when step 1 or 2 active */}
                     <button onClick={() => handleDeleteStep1(phase)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
-                      style={{ color: dStep ? "#f87171" : "var(--text-muted)", background: dStep ? "rgba(248,65,65,0.10)" : "var(--glass-fill)", border: `0.5px solid ${dStep ? "rgba(248,65,65,0.28)" : "var(--glass-border)"}` }}
-                      title="Delete phase">
+                      style={{ color: dStep ? "#f87171" : "var(--text-muted)", background: dStep ? "rgba(248,65,65,0.10)" : "var(--glass-fill)", border: `0.5px solid ${dStep ? "rgba(248,65,65,0.28)" : "var(--glass-border)"}` }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     </button>
-                    {/* Expand/collapse */}
                     <button onClick={() => setOpenPhase(isOpen ? null : phase.id)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl"
                       style={{ color: "var(--text-muted)" }}>
@@ -568,68 +557,42 @@ export default function LearningPage() {
                   </div>
                 </div>
 
-                {/* ── STEP 1: First confirm ── */}
                 {dStep === 1 && (
                   <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] p-3 animate-fade-in"
                     style={{ background: "rgba(248,65,65,0.07)", border: "0.5px solid rgba(248,65,65,0.22)" }}>
-                    <p className="text-xs font-mono mb-0.5" style={{ color: "#f87171" }}>
-                      Delete phase "{phase.title}"?
-                    </p>
+                    <p className="text-xs font-mono mb-0.5" style={{ color: "#f87171" }}>Delete phase "{phase.title}"?</p>
                     <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>
                       All topic + week progress will be erased. You will have 5 seconds to undo.
                     </p>
                     <div className="flex gap-2">
-                      <button onClick={() => handleDeleteStep2(phase)}
-                        className="flex-1 py-2.5 text-xs font-medium rounded-[10px]"
-                        style={{ background: "rgba(248,65,65,0.18)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.30)" }}>
-                        Yes, delete
-                      </button>
-                      <button onClick={() => handleCancelDelete(phase.id)}
-                        className="flex-1 py-2.5 text-xs rounded-[10px]"
-                        style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
-                        Cancel
-                      </button>
+                      <button onClick={() => handleDeleteStep2(phase)} className="flex-1 py-2.5 text-xs font-medium rounded-[10px]"
+                        style={{ background: "rgba(248,65,65,0.18)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.30)" }}>Yes, delete</button>
+                      <button onClick={() => handleCancelDelete(phase.id)} className="flex-1 py-2.5 text-xs rounded-[10px]"
+                        style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>Cancel</button>
                     </div>
                   </div>
                 )}
 
-                {/* ── STEP 2: 5s countdown + undo ── */}
                 {isCountdown && (
                   <div className="mx-3 sm:mx-4 mb-3 rounded-[14px] overflow-hidden animate-fade-in"
                     style={{ border: "0.5px solid rgba(248,65,65,0.35)" }}>
-                    {/* Shrinking red progress bar */}
                     <div style={{ height: "3px", background: "rgba(248,65,65,0.15)", position: "relative" }}>
-                      <div style={{
-                        position: "absolute", top: 0, left: 0, height: "100%",
-                        background: "#f87171",
-                        width: `${undoProgress}%`,
-                        transition: "width 0.1s linear",
-                      }} />
+                      <div style={{ position: "absolute", top: 0, left: 0, height: "100%", background: "#f87171", width: `${undoProgress}%`, transition: "width 0.1s linear" }} />
                     </div>
-                    <div className="flex items-center gap-3 px-3 py-2.5"
-                      style={{ background: "rgba(248,65,65,0.07)" }}>
+                    <div className="flex items-center gap-3 px-3 py-2.5" style={{ background: "rgba(248,65,65,0.07)" }}>
                       <span className="text-xs font-mono flex-1" style={{ color: "#f87171" }}>
                         Deleting "{phase.title}" in {Math.max(1, Math.ceil(undoProgress / 20))}s…
                       </span>
-                      <button onClick={handleDeleteUndo}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-xl flex-shrink-0 transition-all"
-                        style={{ background: "rgba(94,207,149,0.14)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.32)" }}>
-                        Undo
-                      </button>
-                      <button onClick={() => handleCancelDelete(phase.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-xl flex-shrink-0"
-                        style={{ color: "var(--text-muted)", fontSize: "16px" }}>
-                        ×
-                      </button>
+                      <button onClick={handleDeleteUndo} className="px-3 py-1.5 text-xs font-semibold rounded-xl flex-shrink-0"
+                        style={{ background: "rgba(94,207,149,0.14)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.32)" }}>Undo</button>
+                      <button onClick={() => handleCancelDelete(phase.id)} className="w-7 h-7 flex items-center justify-center rounded-xl flex-shrink-0"
+                        style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>
                     </div>
                   </div>
                 )}
 
-                {/* Phase body */}
                 {isOpen && (
                   <div className="animate-fade-in" style={{ borderTop: `0.5px solid ${phase.accent_color}20` }}>
-
-                    {/* Milestone */}
                     <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5" style={{ background: phase.bg_color }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: phase.text_color, flexShrink: 0 }}>
                         <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
@@ -637,7 +600,6 @@ export default function LearningPage() {
                       <span className="text-[11px] font-medium" style={{ color: phase.text_color }}>Milestone: {phase.milestone}</span>
                     </div>
 
-                    {/* Tab bar + resources */}
                     <div className="flex items-center gap-1 px-3 sm:px-5 pt-3 pb-0 flex-wrap gap-y-2">
                       {(["topics", "weeks", "practice"] as const).map((t) => (
                         <button key={t} onClick={() => setPhaseTab(phase.id, t)}
@@ -662,7 +624,6 @@ export default function LearningPage() {
                       </div>
                     </div>
 
-                    {/* ── TOPICS TAB ── */}
                     {activeTab === "topics" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {phase.tracks.map((track, ti) => (
@@ -696,7 +657,6 @@ export default function LearningPage() {
                       </div>
                     )}
 
-                    {/* ── WEEKS TAB ── */}
                     {activeTab === "weeks" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-2">
                         {phase.weeks.map((week, wi) => {
@@ -729,7 +689,6 @@ export default function LearningPage() {
                       </div>
                     )}
 
-                    {/* ── PRACTICE TAB ── */}
                     {activeTab === "practice" && (
                       <div className="px-3 sm:px-5 pt-3 pb-5 space-y-4">
                         {phase.practice.map((set, si) => (
@@ -776,6 +735,7 @@ export default function LearningPage() {
           onClose={() => setEditPhase(false)}
         />
       )}
+      {showBin && <RecycleBinModal table="learning_phases" onClose={() => setShowBin(false)} onRestored={loadAll} />}
     </div>
   );
 }

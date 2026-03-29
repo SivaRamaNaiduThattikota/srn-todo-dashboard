@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { fetchProjects, addProject, updateProject, deleteProject, type Project } from "@/lib/supabase";
+import { RecycleBinModal } from "@/components/RecycleBinModal";
 
 const STATUS_OPTIONS = [
   { value: "planning",    label: "Planning",    color: "#94a3b8", emoji: "📋" },
@@ -43,21 +44,9 @@ function SearchBar({ value, onChange, resultCount, totalCount }: { value: string
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: value ? "var(--accent)" : "var(--cc-text-muted)", flexShrink: 0 }}>
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
-        <input ref={inputRef} type="text" value={value} onChange={(e) => onChange(e.target.value)}
-          placeholder="Search by title, description, tech stack…"
-          className="flex-1 bg-transparent py-2.5 text-xs font-mono focus:outline-none"
-          style={{ color: "var(--text-primary)", minWidth: 0 }} />
-        {value && (
-          <span className="text-[9px] font-mono flex-shrink-0 px-2 py-0.5 rounded-lg"
-            style={{ background: resultCount > 0 ? "var(--accent-muted)" : "rgba(248,65,65,0.12)", color: resultCount > 0 ? "var(--accent)" : "#f87171" }}>
-            {resultCount} / {totalCount}
-          </span>
-        )}
-        {value && (
-          <button onClick={() => { onChange(""); inputRef.current?.focus(); }}
-            className="w-6 h-6 flex items-center justify-center rounded-lg flex-shrink-0"
-            style={{ color: "var(--cc-text-muted)", background: "var(--glass-fill)" }}>×</button>
-        )}
+        <input ref={inputRef} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Search by title, description, tech stack…" className="flex-1 bg-transparent py-2.5 text-xs font-mono focus:outline-none" style={{ color: "var(--text-primary)", minWidth: 0 }} />
+        {value && <span className="text-[9px] font-mono flex-shrink-0 px-2 py-0.5 rounded-lg" style={{ background: resultCount > 0 ? "var(--accent-muted)" : "rgba(248,65,65,0.12)", color: resultCount > 0 ? "var(--accent)" : "#f87171" }}>{resultCount}/{totalCount}</span>}
+        {value && <button onClick={() => { onChange(""); inputRef.current?.focus(); }} className="w-6 h-6 flex items-center justify-center rounded-lg flex-shrink-0" style={{ color: "var(--cc-text-muted)", background: "var(--glass-fill)" }}>×</button>}
       </div>
     </div>
   );
@@ -89,7 +78,7 @@ function UndoToast({ label, onUndo, onDismiss, progress }: { label: string; onUn
   );
 }
 
-/* ════════════════ SECTION MODAL ════════════════ */
+/* ════════════ SECTION MODAL ════════════ */
 function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSave: (s: Section[]) => void; onClose: () => void }) {
   const [local, setLocal]           = useState<Section[]>(JSON.parse(JSON.stringify(sections)));
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -97,8 +86,8 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
   const [newLabel, setNewLabel]   = useState("");
   const [newDesc, setNewDesc]     = useState("");
   const [newColor, setNewColor]   = useState("#94a3b8");
-  const [sectionUndo, setSectionUndo]                 = useState<SectionUndoState | null>(null);
-  const [sectionUndoProgress, setSectionUndoProgress] = useState(100);
+  const [sectionUndo, setSectionUndo]                   = useState<SectionUndoState | null>(null);
+  const [sectionUndoProgress, setSectionUndoProgress]   = useState(100);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { return () => { if (sectionUndo) { clearTimeout(sectionUndo.timeoutId); clearInterval(sectionUndo.intervalId); } }; }, [sectionUndo]);
@@ -170,9 +159,9 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
                       <input value={sec.description} onChange={(e) => updateSection(sec.id, { description: e.target.value })} placeholder="Short description..." className="w-full rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
                     </div>
                     <div>
-                      <span className="text-[9px] font-mono uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Categories — projects matching these appear in this section</span>
+                      <span className="text-[9px] font-mono uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>Categories</span>
                       <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
-                        {sec.categories.length === 0 && <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>No categories yet — add below</span>}
+                        {sec.categories.length === 0 && <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>No categories yet</span>}
                         {sec.categories.map((cat) => (
                           <span key={cat} className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-mono" style={{ background: `${sec.color}14`, color: sec.color, border: `0.5px solid ${sec.color}35` }}>
                             {cat}
@@ -181,7 +170,7 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
                         ))}
                       </div>
                       <div className="flex gap-2">
-                        <input value={newCatInputs[sec.id] || ""} onChange={(e) => setNewCatInputs((p) => ({ ...p, [sec.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCat(sec.id); } }} placeholder="e.g. Healthcare AI, Robotics…" className="flex-1 rounded-xl px-3 py-2.5 text-[11px] font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
+                        <input value={newCatInputs[sec.id] || ""} onChange={(e) => setNewCatInputs((p) => ({ ...p, [sec.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCat(sec.id); } }} placeholder="e.g. Healthcare AI…" className="flex-1 rounded-xl px-3 py-2.5 text-[11px] font-mono focus:outline-none" style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }} />
                         <button onClick={() => addCat(sec.id)} disabled={!(newCatInputs[sec.id] || "").trim()} className="px-3 py-2.5 text-[11px] font-medium rounded-xl disabled:opacity-30 flex-shrink-0" style={{ background: `${sec.color}20`, color: sec.color, border: `0.5px solid ${sec.color}35` }}>+ Add</button>
                       </div>
                     </div>
@@ -209,7 +198,7 @@ function SectionModal({ sections, onSave, onClose }: { sections: Section[]; onSa
   );
 }
 
-/* ════════════════ MAIN PAGE ════════════════ */
+/* ════════════ MAIN PAGE ════════════ */
 export default function ProjectsPage() {
   const [projects, setProjects]     = useState<Project[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -220,6 +209,7 @@ export default function ProjectsPage() {
   const [sortBy, setSortBy]         = useState<SortBy>("sort_order");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [searchQuery, setSearchQuery]   = useState("");
+  const [showBin, setShowBin]           = useState(false);
 
   const [sections, setSections]               = useState<Section[]>(DEFAULT_SECTIONS);
   const [activeSection, setActiveSection]     = useState<string>("foundation");
@@ -301,7 +291,6 @@ export default function ProjectsPage() {
   }, [projects, activeSection, sections, filterStatus, sortBy, searchQuery, getSectionForProject, matchesSearch]);
 
   const globalSearchResults = useMemo(() => { if (!searchQuery.trim()) return []; return projects.filter((p) => matchesSearch(p, searchQuery)); }, [projects, searchQuery, matchesSearch]);
-
   const totalProgress  = projects.length > 0 ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / projects.length) : 0;
   const statusCounts   = useMemo(() => { const c: Record<string, number> = {}; projects.forEach((p) => { c[p.status] = (c[p.status] || 0) + 1; }); return c; }, [projects]);
   const activeSectionData = sections.find((s) => s.id === activeSection);
@@ -326,16 +315,22 @@ export default function ProjectsPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10">
 
-      {/* Header */}
       <header className="mb-4 animate-fade-in-up">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>ML Portfolio</h1>
-            <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {projects.filter((p) => p.status === "completed" || p.status === "deployed").length}/{projects.length} done · {totalProgress}% overall
-            </p>
+            <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>{projects.filter((p) => p.status === "completed" || p.status === "deployed").length}/{projects.length} done · {totalProgress}% overall</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Recycle bin */}
+            <button onClick={() => setShowBin(true)} className="cc-btn px-3 py-2 text-xs" title="Recycle bin">
+              <span style={{ position: "relative", zIndex: 3 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </span>
+            </button>
             <button onClick={() => setShowSectionModal(true)} className="cc-btn px-3 py-2 text-xs" style={{ color: "var(--cc-text-muted)" }}>
               <span style={{ position: "relative", zIndex: 3 }}>⚙</span>
             </button>
@@ -356,10 +351,7 @@ export default function ProjectsPage() {
         )}
       </header>
 
-      {/* Search */}
-      {projects.length > 0 && (
-        <SearchBar value={searchQuery} onChange={setSearchQuery} resultCount={visibleProjects.length} totalCount={activeSection === "__all__" ? projects.length : (tabs.find((t) => t.id === activeSection)?.count || 0)} />
-      )}
+      {projects.length > 0 && <SearchBar value={searchQuery} onChange={setSearchQuery} resultCount={visibleProjects.length} totalCount={activeSection === "__all__" ? projects.length : (tabs.find((t) => t.id === activeSection)?.count || 0)} />}
 
       {searchQuery && visibleProjects.length === 0 && globalSearchResults.length > 0 && (
         <div className="mt-2 px-3 py-2.5 rounded-[12px] flex items-center gap-2 animate-fade-in" style={{ background: "var(--accent-muted)", border: "0.5px solid var(--accent-dim)" }}>
@@ -368,13 +360,10 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Status filters — 2×2 grid on mobile */}
       {projects.length > 0 && (
         <div className="mt-3 mb-3 animate-fade-in-up" style={{ animationDelay: "20ms" }}>
           <div className="mb-2">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="w-full sm:w-auto glass rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none cursor-pointer"
-              style={{ color: "var(--text-secondary)" }}>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="w-full sm:w-auto glass rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none cursor-pointer" style={{ color: "var(--text-secondary)" }}>
               {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -393,7 +382,6 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Section tabs — 2×2 grid on mobile */}
       <div className="mb-4 animate-fade-in-up" style={{ animationDelay: "35ms" }}>
         <div className="p-1 rounded-[16px]" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border)" }}>
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1">
@@ -418,20 +406,15 @@ export default function ProjectsPage() {
             })}
           </div>
         </div>
-
-        {/* Section description — clamped with show more */}
         {activeSectionData && activeSection !== "__all__" && activeSection !== "__uncategorised__" && (
           <div className="mt-2 px-3 py-2.5 rounded-[11px] animate-fade-in" style={{ background: `${activeSectionData.color}0d`, border: `0.5px solid ${activeSectionData.color}28` }}>
             <div className="flex items-start gap-2">
               <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: activeSectionData.color, flexShrink: 0, marginTop: "5px" }} />
-              <p className="text-[10px] font-mono flex-1"
-                style={{ color: "var(--text-secondary)", lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: descExpanded[activeSectionData.id] ? 99 : 2, WebkitBoxOrient: "vertical" }}>
+              <p className="text-[10px] font-mono flex-1" style={{ color: "var(--text-secondary)", lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: descExpanded[activeSectionData.id] ? 99 : 2, WebkitBoxOrient: "vertical" }}>
                 {activeSectionData.description}
               </p>
               {activeSectionData.description.length > 80 && (
-                <button onClick={() => setDescExpanded((p) => ({ ...p, [activeSectionData.id]: !p[activeSectionData.id] }))}
-                  className="flex-shrink-0 text-[9px] font-mono mt-0.5"
-                  style={{ color: activeSectionData.color, opacity: 0.8 }}>
+                <button onClick={() => setDescExpanded((p) => ({ ...p, [activeSectionData.id]: !p[activeSectionData.id] }))} className="flex-shrink-0 text-[9px] font-mono mt-0.5" style={{ color: activeSectionData.color, opacity: 0.8 }}>
                   {descExpanded[activeSectionData.id] ? "less" : "more"}
                 </button>
               )}
@@ -440,7 +423,6 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      {/* Add/Edit form */}
       {showForm && (
         <div className="spatial p-4 sm:p-6 mb-5 animate-slide-up">
           <div className="flex items-center justify-between mb-4">
@@ -502,7 +484,6 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Project cards */}
       {loading ? (
         <div className="text-center py-16"><span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Loading...</span></div>
       ) : visibleProjects.length === 0 ? (
@@ -540,12 +521,7 @@ export default function ProjectsPage() {
                         {p.category && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${secColor}10`, color: secColor, border: `0.5px solid ${secColor}28` }}>{p.category}</span>}
                         {deadline   && <span className="text-[9px] font-mono px-2 py-0.5 rounded-xl" style={{ background: `${deadline.color}12`, color: deadline.color, border: `0.5px solid ${deadline.color}28` }}>{deadline.label}</span>}
                       </div>
-                      {/* ── FIX: removed line-clamp-2 — full description always visible ── */}
-                      {p.description && (
-                        <p className="text-[11px] sm:text-xs" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                          {p.description}
-                        </p>
-                      )}
+                      {p.description && <p className="text-[11px] sm:text-xs" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{p.description}</p>}
                     </div>
                     <svg width="44" height="44" viewBox="0 0 52 52" className="flex-shrink-0">
                       <circle cx="26" cy="26" r="22" fill="none" strokeWidth="3" style={{ stroke: "var(--border-default)" }} />
@@ -554,19 +530,11 @@ export default function ProjectsPage() {
                     </svg>
                   </div>
                   <div className="mt-3"><ColoredSlider value={p.progress} color={sc.color} onChange={(v) => handleProgressUpdate(p.id, v)} /></div>
-
-                  {/* Tech chips — always wrap, never scroll */}
                   {p.tech && p.tech.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {p.tech.map((t) => (
-                        <span key={t} className="text-[9px] font-mono px-1.5 py-0.5 rounded-lg"
-                          style={{ background: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent-muted)" : "var(--bg-elevated)", color: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent)" : "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>
-                          {t}
-                        </span>
-                      ))}
+                      {p.tech.map((t) => <span key={t} className="text-[9px] font-mono px-1.5 py-0.5 rounded-lg" style={{ background: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent-muted)" : "var(--bg-elevated)", color: searchQuery && t.toLowerCase().includes(searchQuery.toLowerCase()) ? "var(--accent)" : "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>{t}</span>)}
                     </div>
                   )}
-
                   {isConfirmDel && <DeleteConfirm title={p.title} onConfirm={() => startDeleteCountdown(p)} onCancel={() => setConfirmDeleteId(null)} />}
                   {isExpanded && !isConfirmDel && (
                     <div className="mt-4 pt-4 space-y-4 animate-fade-in" style={{ borderTop: "0.5px solid var(--border-default)" }}>
@@ -574,9 +542,7 @@ export default function ProjectsPage() {
                         <span className="text-[10px] font-mono block mb-2" style={{ color: "var(--text-muted)" }}>Status</span>
                         <div className="grid grid-cols-2 gap-1.5">
                           {STATUS_OPTIONS.map((s) => (
-                            <button key={s.value} onClick={(e) => { e.stopPropagation(); handleStatusChange(p.id, s.value as Project["status"]); }}
-                              className="flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-mono rounded-xl transition-all"
-                              style={{ background: p.status === s.value ? `${s.color}15` : "var(--bg-card)", color: p.status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${p.status === s.value ? `${s.color}35` : "var(--border-default)"}` }}>
+                            <button key={s.value} onClick={(e) => { e.stopPropagation(); handleStatusChange(p.id, s.value as Project["status"]); }} className="flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-mono rounded-xl transition-all" style={{ background: p.status === s.value ? `${s.color}15` : "var(--bg-card)", color: p.status === s.value ? s.color : "var(--text-muted)", border: `0.5px solid ${p.status === s.value ? `${s.color}35` : "var(--border-default)"}` }}>
                               {s.emoji} {s.label}
                             </button>
                           ))}
@@ -614,6 +580,7 @@ export default function ProjectsPage() {
 
       {showSectionModal && <SectionModal sections={sections} onSave={handleSaveSections} onClose={() => setShowSectionModal(false)} />}
       {undoState && <UndoToast label={undoState.projectData.title} onUndo={handleUndo} progress={undoProgress} onDismiss={() => { clearTimeout(undoState.timeoutId); deleteProject(undoState.projectId).then(reload); setUndoState(null); }} />}
+      {showBin   && <RecycleBinModal table="projects" onClose={() => setShowBin(false)} onRestored={reload} />}
     </div>
   );
 }

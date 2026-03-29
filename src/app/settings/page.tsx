@@ -3,6 +3,7 @@
 import { useTheme } from "@/components/ThemeProvider";
 import { useState, useEffect } from "react";
 import { fetchTemplates, addTemplate, deleteTemplate, createTodoFromTemplate, type TaskTemplate, type TodoPriority } from "@/lib/supabase";
+import { RecycleBinModal, type BinTable } from "@/components/RecycleBinModal";
 
 const ACCENTS = [
   { id: "green"  as const, label: "Emerald", color: "hsl(160, 70%, 68%)" },
@@ -11,6 +12,14 @@ const ACCENTS = [
   { id: "orange" as const, label: "Sunset",  color: "hsl(25, 95%, 55%)"  },
   { id: "pink"   as const, label: "Rose",    color: "hsl(330, 80%, 60%)" },
   { id: "cyan"   as const, label: "Arctic",  color: "hsl(190, 90%, 50%)" },
+];
+
+const BIN_ENTRIES: { table: BinTable; label: string; icon: string; color: string }[] = [
+  { table: "todos",           label: "Tasks",          icon: "☑",  color: "#6ee7b7" },
+  { table: "notes",           label: "Notes",          icon: "📝", color: "#60a5fa" },
+  { table: "projects",        label: "Projects",       icon: "🚀", color: "#a78bfa" },
+  { table: "decisions",       label: "Decisions",      icon: "⚖️", color: "#f59e0b" },
+  { table: "learning_phases", label: "Learning Phases", icon: "📚", color: "#f87171" },
 ];
 
 export default function SettingsPage() {
@@ -22,6 +31,7 @@ export default function SettingsPage() {
   const [newRecurrence, setNewRecurrence]       = useState<"daily" | "weekly" | "monthly" | "">("");
   const [templateError, setTemplateError]       = useState<string | null>(null);
   const [calendarCopied, setCalendarCopied]     = useState(false);
+  const [activeBin, setActiveBin]               = useState<BinTable | null>(null);
 
   useEffect(() => { fetchTemplates().then(setTemplates).catch(() => {}); }, []);
 
@@ -72,6 +82,30 @@ export default function SettingsPage() {
                 style={{ background: accent === t.id ? "var(--glass-fill-hover)" : "transparent", border: accent === t.id ? "0.5px solid var(--glass-border)" : "0.5px solid transparent" }}>
                 <div className="w-7 h-7 rounded-full" style={{ backgroundColor: t.color, boxShadow: accent === t.id ? `0 0 12px ${t.color}40` : "none" }} />
                 <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Recycle Bins */}
+        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "20ms" }}>
+          <h2 className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>🗑 Recycle Bins</h2>
+          <p className="text-[10px] font-mono mb-4" style={{ color: "var(--text-muted)" }}>
+            Deleted items are soft-deleted and recoverable. Open any bin to restore or permanently delete.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {BIN_ENTRIES.map((bin) => (
+              <button key={bin.table} onClick={() => setActiveBin(bin.table)}
+                className="flex items-center gap-3 p-3 rounded-[14px] text-left transition-all hover-lift"
+                style={{ background: "var(--bg-card)", border: "0.5px solid var(--glass-border)" }}>
+                <span className="text-lg flex-shrink-0">{bin.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium block" style={{ color: "var(--text-primary)" }}>{bin.label}</span>
+                  <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>View & restore deleted {bin.label.toLowerCase()}</span>
+                </div>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--text-muted)", flexShrink: 0 }}>
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
               </button>
             ))}
           </div>
@@ -230,7 +264,7 @@ export default function SettingsPage() {
             <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>About</h3>
             <div className="space-y-2 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
               {[
-                ["Version", "v10"],
+                ["Version", "v10.7"],
                 ["DB",      "Supabase"],
                 ["Host",    "Vercel"],
                 ["Realtime","WebSocket"],
@@ -246,6 +280,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {activeBin && <RecycleBinModal table={activeBin} onClose={() => setActiveBin(null)} />}
     </div>
   );
 }
