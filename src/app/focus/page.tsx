@@ -9,11 +9,7 @@ import { format, isToday, subDays, eachDayOfInterval, isYesterday } from "date-f
 const DURATIONS = [15, 25, 45, 60, 90, 120];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SPLITFLAP TILE
-// One card. One number. Sliced exactly in half by a split line.
-// Top half shows only upper portion of digit.
-// Bottom half shows only lower portion of digit.
-// No duplication — just one number cut in half.
+// SPLITFLAP TILE — one number, one card, sliced in half
 // ─────────────────────────────────────────────────────────────────────────────
 function SplitflapTile({ digit }: { digit: string }) {
   const [current, setCurrent] = useState(digit);
@@ -33,12 +29,10 @@ function SplitflapTile({ digit }: { digit: string }) {
     return () => clearTimeout(t);
   }, [digit]);
 
-  // Tile dimensions — responsive
   const W  = "clamp(64px, 12vw, 120px)";
   const H  = "clamp(86px, 16vw, 160px)";
   const FS = "clamp(52px, 10vw, 100px)";
 
-  // Shared digit style
   const numStyle: React.CSSProperties = {
     fontSize: FS,
     fontWeight: 800,
@@ -55,62 +49,45 @@ function SplitflapTile({ digit }: { digit: string }) {
     <div style={{ width: W, height: H, position: "relative", borderRadius: "12px", overflow: "hidden", flexShrink: 0,
       boxShadow: "0 12px 40px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
 
-      {/* ── TOP HALF — clips to show only upper portion of digit ── */}
+      {/* TOP HALF — clips to show only upper portion of digit */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%",
         background: "#1d1d1d", overflow: "hidden" }}>
-        {/* Number anchored so its CENTER aligns with the BOTTOM of this half = split line */}
-        <span style={{ ...numStyle, color: "#b4b4b4",
-          top: 0,
-          // Full height container so number renders at correct size, clipped by overflow:hidden
-          height: H,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>{current}</span>
+        <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H,
+          display: "flex", alignItems: "center", justifyContent: "center" }}>{current}</span>
       </div>
 
-      {/* ── BOTTOM HALF — clips to show only lower portion of digit ── */}
+      {/* BOTTOM HALF — clips to show only lower portion of digit */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
         background: "#151515", overflow: "hidden" }}>
-        {/* Number anchored so its CENTER aligns with the TOP of this half = split line */}
-        <span style={{ ...numStyle, color: "#9a9a9a",
-          bottom: 0,
-          height: H,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>{current}</span>
-        {/* Shadow under split line */}
+        <span style={{ ...numStyle, color: "#9a9a9a", bottom: 0, height: H,
+          display: "flex", alignItems: "center", justifyContent: "center" }}>{current}</span>
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "14px",
           background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)", zIndex: 5 }} />
       </div>
 
-      {/* ── FLIP ANIMATION — top card flips down showing next digit ── */}
+      {/* FLIP ANIMATION */}
       {flipping && (
         <>
-          {/* Old top half rotating out */}
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%",
             background: "#1d1d1d", overflow: "hidden",
             transformOrigin: "bottom center", zIndex: 20,
             animation: "sfTopOut 0.18s ease-in forwards" }}>
-            <span style={{ ...numStyle, color: "#b4b4b4",
-              top: 0, height: H,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>{current}</span>
+            <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H,
+              display: "flex", alignItems: "center", justifyContent: "center" }}>{current}</span>
           </div>
-          {/* New bottom half rotating in showing next digit */}
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
             background: "#151515", overflow: "hidden",
             transformOrigin: "top center", zIndex: 19,
-            animation: "sfBotIn 0.18s ease-out 0.18s forwards",
-            opacity: 0 }}>
-            <span style={{ ...numStyle, color: "#9a9a9a",
-              bottom: 0, height: H,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>{next}</span>
+            animation: "sfBotIn 0.18s ease-out 0.18s forwards", opacity: 0 }}>
+            <span style={{ ...numStyle, color: "#9a9a9a", bottom: 0, height: H,
+              display: "flex", alignItems: "center", justifyContent: "center" }}>{next}</span>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "14px",
               background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)", zIndex: 5 }} />
           </div>
         </>
       )}
 
-      {/* ── SPLIT LINE — 3px black line at exact midpoint ── */}
+      {/* SPLIT LINE */}
       <div style={{ position: "absolute", top: "50%", left: 0, right: 0,
         height: "3px", background: "#000", transform: "translateY(-50%)", zIndex: 30 }} />
     </div>
@@ -141,13 +118,10 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
       `}</style>
 
       <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px,2vw,18px)" }}>
-        {/* MM pair */}
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
           <SplitflapTile digit={m0} />
           <SplitflapTile digit={m1} />
         </div>
-
-        {/* Separator dots */}
         <div style={{ display: "flex", flexDirection: "column", gap: "clamp(8px,2vw,16px)", alignItems: "center" }}>
           <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%",
             background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)",
@@ -158,8 +132,6 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
             boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none",
             transition: "background 0.3s, box-shadow 0.3s" }} />
         </div>
-
-        {/* SS pair */}
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
           <SplitflapTile digit={s0} />
           <SplitflapTile digit={s1} />
@@ -170,53 +142,55 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BBC FULLSCREEN OVERLAY
-// Centered numbers, correct row backgrounds, auto-rotating compass needle
+// BBC FULLSCREEN
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Focus depth zones for the compass
 const FOCUS_ZONES = [
-  { label: "Warming up",  sub: "Just starting",   angle: -70 },
-  { label: "Getting in",  sub: "Finding rhythm",  angle: -35 },
-  { label: "Deep work",   sub: "Peak focus",      angle:   0 },
-  { label: "Flow state",  sub: "In the zone 🔥",  angle:  35 },
-  { label: "Done",        sub: "Almost there!",   angle:  70 },
+  { label: "Warming up", sub: "Just starting",  angle: -70 },
+  { label: "Getting in", sub: "Finding rhythm", angle: -35 },
+  { label: "Deep work",  sub: "Peak focus",     angle:   0 },
+  { label: "Flow state", sub: "In the zone 🔥", angle:  35 },
+  { label: "Done",       sub: "Almost there!",  angle:  70 },
 ];
 
-function BBCRow({ value, label, bg, textColor, labelColor, animKey }: {
+function BBCRow({ value, label, bg, textColor, labelColor, animKey, rowCount }: {
   value: string; label: string; bg: string;
-  textColor: string; labelColor: string; animKey: number;
+  textColor: string; labelColor: string; animKey: number; rowCount: number;
 }) {
+  // Font size scaled to fit inside the row.
+  // Total screen: 100vh. Used by header≈110px, dividers≈4px, compass≈96px, controls≈70px → ~280px
+  // Each row gets (100vh - 280px) / rowCount height.
+  // Font = 72% of that height so it fills the row without overflowing.
+  const fs = `calc((100vh - 280px) / ${rowCount} * 0.72)`;
+
   return (
-    <div style={{ flex: 1, position: "relative", background: bg, overflow: "hidden", minHeight: 0,
-      display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {/* Label — top right */}
-      <span style={{ position: "absolute", top: "clamp(8px,2vw,14px)", right: "clamp(16px,4vw,48px)",
-        fontSize: "clamp(11px,1.6vw,16px)", fontWeight: 400, letterSpacing: "0.08em",
-        textTransform: "capitalize", color: labelColor, fontFamily: "inherit" }}>
-        {label}
-      </span>
-      {/* Giant number — CENTERED */}
+    <div style={{
+      flex: 1, position: "relative", background: bg,
+      overflow: "hidden", minHeight: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      {/* Label top-right */}
+      <span style={{
+        position: "absolute", top: "clamp(8px,1.5vw,14px)", right: "clamp(16px,3vw,40px)",
+        fontSize: "clamp(11px,1.4vw,15px)", fontWeight: 400, letterSpacing: "0.08em",
+        textTransform: "capitalize", color: labelColor, fontFamily: "inherit", zIndex: 2,
+      }}>{label}</span>
+
+      {/* Giant number — centered, constrained to row */}
       <span key={animKey} style={{
-        fontSize: "clamp(5rem,20vw,17rem)",
+        fontSize: fs,
         fontWeight: 200, lineHeight: 1, letterSpacing: "-0.05em",
         color: textColor, textAlign: "center", userSelect: "none",
         fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
         animation: animKey > 0 ? "bbcSlideIn 0.30s cubic-bezier(0.2,0.8,0.2,1) both" : "none",
-      }}>
-        {value}
-      </span>
+        display: "block", maxHeight: "100%",
+      }}>{value}</span>
     </div>
   );
 }
 
 function CompassWheel({ progress }: { progress: number }) {
-  // Needle rotates from -70deg (0%) to +70deg (100%)
   const needleAngle = -70 + progress * 140;
-
-  // Active zone index
-  let activeZone = 0;
-  let minDist = Infinity;
+  let activeZone = 0, minDist = Infinity;
   FOCUS_ZONES.forEach((z, i) => {
     const d = Math.abs(z.angle - needleAngle);
     if (d < minDist) { minDist = d; activeZone = i; }
@@ -225,49 +199,43 @@ function CompassWheel({ progress }: { progress: number }) {
   return (
     <div style={{ flexShrink: 0, position: "relative", height: "clamp(72px,12vw,100px)",
       background: "#1a1a1a", overflow: "hidden" }}>
-
-      {/* Arc circle — large, only bottom portion visible */}
+      {/* Arc */}
       <div style={{ position: "absolute",
         width: "clamp(320px,70vw,520px)", height: "clamp(320px,70vw,520px)",
         borderRadius: "50%", border: "0.5px solid rgba(255,255,255,0.14)",
-        left: "50%", bottom: "clamp(-240px,-50vw,-180px)",
-        transform: "translateX(-50%)" }} />
+        left: "50%", bottom: "clamp(-240px,-50vw,-180px)", transform: "translateX(-50%)" }} />
 
-      {/* Zone labels positioned around the arc */}
+      {/* Zone labels */}
       {FOCUS_ZONES.map((z, i) => {
-        // Map angle (-70 to +70) to x position (7% to 93%)
         const x = ((z.angle + 70) / 140) * 86 + 7;
-        // y position — middle zones appear higher (further from bottom)
         const yOffset = Math.abs(z.angle) < 20 ? "clamp(44px,8vw,60px)" : Math.abs(z.angle) < 50 ? "clamp(36px,6vw,50px)" : "clamp(18px,3vw,26px)";
         const isActive = i === activeZone;
         return (
           <div key={z.label} style={{ position: "absolute", left: `${x}%`, bottom: yOffset,
-            transform: "translateX(-50%)", textAlign: "center",
-            transition: "color 0.5s ease", pointerEvents: "none" }}>
-            <span style={{ display: "block", fontSize: isActive ? "clamp(10px,1.4vw,13px)" : "clamp(9px,1.2vw,11px)",
+            transform: "translateX(-50%)", textAlign: "center", pointerEvents: "none",
+            transition: "all 0.5s ease" }}>
+            <span style={{ display: "block",
+              fontSize: isActive ? "clamp(10px,1.4vw,13px)" : "clamp(9px,1.2vw,11px)",
               fontWeight: isActive ? 600 : 400, letterSpacing: "0.04em",
               color: isActive ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.20)",
               fontFamily: "-apple-system, sans-serif", whiteSpace: "nowrap",
-              transition: "all 0.5s ease" }}>
-              {z.label}
-            </span>
+              transition: "all 0.5s ease" }}>{z.label}</span>
             {isActive && (
               <span style={{ display: "block", fontSize: "clamp(8px,1vw,10px)",
                 color: "rgba(255,255,255,0.35)", marginTop: "2px",
-                fontFamily: "-apple-system, sans-serif" }}>
-                {z.sub}
-              </span>
+                fontFamily: "-apple-system, sans-serif" }}>{z.sub}</span>
             )}
           </div>
         );
       })}
 
-      {/* Rotating needle — pivots from bottom center */}
+      {/* Rotating needle */}
       <div style={{ position: "absolute", left: "50%", bottom: 0,
         transformOrigin: "bottom center",
         transform: `translateX(-50%) rotate(${needleAngle}deg)`,
         transition: "transform 1s cubic-bezier(0.34,1.1,0.64,1)" }}>
-        <div style={{ width: "1px", height: "clamp(36px,6vw,52px)", background: "rgba(255,255,255,0.55)", marginLeft: "-0.5px" }} />
+        <div style={{ width: "1px", height: "clamp(36px,6vw,52px)",
+          background: "rgba(255,255,255,0.55)", marginLeft: "-0.5px" }} />
         <div style={{ width: "5px", height: "5px", borderRadius: "50%",
           background: "rgba(255,255,255,0.85)", marginLeft: "-2px",
           marginTop: "-5px", boxShadow: "0 0 8px rgba(255,255,255,0.55)",
@@ -290,6 +258,8 @@ function FullscreenTimer({
   const secs     = timeLeft % 60;
   const progress = Math.max(0, Math.min(1, (duration * 60 - timeLeft) / (duration * 60)));
   const now      = new Date();
+  const showH    = duration >= 60;
+  const rowCount = showH ? 3 : 2;
 
   const [mKey, setMKey] = useState(0);
   const [sKey, setSKey] = useState(0);
@@ -301,76 +271,86 @@ function FullscreenTimer({
     if (hours !== ph.current) { setHKey(k => k+1); ph.current = hours; }
   }, [mins, secs, hours]);
 
-  const showH = duration >= 60;
-
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200,
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200,
       background: "#0a0a0a", display: "flex", flexDirection: "column",
-      fontFamily: "-apple-system, 'Helvetica Neue', sans-serif", overflow: "hidden" }}>
-
+      fontFamily: "-apple-system, 'Helvetica Neue', sans-serif", overflow: "hidden",
+    }}>
       {/* Header */}
-      <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-        padding: "clamp(14px,2.5vw,26px) clamp(20px,5vw,56px) 0",
-        background: "#2c2c2c" }}>
+      <div style={{
+        flexShrink: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+        padding: "clamp(14px,2vw,24px) clamp(20px,4vw,48px) clamp(12px,1.5vw,20px)",
+        background: "#2c2c2c",
+      }}>
         <div>
           <p style={{ fontSize: "clamp(14px,1.8vw,20px)", fontWeight: 500,
             color: "rgba(255,255,255,0.85)", margin: 0, letterSpacing: "-0.02em" }}>
             {taskName}
           </p>
-          <p style={{ fontSize: "clamp(11px,1.3vw,13px)", color: "rgba(255,255,255,0.30)", margin: "3px 0 0" }}>
+          <p style={{ fontSize: "clamp(11px,1.2vw,13px)", color: "rgba(255,255,255,0.30)", margin: "3px 0 0" }}>
             {format(now, "EEEE, MMMM d")} · Today {todayMinutes}min
           </p>
         </div>
-        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.08)",
-          border: "0.5px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.48)",
-          borderRadius: "100px", padding: "clamp(6px,1vw,9px) clamp(14px,2vw,20px)",
-          fontSize: "clamp(11px,1.2vw,13px)", cursor: "pointer", fontFamily: "inherit" }}>
-          ✕ Exit
-        </button>
+        <button onClick={onClose} style={{
+          background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.18)",
+          color: "rgba(255,255,255,0.48)", borderRadius: "100px",
+          padding: "clamp(6px,1vw,9px) clamp(14px,2vw,20px)",
+          fontSize: "clamp(11px,1.2vw,13px)", cursor: "pointer", fontFamily: "inherit",
+        }}>✕ Exit</button>
       </div>
 
-      {/* Divider */}
+      {/* Top divider */}
       <div style={{ height: "0.5px", background: "rgba(255,255,255,0.10)", flexShrink: 0 }} />
 
-      {/* Clock rows */}
+      {/* Clock rows — each row gets equal share of remaining space */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
         {showH && (
           <>
             <BBCRow value={String(hours).padStart(2,"0")} label="H"
-              bg="#363636" textColor="rgba(255,255,255,0.25)" labelColor="rgba(255,255,255,0.20)" animKey={hKey} />
+              bg="#363636" textColor="rgba(255,255,255,0.25)" labelColor="rgba(255,255,255,0.20)"
+              animKey={hKey} rowCount={3} />
             <div style={{ height: "0.5px", background: "rgba(255,255,255,0.07)", flexShrink: 0 }} />
           </>
         )}
-        {/* Min row — WHITE/cream background = active highlighted row */}
+        {/* Min row — cream/white = active highlighted */}
         <BBCRow value={String(mins).padStart(2,"0")} label="Min"
-          bg="#eae8e2" textColor="#1a1a1a" labelColor="rgba(0,0,0,0.28)" animKey={mKey} />
+          bg="#eae8e2" textColor="#1a1a1a" labelColor="rgba(0,0,0,0.28)"
+          animKey={mKey} rowCount={rowCount} />
         <div style={{ height: "0.5px", background: "rgba(0,0,0,0.14)", flexShrink: 0 }} />
         {/* Sec row — darkest */}
         <BBCRow value={String(secs).padStart(2,"0")} label="Sec"
-          bg="#1a1a1a" textColor="rgba(255,255,255,0.92)" labelColor="rgba(255,255,255,0.22)" animKey={sKey} />
+          bg="#1a1a1a" textColor="rgba(255,255,255,0.92)" labelColor="rgba(255,255,255,0.22)"
+          animKey={sKey} rowCount={rowCount} />
       </div>
 
       {/* Bottom divider */}
       <div style={{ height: "0.5px", background: "rgba(255,255,255,0.10)", flexShrink: 0 }} />
 
-      {/* Compass — auto-rotates with progress */}
+      {/* Compass — auto-rotates */}
       <CompassWheel progress={progress} />
 
       {/* Controls */}
-      <div style={{ flexShrink: 0, display: "flex", gap: "10px", justifyContent: "center", alignItems: "center",
-        padding: "clamp(8px,1.5vw,12px) clamp(20px,5vw,56px) clamp(14px,2.5vw,24px)",
-        background: "#1a1a1a" }}>
+      <div style={{
+        flexShrink: 0, display: "flex", gap: "10px", justifyContent: "center", alignItems: "center",
+        padding: "clamp(8px,1.5vw,12px) clamp(20px,4vw,48px) clamp(14px,2vw,22px)",
+        background: "#1a1a1a",
+      }}>
         {isRunning ? (
           <>
-            <button onClick={onComplete} style={{ background: "rgba(255,255,255,0.88)", color: "#0a0a0a",
+            <button onClick={onComplete} style={{
+              background: "rgba(255,255,255,0.88)", color: "#0a0a0a",
               border: "none", borderRadius: "100px",
               padding: "clamp(10px,1.5vw,13px) clamp(28px,4vw,44px)",
               fontSize: "clamp(13px,1.4vw,15px)", fontWeight: 500,
-              cursor: "pointer", fontFamily: "inherit" }}>✓ Complete</button>
-            <button onClick={onStop} style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.50)",
+              cursor: "pointer", fontFamily: "inherit",
+            }}>✓ Complete</button>
+            <button onClick={onStop} style={{
+              background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.50)",
               border: "0.5px solid rgba(255,255,255,0.16)", borderRadius: "100px",
               padding: "clamp(10px,1.5vw,13px) clamp(22px,3vw,36px)",
-              fontSize: "clamp(12px,1.3vw,14px)", cursor: "pointer", fontFamily: "inherit" }}>✕ Stop</button>
+              fontSize: "clamp(12px,1.3vw,14px)", cursor: "pointer", fontFamily: "inherit",
+            }}>✕ Stop</button>
           </>
         ) : (
           <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", margin: 0 }}>Start a session first</p>
@@ -485,7 +465,6 @@ export default function FocusPage() {
 
   return (
     <>
-      {/* ── FULLSCREEN OVERLAY ── */}
       {fullscreen && (
         <FullscreenTimer
           timeLeft={timeLeft} duration={duration} isRunning={isRunning}
@@ -495,10 +474,8 @@ export default function FocusPage() {
         />
       )}
 
-      {/* ── MAIN PAGE ── */}
       <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto pb-32 md:pb-10">
 
-        {/* Header */}
         <header className="mb-6 animate-fade-in-up">
           <div className="flex items-center justify-between">
             <div>
@@ -525,7 +502,6 @@ export default function FocusPage() {
           </div>
         </header>
 
-        {/* Manual log panel */}
         {showManual && (
           <div className="liquid-glass rounded-[22px] p-4 sm:p-5 mb-4 animate-slide-up">
             <h2 className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Log a past session</h2>
@@ -595,11 +571,8 @@ export default function FocusPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Timer panel */}
           <div className="lg:col-span-2">
             <div className="liquid-glass rounded-[24px] p-5 sm:p-8 text-center mb-4 animate-fade-in-up">
-
-              {/* Splitflap clock — centered, responsive */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", marginBottom: "24px" }}>
                 <SplitflapClock mins={mins} secs={secs} isRunning={isRunning} />
                 <p style={{ fontSize: "10px", fontFamily: "monospace", letterSpacing: "0.14em",
@@ -651,7 +624,6 @@ export default function FocusPage() {
               )}
             </div>
 
-            {/* 14-day chart */}
             <div className="liquid-glass rounded-[22px] p-4 sm:p-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
               <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Last 14 days</h2>
               <div className="flex items-end gap-1" style={{ height: "80px" }}>
@@ -673,7 +645,6 @@ export default function FocusPage() {
             </div>
           </div>
 
-          {/* Right: insights + recent */}
           <div className="space-y-4">
             <div className="liquid-glass rounded-[22px] p-4 sm:p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
               <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Insights</h2>
