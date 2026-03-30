@@ -9,77 +9,227 @@ import { format, isToday, subDays, eachDayOfInterval, isYesterday } from "date-f
 const DURATIONS = [15, 25, 45, 60, 90, 120];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCROLL DIGIT — BBC / world-clock style vertical scroll on change
+// FLIP DIGIT — splitflap airport board style
 // ─────────────────────────────────────────────────────────────────────────────
-function ScrollDigit({ value, label }: { value: string; label: string }) {
-  const [displayed, setDisplayed] = useState(value);
-  const [prev, setPrev]           = useState(value);
-  const [animating, setAnimating] = useState(false);
+function FlipDigit({ value }: { value: string }) {
+  const [current, setCurrent] = useState(value);
+  const [next, setNext]       = useState(value);
+  const [flipping, setFlipping] = useState(false);
+  const prevRef = useRef(value);
 
   useEffect(() => {
-    if (value === displayed) return;
-    setPrev(displayed);
-    setAnimating(true);
+    if (value === prevRef.current) return;
+    setNext(value);
+    setFlipping(true);
     const t = setTimeout(() => {
-      setDisplayed(value);
-      setAnimating(false);
-    }, 320);
+      setCurrent(value);
+      setFlipping(false);
+      prevRef.current = value;
+    }, 280);
     return () => clearTimeout(t);
   }, [value]);
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", lineHeight: 1 }}>
-      {/* Label — top right */}
-      <span style={{
-        position: "absolute", top: "6px", right: 0,
-        fontSize: "clamp(10px, 1.5vw, 14px)",
-        fontWeight: 400,
-        letterSpacing: "0.08em",
-        color: "rgba(255,255,255,0.35)",
-        fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-        textTransform: "uppercase",
-      }}>{label}</span>
-
-      {/* Outgoing number (slides up out) */}
-      {animating && (
-        <div style={{
-          position: "absolute", left: 0, right: 0, top: 0,
-          animation: "scrollOut 0.32s cubic-bezier(0.4,0,0.2,1) forwards",
-        }}>
-          <span style={{
-            display: "block",
-            fontSize: "clamp(5rem, 18vw, 14rem)",
-            fontWeight: 300,
-            letterSpacing: "-0.04em",
-            color: "rgba(255,255,255,0.15)",
-            fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-            lineHeight: 1,
-          }}>{prev}</span>
-        </div>
-      )}
-
-      {/* Incoming number (slides up in) */}
+    <div style={{
+      position: "relative",
+      width: "clamp(52px, 10vw, 80px)",
+      height: "clamp(72px, 14vw, 110px)",
+      borderRadius: "10px",
+      background: "rgba(255,255,255,0.06)",
+      border: "0.5px solid rgba(255,255,255,0.12)",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 16px rgba(0,0,0,0.40)",
+      overflow: "hidden",
+    }}>
+      {/* Static bottom half — current value */}
       <div style={{
-        animation: animating ? "scrollIn 0.32s cubic-bezier(0.4,0,0.2,1) forwards" : "none",
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
+        background: "rgba(255,255,255,0.04)",
+        borderTop: "0.5px solid rgba(255,255,255,0.08)",
+        display: "flex", alignItems: "flex-start", justifyContent: "center",
+        overflow: "hidden",
       }}>
         <span style={{
-          display: "block",
-          fontSize: "clamp(5rem, 18vw, 14rem)",
+          fontSize: "clamp(36px, 7vw, 68px)",
           fontWeight: 300,
-          letterSpacing: "-0.04em",
-          color: "rgba(255,255,255,0.92)",
           fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+          color: "rgba(255,255,255,0.90)",
           lineHeight: 1,
-          paddingRight: "clamp(28px, 4vw, 52px)",
-        }}>{displayed}</span>
+          marginTop: "-2px",
+          letterSpacing: "-0.03em",
+        }}>{current}</span>
       </div>
+
+      {/* Static top half — current value */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: "50%",
+        background: "rgba(255,255,255,0.08)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        overflow: "hidden",
+        borderBottom: "0.5px solid rgba(0,0,0,0.4)",
+      }}>
+        <span style={{
+          fontSize: "clamp(36px, 7vw, 68px)",
+          fontWeight: 300,
+          fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+          color: "rgba(255,255,255,0.90)",
+          lineHeight: 1,
+          marginBottom: "-2px",
+          letterSpacing: "-0.03em",
+        }}>{current}</span>
+      </div>
+
+      {/* Flip card — animates from top down when digit changes */}
+      {flipping && (
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: "50%",
+          background: "rgba(255,255,255,0.08)",
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+          overflow: "hidden",
+          transformOrigin: "bottom center",
+          animation: "flipDown 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+          borderBottom: "0.5px solid rgba(0,0,0,0.4)",
+          zIndex: 10,
+        }}>
+          <span style={{
+            fontSize: "clamp(36px, 7vw, 68px)",
+            fontWeight: 300,
+            fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+            color: "rgba(255,255,255,0.90)",
+            lineHeight: 1,
+            marginBottom: "-2px",
+            letterSpacing: "-0.03em",
+          }}>{current}</span>
+        </div>
+      )}
+      {flipping && (
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
+          background: "rgba(255,255,255,0.04)",
+          borderTop: "0.5px solid rgba(255,255,255,0.08)",
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
+          overflow: "hidden",
+          transformOrigin: "top center",
+          animation: "revealBottom 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+          zIndex: 9,
+        }}>
+          <span style={{
+            fontSize: "clamp(36px, 7vw, 68px)",
+            fontWeight: 300,
+            fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+            color: "rgba(255,255,255,0.90)",
+            lineHeight: 1,
+            marginTop: "-2px",
+            letterSpacing: "-0.03em",
+          }}>{next}</span>
+        </div>
+      )}
     </div>
   );
 }
 
+// Flipclock display: MM:SS
+function FlipClock({ mins, secs, isRunning }: { mins: number; secs: number; isRunning: boolean }) {
+  const m0 = String(Math.floor(mins / 10));
+  const m1 = String(mins % 10);
+  const s0 = String(Math.floor(secs / 10));
+  const s1 = String(secs % 10);
+
+  return (
+    <>
+      <style>{`
+        @keyframes flipDown {
+          0%   { transform: perspective(400px) rotateX(0deg); }
+          100% { transform: perspective(400px) rotateX(-90deg); opacity: 0.3; }
+        }
+        @keyframes revealBottom {
+          0%   { transform: perspective(400px) rotateX(90deg); opacity: 0.3; }
+          100% { transform: perspective(400px) rotateX(0deg); }
+        }
+        @keyframes bbcScrollOut {
+          0%   { transform: translateY(0);    opacity: 1; }
+          100% { transform: translateY(-50px); opacity: 0; }
+        }
+        @keyframes bbcScrollIn {
+          0%   { transform: translateY(50px);  opacity: 0; }
+          100% { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: "clamp(4px, 1vw, 10px)" }}>
+        <FlipDigit value={m0} />
+        <FlipDigit value={m1} />
+        {/* Colon */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0 4px" }}>
+          <div style={{
+            width: "6px", height: "6px", borderRadius: "50%",
+            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.3)",
+            boxShadow: isRunning ? "0 0 8px var(--accent)" : "none",
+            animation: isRunning ? "none" : "none",
+          }} />
+          <div style={{
+            width: "6px", height: "6px", borderRadius: "50%",
+            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.3)",
+            boxShadow: isRunning ? "0 0 8px var(--accent)" : "none",
+          }} />
+        </div>
+        <FlipDigit value={s0} />
+        <FlipDigit value={s1} />
+      </div>
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// FULLSCREEN FOCUS OVERLAY
+// BBC-STYLE FULLSCREEN OVERLAY
 // ─────────────────────────────────────────────────────────────────────────────
+function BBCScrollNumber({ value, label }: { value: string; label: string }) {
+  const [displayed, setDisplayed] = useState(value);
+  const [animKey, setAnimKey]     = useState(0);
+  const prevRef = useRef(value);
+
+  useEffect(() => {
+    if (value === prevRef.current) return;
+    prevRef.current = value;
+    setAnimKey((k) => k + 1);
+    const t = setTimeout(() => setDisplayed(value), 1);
+    return () => clearTimeout(t);
+  }, [value]);
+
+  return (
+    <div style={{
+      position: "relative",
+      padding: "clamp(8px,2vw,20px) clamp(16px,4vw,48px)",
+      display: "flex",
+      alignItems: "baseline",
+      overflow: "hidden",
+    }}>
+      {/* Big number */}
+      <div key={animKey} style={{
+        fontSize: "clamp(5rem, 22vw, 18rem)",
+        fontWeight: 200,
+        fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+        color: "rgba(255,255,255,0.92)",
+        lineHeight: 0.9,
+        letterSpacing: "-0.04em",
+        animation: animKey > 0 ? "bbcScrollIn 0.35s cubic-bezier(0.2,0.8,0.2,1) both" : "none",
+      }}>
+        {displayed}
+      </div>
+      {/* Label top-right */}
+      <span style={{
+        position: "absolute",
+        top: "clamp(10px,2vw,20px)",
+        right: "clamp(16px,4vw,48px)",
+        fontSize: "clamp(11px,1.8vw,18px)",
+        fontWeight: 400,
+        letterSpacing: "0.10em",
+        color: "rgba(255,255,255,0.28)",
+        fontFamily: "-apple-system, sans-serif",
+        textTransform: "uppercase",
+      }}>{label}</span>
+    </div>
+  );
+}
+
 function FullscreenTimer({
   timeLeft, duration, isRunning, taskName, todayMinutes,
   onClose, onComplete, onStop,
@@ -88,134 +238,119 @@ function FullscreenTimer({
   taskName: string; todayMinutes: number;
   onClose: () => void; onComplete: () => void; onStop: () => void;
 }) {
-  const hours   = Math.floor(timeLeft / 3600);
-  const mins    = Math.floor((timeLeft % 3600) / 60);
-  const secs    = timeLeft % 60;
-  const progress = Math.round((1 - timeLeft / (duration * 60)) * 100);
+  const hours    = Math.floor(timeLeft / 3600);
+  const mins     = Math.floor((timeLeft % 3600) / 60);
+  const secs     = timeLeft % 60;
+  const progress = Math.round(((duration * 60 - timeLeft) / (duration * 60)) * 100);
   const now      = new Date();
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 200,
-      background: "#0a0a0f",
+      background: "#080808",
       display: "flex", flexDirection: "column",
       fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
       overflow: "hidden",
     }}>
-      {/* CSS keyframes injected inline */}
       <style>{`
-        @keyframes scrollOut {
-          from { transform: translateY(0);   opacity: 1; }
-          to   { transform: translateY(-60px); opacity: 0; }
-        }
-        @keyframes scrollIn {
-          from { transform: translateY(60px);  opacity: 0; }
-          to   { transform: translateY(0);   opacity: 1; }
-        }
-        @keyframes pulseColon {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.2; }
+        @keyframes bbcScrollIn {
+          from { transform: translateY(40px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
 
-      {/* Top bar */}
+      {/* Header */}
       <div style={{
         flexShrink: 0,
-        padding: "clamp(16px,3vw,32px) clamp(20px,4vw,48px)",
         display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+        padding: "clamp(16px,3vw,32px) clamp(20px,4vw,48px) 0",
       }}>
         <div>
-          <p style={{ fontSize: "clamp(16px,2.5vw,22px)", fontWeight: 500, color: "rgba(255,255,255,0.88)", margin: 0, letterSpacing: "-0.02em" }}>
+          <p style={{ fontSize: "clamp(14px,2vw,20px)", fontWeight: 400, color: "rgba(255,255,255,0.80)", margin: 0, letterSpacing: "-0.02em" }}>
             {taskName}
           </p>
-          <p style={{ fontSize: "clamp(11px,1.5vw,14px)", color: "rgba(255,255,255,0.35)", margin: "4px 0 0", fontWeight: 400 }}>
+          <p style={{ fontSize: "clamp(11px,1.4vw,14px)", color: "rgba(255,255,255,0.28)", margin: "3px 0 0", fontWeight: 400 }}>
             {format(now, "EEEE, MMMM d")} · Today {todayMinutes}min
           </p>
         </div>
         <button onClick={onClose} style={{
-          background: "rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.07)",
           border: "0.5px solid rgba(255,255,255,0.12)",
-          color: "rgba(255,255,255,0.55)",
-          borderRadius: "100px", padding: "8px 16px",
-          fontSize: "12px", cursor: "pointer", letterSpacing: "0.04em",
+          color: "rgba(255,255,255,0.50)",
+          borderRadius: "100px",
+          padding: "clamp(6px,1vw,10px) clamp(14px,2vw,22px)",
+          fontSize: "clamp(11px,1.3vw,13px)",
+          cursor: "pointer",
           fontFamily: "inherit",
+          letterSpacing: "0.02em",
         }}>✕ Exit</button>
       </div>
 
-      {/* Clock digits — scrolling BBC style */}
-      <div style={{
-        flex: 1, display: "flex", flexDirection: "column",
-        justifyContent: "center",
-        padding: "0 clamp(20px,5vw,80px)",
-        gap: "clamp(-8px,-1vw,0px)",
-      }}>
-        {/* Divider line top */}
-        <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)", marginBottom: "clamp(8px,2vw,24px)" }} />
+      {/* Divider */}
+      <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)", margin: "clamp(10px,2vw,20px) 0 0" }} />
 
-        {/* Hours — only show if duration >= 60min */}
+      {/* Clock rows */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", overflow: "hidden" }}>
+        {/* Hours — only if duration ≥ 60 */}
         {duration >= 60 && (
-          <ScrollDigit value={String(hours).padStart(2, "0")} label="H" />
-        )}
-        {duration >= 60 && (
-          <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", margin: "0 0 clamp(4px,1vw,12px)" }} />
+          <>
+            <BBCScrollNumber value={String(hours).padStart(2, "0")} label="H" />
+            <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", margin: "0 clamp(16px,4vw,48px)" }} />
+          </>
         )}
 
-        {/* Minutes */}
-        <ScrollDigit value={String(mins).padStart(2, "0")} label="Min" />
-
-        <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", margin: "0 0 clamp(4px,1vw,12px)" }} />
-
-        {/* Seconds */}
-        <ScrollDigit value={String(secs).padStart(2, "0")} label="Sec" />
-
-        {/* Divider line bottom */}
-        <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)", marginTop: "clamp(8px,2vw,24px)" }} />
+        <BBCScrollNumber value={String(mins).padStart(2, "0")} label="Min" />
+        <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", margin: "0 clamp(16px,4vw,48px)" }} />
+        <BBCScrollNumber value={String(secs).padStart(2, "0")} label="Sec" />
       </div>
 
-      {/* Progress bar — thin, full width */}
-      <div style={{ flexShrink: 0, padding: "0 clamp(20px,4vw,48px)", marginBottom: "clamp(12px,2vw,24px)" }}>
-        <div style={{ height: "2px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
+      {/* Divider */}
+      <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)" }} />
+
+      {/* Progress bar */}
+      <div style={{ flexShrink: 0, padding: "clamp(8px,1.5vw,16px) clamp(20px,4vw,48px)" }}>
+        <div style={{ height: "2px", background: "rgba(255,255,255,0.07)", borderRadius: "2px", overflow: "hidden" }}>
           <div style={{
             height: "100%", borderRadius: "2px",
-            background: "rgba(255,255,255,0.55)",
+            background: "rgba(255,255,255,0.45)",
             width: `${progress}%`,
             transition: "width 1s linear",
           }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em" }}>
-            {isRunning ? "FOCUSING" : "READY"}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
+          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.20)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            {isRunning ? "Focusing" : "Ready"}
           </span>
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", letterSpacing: "0.04em" }}>
-            {progress}%
-          </span>
+          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.20)" }}>{progress}%</span>
         </div>
       </div>
 
-      {/* Bottom controls */}
+      {/* Controls */}
       <div style={{
         flexShrink: 0,
-        padding: "clamp(12px,2vw,24px) clamp(20px,4vw,48px) clamp(24px,4vw,48px)",
-        display: "flex", gap: "12px", justifyContent: "center",
+        display: "flex", gap: "10px", justifyContent: "center", alignItems: "center",
+        padding: "clamp(10px,2vw,20px) clamp(20px,4vw,48px) clamp(24px,4vw,48px)",
       }}>
         {isRunning ? (
           <>
             <button onClick={onComplete} style={{
-              background: "rgba(255,255,255,0.92)", color: "#0a0a0f",
+              background: "rgba(255,255,255,0.90)", color: "#080808",
               border: "none", borderRadius: "100px",
-              padding: "12px 36px", fontSize: "14px", fontWeight: 500,
-              cursor: "pointer", letterSpacing: "-0.01em", fontFamily: "inherit",
+              padding: "clamp(10px,1.5vw,14px) clamp(28px,4vw,44px)",
+              fontSize: "clamp(13px,1.5vw,15px)", fontWeight: 500,
+              cursor: "pointer", fontFamily: "inherit", letterSpacing: "-0.01em",
             }}>✓ Complete</button>
             <button onClick={onStop} style={{
-              background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.60)",
-              border: "0.5px solid rgba(255,255,255,0.14)", borderRadius: "100px",
-              padding: "12px 28px", fontSize: "13px",
-              cursor: "pointer", letterSpacing: "-0.01em", fontFamily: "inherit",
+              background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)",
+              border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: "100px",
+              padding: "clamp(10px,1.5vw,14px) clamp(22px,3vw,36px)",
+              fontSize: "clamp(12px,1.3vw,14px)",
+              cursor: "pointer", fontFamily: "inherit",
             }}>✕ Stop</button>
           </>
         ) : (
-          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.35)", margin: 0 }}>
-            Start the timer to begin focusing
+          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.28)", margin: 0 }}>
+            Start a session first
           </p>
         )}
       </div>
@@ -284,7 +419,7 @@ export default function FocusPage() {
   const handleStart = async () => {
     const session = await startFocusSession(selectedTodo || null, duration);
     setCurrentSession(session); setTimeLeft(duration * 60); setIsRunning(true);
-    setFullscreen(true); // auto-enter fullscreen on start
+    setFullscreen(true);
   };
   const handleComplete = async () => {
     setIsRunning(false); setFullscreen(false);
@@ -323,13 +458,6 @@ export default function FocusPage() {
 
   const mins     = Math.floor(timeLeft / 60);
   const secs     = timeLeft % 60;
-  const progress = 1 - timeLeft / (duration * 60);
-
-  const RING_SM = 180;
-  const RING_LG = 280;
-  const R_SM    = 80;
-  const R_LG    = 125;
-
   const selectedTask = todos.find((t) => t.id === selectedTodo);
   const taskName     = selectedTask?.title ?? "Free focus";
 
@@ -338,14 +466,10 @@ export default function FocusPage() {
       {/* ── FULLSCREEN OVERLAY ── */}
       {fullscreen && (
         <FullscreenTimer
-          timeLeft={timeLeft}
-          duration={duration}
-          isRunning={isRunning}
-          taskName={taskName}
-          todayMinutes={todayMinutes}
+          timeLeft={timeLeft} duration={duration} isRunning={isRunning}
+          taskName={taskName} todayMinutes={todayMinutes}
           onClose={() => setFullscreen(false)}
-          onComplete={handleComplete}
-          onStop={handleStop}
+          onComplete={handleComplete} onStop={handleStop}
         />
       )}
 
@@ -357,7 +481,7 @@ export default function FocusPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
-                style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
+                style={{ color: "var(--text-primary)", letterSpacing: "-0.025em" }}>
                 Focus timer
               </h1>
               <p className="text-xs font-mono mt-1" style={{ color: "var(--text-muted)" }}>
@@ -451,32 +575,15 @@ export default function FocusPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Timer panel */}
           <div className="lg:col-span-2">
-            <div className="liquid-glass rounded-[24px] p-6 sm:p-8 lg:p-10 text-center mb-4 animate-fade-in-up">
+            <div className="liquid-glass rounded-[24px] p-6 sm:p-8 text-center mb-4 animate-fade-in-up">
 
-              {/* Responsive SVG ring */}
-              <div className="relative inline-block mb-6">
-                <svg className="lg:hidden transform -rotate-90" width={RING_SM} height={RING_SM} viewBox={`0 0 ${RING_SM} ${RING_SM}`}>
-                  <circle cx={RING_SM/2} cy={RING_SM/2} r={R_SM} fill="none" strokeWidth="3" style={{ stroke: "var(--glass-border)" }} />
-                  <circle cx={RING_SM/2} cy={RING_SM/2} r={R_SM} fill="none" strokeWidth="3" strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * R_SM} strokeDashoffset={2 * Math.PI * R_SM * (1 - progress)}
-                    style={{ stroke: isRunning ? "var(--accent)" : "var(--glass-border-hover)", transition: "stroke-dashoffset 1s linear", filter: isRunning ? "drop-shadow(0 0 6px var(--accent-glow))" : "none" }} />
-                </svg>
-                <svg className="hidden lg:block transform -rotate-90" width={RING_LG} height={RING_LG} viewBox={`0 0 ${RING_LG} ${RING_LG}`}>
-                  <circle cx={RING_LG/2} cy={RING_LG/2} r={R_LG} fill="none" strokeWidth="4" style={{ stroke: "var(--glass-border)" }} />
-                  <circle cx={RING_LG/2} cy={RING_LG/2} r={R_LG} fill="none" strokeWidth="4" strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * R_LG} strokeDashoffset={2 * Math.PI * R_LG * (1 - progress)}
-                    style={{ stroke: isRunning ? "var(--accent)" : "var(--glass-border-hover)", transition: "stroke-dashoffset 1s linear", filter: isRunning ? "drop-shadow(0 0 10px var(--accent-glow))" : "none" }} />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-mono font-bold"
-                    style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "var(--text-primary)", fontFamily: "-apple-system, 'SF Mono', monospace", letterSpacing: "-0.03em", textShadow: isRunning ? "0 0 20px var(--accent-glow)" : "none" }}>
-                    {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
-                  </span>
-                  <span className="font-mono mt-1.5 uppercase tracking-widest text-[10px] sm:text-xs"
-                    style={{ color: isRunning ? "var(--accent)" : "var(--text-muted)" }}>
-                    {isRunning ? "focusing" : "ready"}
-                  </span>
-                </div>
+              {/* Flip clock display */}
+              <div className="flex flex-col items-center mb-6">
+                <FlipClock mins={mins} secs={secs} isRunning={isRunning} />
+                <p className="text-[10px] font-mono mt-3 uppercase tracking-widest"
+                  style={{ color: isRunning ? "var(--accent)" : "var(--text-muted)" }}>
+                  {isRunning ? "focusing" : "ready"}
+                </p>
               </div>
 
               {!isRunning ? (
