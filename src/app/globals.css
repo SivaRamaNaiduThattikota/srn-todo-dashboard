@@ -5,34 +5,27 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* ═══════════════════════════════════════════════════════════════════
-   APPLE LIQUID GLASS — SRN Command Center v10.1
+   APPLE LIQUID GLASS — SRN Command Center v11.2
    Typography: proper readable sizes (not microscopic), fluid scale
    ═══════════════════════════════════════════════════════════════════ */
 
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   §0  TYPOGRAPHY — Proper readable sizes
-   Mobile: base 15px  |  Tablet: 15.5px  |  Desktop: 16px
-   These are the minimums — never smaller than what you see here.
+   §0  TYPOGRAPHY
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
-  /* Body base — 15px mobile, 16px desktop. Comfortable reading size. */
   --font-base:    clamp(15px, 0.94rem + 0.1vw, 16px);
-
-  /* UI label scale — all larger than before */
-  --text-2xs:     12px;                                   /* tiny badges/mono only */
-  --text-xs:      13px;                                   /* small labels, meta info */
-  --text-sm:      clamp(13.5px, 0.85rem + 0.1vw, 14.5px); /* default UI text */
-  --text-base:    var(--font-base);                       /* body paragraphs */
-  --text-md:      clamp(15.5px, 0.97rem + 0.15vw, 17px); /* subtitles, card labels */
-  --text-lg:      clamp(17px, 1.06rem + 0.2vw, 19px);    /* section headers */
-  --text-xl:      clamp(20px, 1.25rem + 0.4vw, 24px);    /* page titles sm */
-  --text-2xl:     clamp(24px, 1.5rem  + 0.5vw, 30px);    /* page titles lg */
-  --text-3xl:     clamp(30px, 1.875rem + 0.7vw, 38px);   /* hero numbers */
-  --text-mono:    clamp(12px, 0.75rem + 0.05vw, 13px);   /* monospace labels */
+  --text-2xs:     12px;
+  --text-xs:      13px;
+  --text-sm:      clamp(13.5px, 0.85rem + 0.1vw, 14.5px);
+  --text-base:    var(--font-base);
+  --text-md:      clamp(15.5px, 0.97rem + 0.15vw, 17px);
+  --text-lg:      clamp(17px, 1.06rem + 0.2vw, 19px);
+  --text-xl:      clamp(20px, 1.25rem + 0.4vw, 24px);
+  --text-2xl:     clamp(24px, 1.5rem  + 0.5vw, 30px);
+  --text-3xl:     clamp(30px, 1.875rem + 0.7vw, 38px);
+  --text-mono:    clamp(12px, 0.75rem + 0.05vw, 13px);
 }
-
-/* Stable rem base */
 html { font-size: 16px; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -113,71 +106,79 @@ html { font-size: 16px; }
   --cc-tile-border:        rgba(255,255,255,0.20);
   --cc-text:               rgba(255,255,255,0.92);
   --cc-text-muted:         rgba(255,255,255,0.55);
-  /* Accent button text: white in dark mode — always readable */
   --accent-btn-text:       rgba(255,255,255,0.95);
   color-scheme: dark;
 }
 
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   §3  LIGHT MODE
+   §3  LIGHT MODE — v11.2 REWRITE
+   Key fixes:
+   - Background: cleaner neutral (#e8e8f0) not purple-grey
+   - Borders: dark tint rgba(80,80,120) — white borders are INVISIBLE on white bg
+   - Inputs: higher opacity so they stand out from card background
+   - CC tiles: dark tint border so cards have visible edges
+   - Shadows: dark tint ring instead of white outline
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 [data-mode="light"] {
-  --bg-primary:         #d4d4e4;
-  --bg-body-layer:      #d6d6e8;
-  --glass-fill:         rgba(255,255,255,0.52);
-  --glass-fill-hover:   rgba(255,255,255,0.70);
-  --glass-fill-active:  rgba(255,255,255,0.88);
-  --glass-fill-deep:    rgba(255,255,255,0.36);
-  --glass-fill-sidebar: rgba(255,255,255,0.48);
-  --glass-border:        rgba(255,255,255,0.72);
-  --glass-border-hover:  rgba(255,255,255,0.90);
-  --glass-border-top:    rgba(255,255,255,0.95);
-  --glass-border-bottom: rgba(160,160,196,0.28);
-  --glass-border-subtle: rgba(255,255,255,0.55);
-  --specular-top:        rgba(255,255,255,0.95);
-  --specular-inner:      rgba(255,255,255,0.50);
-  --specular-sweep:      rgba(255,255,255,0.40);
-  --specular-sweep-mid:  rgba(255,255,255,0.75);
+  --bg-primary:         #e8e8f0;
+  --bg-body-layer:      #eaeaf2;
+  --glass-fill:         rgba(255,255,255,0.64);
+  --glass-fill-hover:   rgba(255,255,255,0.82);
+  --glass-fill-active:  rgba(255,255,255,0.95);
+  --glass-fill-deep:    rgba(255,255,255,0.46);
+  --glass-fill-sidebar: rgba(255,255,255,0.60);
+  /* Borders — dark tint so they're visible on white/light bg */
+  --glass-border:        rgba(80,80,120,0.14);
+  --glass-border-hover:  rgba(80,80,120,0.26);
+  --glass-border-top:    rgba(255,255,255,0.98);
+  --glass-border-bottom: rgba(100,100,140,0.18);
+  --glass-border-subtle: rgba(80,80,120,0.09);
+  --specular-top:        rgba(255,255,255,0.98);
+  --specular-inner:      rgba(255,255,255,0.60);
+  --specular-sweep:      rgba(255,255,255,0.48);
+  --specular-sweep-mid:  rgba(255,255,255,0.82);
   --bg-card:        var(--glass-fill);
   --bg-card-hover:  var(--glass-fill-hover);
-  --bg-input:       rgba(255,255,255,0.60);
-  --bg-elevated:    rgba(255,255,255,0.42);
-  --border-default: rgba(255,255,255,0.68);
-  --border-hover:   rgba(255,255,255,0.88);
-  --border-subtle:  rgba(255,255,255,0.48);
-  --text-primary:   rgba(18,18,40,0.90);
-  --text-secondary: rgba(18,18,40,0.60);
-  --text-muted:     rgba(18,18,40,0.42);
-  --text-tertiary:  rgba(18,18,40,0.22);
+  /* Inputs — more opaque so they stand out from card bg */
+  --bg-input:       rgba(255,255,255,0.82);
+  --bg-elevated:    rgba(255,255,255,0.56);
+  --border-default: rgba(80,80,120,0.14);
+  --border-hover:   rgba(80,80,120,0.26);
+  --border-subtle:  rgba(80,80,120,0.09);
+  --text-primary:   rgba(12,12,32,0.92);
+  --text-secondary: rgba(12,12,32,0.65);
+  --text-muted:     rgba(12,12,32,0.44);
+  --text-tertiary:  rgba(12,12,32,0.24);
   --blur-xs:  blur(8px)   saturate(2.0);
   --blur-sm:  blur(14px)  saturate(2.2);
   --blur-md:  blur(28px)  saturate(2.4);
   --blur-lg:  blur(48px)  saturate(2.6);
   --blur-xl:  blur(72px)  saturate(2.8);
   --blur-2xl: blur(96px)  saturate(3.0);
-  --shadow-sm:   0 1px 3px rgba(80,80,120,0.14), 0 2px 8px rgba(80,80,120,0.08), 0 0 0 0.5px rgba(255,255,255,0.70);
-  --shadow-md:   0 4px 16px rgba(80,80,120,0.18), 0 1px 5px rgba(80,80,120,0.12), 0 0 0 0.5px rgba(255,255,255,0.72);
-  --shadow-lg:   0 12px 40px rgba(80,80,120,0.24), 0 4px 12px rgba(80,80,120,0.16), 0 0 0 0.5px rgba(255,255,255,0.80);
-  --shadow-xl:   0 28px 80px rgba(60,60,100,0.30), 0 10px 28px rgba(80,80,120,0.20);
+  /* Shadows — dark ring instead of invisible white outline */
+  --shadow-sm:   0 1px 4px rgba(60,60,100,0.13), 0 2px 8px rgba(60,60,100,0.08), 0 0 0 0.5px rgba(80,80,120,0.14);
+  --shadow-md:   0 4px 18px rgba(60,60,100,0.17), 0 1px 6px rgba(60,60,100,0.11), 0 0 0 0.5px rgba(80,80,120,0.16);
+  --shadow-lg:   0 12px 44px rgba(60,60,100,0.22), 0 4px 14px rgba(60,60,100,0.15), 0 0 0 0.5px rgba(80,80,120,0.20);
+  --shadow-xl:   0 28px 80px rgba(40,40,80,0.28), 0 10px 28px rgba(60,60,100,0.18);
   --shadow-card:       var(--shadow-md);
   --shadow-card-hover: var(--shadow-lg);
   --shadow-depth:      var(--shadow-lg);
   --shadow-inner:      inset 0 1px 4px rgba(80,80,120,0.10);
   --glow-accent: 0 0 28px hsla(var(--accent-h),var(--accent-s),var(--accent-l),0.30),
                  0 0 56px hsla(var(--accent-h),var(--accent-s),var(--accent-l),0.14);
-  --cc-glass-base:         rgba(255,255,255,0.58);
-  --cc-glass-hover:        rgba(255,255,255,0.76);
-  --cc-glass-active:       rgba(255,255,255,0.92);
-  --cc-specular-opacity:   0.90;
-  --cc-rim-bottom:         rgba(140,140,180,0.22);
-  --cc-inner-shadow:       inset 0 1.5px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(140,140,180,0.16);
-  --cc-outer-shadow:       0 4px 20px rgba(80,80,120,0.16), 0 1px 5px rgba(80,80,120,0.10), 0 0 0 0.5px rgba(255,255,255,0.72);
-  --cc-outer-shadow-hover: 0 10px 36px rgba(80,80,120,0.24), 0 3px 10px rgba(80,80,120,0.14), 0 0 0 0.5px rgba(255,255,255,0.85);
-  --cc-tile-border:        rgba(255,255,255,0.78);
-  --cc-text:               rgba(18,18,40,0.85);
-  --cc-text-muted:         rgba(18,18,40,0.50);
-  /* Accent button text: dark in light mode — good contrast */
+  /* CC tiles — dark tint border so card edges are visible */
+  --cc-glass-base:         rgba(255,255,255,0.70);
+  --cc-glass-hover:        rgba(255,255,255,0.86);
+  --cc-glass-active:       rgba(255,255,255,0.97);
+  --cc-specular-opacity:   0.94;
+  --cc-rim-bottom:         rgba(100,100,140,0.16);
+  --cc-inner-shadow:       inset 0 1.5px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(100,100,140,0.12);
+  --cc-outer-shadow:       0 4px 20px rgba(60,60,100,0.14), 0 1px 5px rgba(60,60,100,0.09), 0 0 0 0.5px rgba(80,80,120,0.16);
+  --cc-outer-shadow-hover: 0 10px 36px rgba(60,60,100,0.20), 0 3px 10px rgba(60,60,100,0.12), 0 0 0 0.5px rgba(80,80,120,0.22);
+  --cc-tile-border:        rgba(80,80,120,0.16);
+  --cc-text:               rgba(12,12,32,0.88);
+  --cc-text-muted:         rgba(12,12,32,0.52);
   --accent-btn-text:       rgba(10,10,20,0.90);
   color-scheme: light;
 }
@@ -217,12 +218,13 @@ body::before {
 
 [data-mode="light"] body::after {
   content: ''; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  /* Softer blobs + white base so gradient doesn't overwhelm cards */
   background:
-    radial-gradient(ellipse 80% 65% at  8%  -8%, hsla(var(--accent-h),80%,75%,0.55) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 60% at 96% 108%, hsla(calc(var(--accent-h)+60),75%,70%,0.42) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 50% at 70%  30%, hsla(calc(var(--accent-h)+20),70%,80%,0.30) 0%, transparent 60%),
-    radial-gradient(ellipse 45% 45% at 18%  88%, hsla(calc(var(--accent-h)-30),65%,72%,0.28) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 55% at 50%  50%, hsla(var(--accent-h),50%,82%,0.16) 0%, transparent 70%);
+    radial-gradient(ellipse 65% 50% at  5% -8%,  hsla(var(--accent-h),80%,78%,0.42) 0%, transparent 52%),
+    radial-gradient(ellipse 55% 50% at 97% 110%, hsla(calc(var(--accent-h)+55),78%,74%,0.32) 0%, transparent 52%),
+    radial-gradient(ellipse 50% 44% at 72%  28%, hsla(calc(var(--accent-h)+18),70%,82%,0.22) 0%, transparent 58%),
+    radial-gradient(ellipse 40% 40% at 18%  90%, hsla(calc(var(--accent-h)-25),66%,76%,0.20) 0%, transparent 58%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(235,235,244,0.70) 20%, transparent 100%);
 }
 
 [data-mode="light"] body::before {
@@ -493,7 +495,6 @@ body::before {
   transition: height 0.22s cubic-bezier(0.2,0.8,0.2,1); z-index: 1;
 }
 
-/* ─── cc-btn ─── */
 .cc-btn {
   position: relative;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -503,9 +504,7 @@ body::before {
   box-shadow: var(--cc-inner-shadow), var(--cc-outer-shadow);
   cursor: pointer; overflow: hidden; isolation: isolate;
   font-family: -apple-system, 'SF Pro Display', sans-serif;
-  font-weight: 600; letter-spacing: -0.01em;
-  font-size: var(--text-sm);
-  /* Use cc-text so buttons always show text regardless of mode */
+  font-weight: 600; letter-spacing: -0.01em; font-size: var(--text-sm);
   color: var(--cc-text);
   transition: transform 0.18s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.22s ease, background 0.18s ease;
 }
@@ -523,9 +522,7 @@ body::before {
 .cc-btn:hover { background: var(--cc-glass-hover); box-shadow: var(--cc-inner-shadow), var(--cc-outer-shadow-hover); transform: translateY(-2px); }
 .cc-btn:active { background: var(--cc-glass-active); transform: scale(0.95) translateY(0); box-shadow: var(--cc-inner-shadow), 0 1px 4px rgba(0,0,0,0.18); transition-duration: 0.08s; }
 
-/* ─── cc-btn-accent: ALWAYS readable text regardless of theme/mode ─── */
 .cc-btn-accent {
-  /* Solid accent background with enough opacity to be readable */
   background: hsla(var(--accent-h),var(--accent-s),var(--accent-l), 0.90);
   border-color: hsla(var(--accent-h),var(--accent-s),var(--accent-l), 0.60);
   box-shadow:
@@ -533,7 +530,6 @@ body::before {
     inset 0 -1px 0 hsla(var(--accent-h),var(--accent-s),20%,0.30),
     0 6px 26px hsla(var(--accent-h),var(--accent-s),var(--accent-l),0.44),
     0 2px 8px rgba(0,0,0,0.22);
-  /* Use the mode-aware text var — white in dark, dark in light */
   color: var(--accent-btn-text) !important;
 }
 .cc-btn-accent::before {
@@ -551,11 +547,8 @@ body::before {
     0 3px 10px rgba(0,0,0,0.20);
   color: var(--accent-btn-text) !important;
 }
-.cc-btn-accent:active {
-  color: var(--accent-btn-text) !important;
-}
+.cc-btn-accent:active { color: var(--accent-btn-text) !important; }
 
-/* ─── cc-btn-danger ─── */
 .cc-btn-danger {
   background: linear-gradient(160deg, rgba(255,107,107,0.72) 0%, rgba(220,60,60,0.58) 100%);
   border-color: rgba(255,107,107,0.45);
@@ -572,7 +565,6 @@ body::before {
   color: rgba(255,240,240,0.98) !important;
 }
 
-/* ─── cc-chip ─── */
 .cc-chip {
   position: relative;
   background: var(--cc-glass-base);
@@ -580,8 +572,7 @@ body::before {
   border: 0.5px solid var(--cc-tile-border); border-radius: 14px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 2px 8px rgba(0,0,0,0.14), 0 0.5px 2px rgba(0,0,0,0.08);
   cursor: pointer; overflow: hidden; isolation: isolate;
-  font-family: 'JetBrains Mono', monospace; font-weight: 500;
-  font-size: var(--text-sm);
+  font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: var(--text-sm);
   color: var(--cc-text);
   transition: transform 0.15s cubic-bezier(0.2,0.8,0.2,1), background 0.15s ease, box-shadow 0.15s ease;
   text-align: center;
@@ -608,7 +599,6 @@ body::before {
   mix-blend-mode: normal;
 }
 
-/* ─── cc-habit ─── */
 .cc-habit {
   position: relative;
   background: var(--cc-glass-base);
@@ -657,7 +647,7 @@ body::before {
 
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   §8  FORM CONTROLS — full coverage for all input types
+   §8  FORM CONTROLS
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 input[type="text"],
 input[type="search"],
@@ -669,10 +659,8 @@ textarea {
   backdrop-filter: var(--blur-sm); -webkit-backdrop-filter: var(--blur-sm);
   border: 0.5px solid var(--glass-border);
   color: var(--text-primary);
-  border-radius: 14px;
-  padding: 10px 14px;
-  font-size: var(--text-sm);
-  outline: none; font-family: inherit;
+  border-radius: 14px; padding: 10px 14px;
+  font-size: var(--text-sm); outline: none; font-family: inherit;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   box-shadow: var(--shadow-inner), inset 0 1px 0 var(--specular-inner);
 }
@@ -688,19 +676,15 @@ textarea:focus {
 }
 input::placeholder, textarea::placeholder { color: var(--text-muted); }
 
-/* ── Select — dark mode dropdown option fix ── */
 select {
   background: var(--bg-input);
   backdrop-filter: var(--blur-sm); -webkit-backdrop-filter: var(--blur-sm);
   border: 0.5px solid var(--glass-border);
   color: var(--text-primary);
-  border-radius: 12px;
-  padding: 9px 28px 9px 12px;
-  font-size: var(--text-sm);
-  outline: none; cursor: pointer; appearance: none; font-family: inherit;
+  border-radius: 12px; padding: 9px 28px 9px 12px;
+  font-size: var(--text-sm); outline: none; cursor: pointer; appearance: none; font-family: inherit;
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='rgba(255,255,255,0.42)' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-repeat: no-repeat; background-position: right 10px center;
   transition: border-color 0.2s ease;
 }
 [data-mode="light"] select {
@@ -708,18 +692,8 @@ select {
   background-color: var(--bg-input);
 }
 select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); outline: none; }
-
-/* Option elements — dark bg so they're readable */
-select option {
-  background-color: #15152a;
-  color: rgba(255,255,255,0.92);
-  font-size: 14px;
-  padding: 6px 12px;
-}
-[data-mode="light"] select option {
-  background-color: #ffffff;
-  color: rgba(18,18,40,0.88);
-}
+select option { background-color: #15152a; color: rgba(255,255,255,0.92); font-size: 14px; padding: 6px 12px; }
+[data-mode="light"] select option { background-color: #ffffff; color: rgba(18,18,40,0.88); }
 @-moz-document url-prefix() {
   select option { background-color: #15152a; color: rgba(255,255,255,0.92); }
   [data-mode="light"] select option { background-color: #f8f8ff; color: rgba(18,18,40,0.88); }
@@ -755,8 +729,7 @@ input[type="range"]::-webkit-slider-thumb:active { transform: scale(0.94); }
   position: relative; overflow: hidden;
 }
 .btn-glass::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
   background: var(--specular-top); pointer-events: none;
 }
 .btn-glass:hover { background: var(--glass-fill-hover); border-color: var(--glass-border-hover); box-shadow: var(--shadow-md); transform: translateY(-1px); }
@@ -781,13 +754,10 @@ input[type="range"]::-webkit-slider-thumb:active { transform: scale(0.94); }
 
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   §10 STICKY SIDEBAR LAYOUT
-   Sidebar is position:fixed. Main scrolls. Sidebar never scrolls.
+   §10 LAYOUT
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 html, body { height: 100%; overflow: hidden; }
 main { overflow-y: auto; height: 100vh; }
-
-/* Mobile: normal scroll */
 @media (max-width: 767px) {
   html, body { overflow: auto; height: auto; }
   main { height: auto; overflow-y: visible; }
@@ -859,4 +829,4 @@ button, a, input, select, textarea {
   transition: all 0.22s cubic-bezier(0.2,0.8,0.2,1);
 }
 
-/* v10.1 — proper font sizes, cc-btn-accent always readable, Settings always visible */
+/* v11.2 — light mode rewrite: dark-tint borders, cleaner bg, visible inputs, proper shadows */
