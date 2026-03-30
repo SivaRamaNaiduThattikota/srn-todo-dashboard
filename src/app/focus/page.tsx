@@ -9,126 +9,117 @@ import { format, isToday, subDays, eachDayOfInterval, isYesterday } from "date-f
 const DURATIONS = [15, 25, 45, 60, 90, 120];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FLIP DIGIT — splitflap airport board style
+// SPLITFLAP TILE — exactly like image 2: dark square, digit centered,
+// horizontal split line through middle, flip animation on change
 // ─────────────────────────────────────────────────────────────────────────────
-function FlipDigit({ value }: { value: string }) {
-  const [current, setCurrent] = useState(value);
-  const [next, setNext]       = useState(value);
-  const [flipping, setFlipping] = useState(false);
-  const prevRef = useRef(value);
+function SplitflapTile({ digit }: { digit: string }) {
+  const [cur, setCur]         = useState(digit);
+  const [prev, setPrev]       = useState(digit);
+  const [phase, setPhase]     = useState<"idle"|"flipping">("idle");
+  const prevRef               = useRef(digit);
 
   useEffect(() => {
-    if (value === prevRef.current) return;
-    setNext(value);
-    setFlipping(true);
-    const t = setTimeout(() => {
-      setCurrent(value);
-      setFlipping(false);
-      prevRef.current = value;
-    }, 280);
+    if (digit === prevRef.current) return;
+    setPrev(prevRef.current);
+    setPhase("flipping");
+    prevRef.current = digit;
+    const t = setTimeout(() => { setCur(digit); setPhase("idle"); }, 300);
     return () => clearTimeout(t);
-  }, [value]);
+  }, [digit]);
+
+  const tileW = "clamp(72px, 14vw, 130px)";
+  const tileH = "clamp(96px, 18vw, 172px)";
+  const fontSize = "clamp(56px, 10vw, 100px)";
 
   return (
     <div style={{
-      position: "relative",
-      width: "clamp(52px, 10vw, 80px)",
-      height: "clamp(72px, 14vw, 110px)",
-      borderRadius: "10px",
-      background: "rgba(255,255,255,0.06)",
-      border: "0.5px solid rgba(255,255,255,0.12)",
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 16px rgba(0,0,0,0.40)",
-      overflow: "hidden",
+      width: tileW, height: tileH,
+      borderRadius: "12px",
+      background: "#111",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)",
+      position: "relative", overflow: "hidden",
+      flexShrink: 0,
     }}>
-      {/* Static bottom half — current value */}
+      {/* Bottom half — always shows current digit, clipped to bottom */}
       <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
-        background: "rgba(255,255,255,0.04)",
-        borderTop: "0.5px solid rgba(255,255,255,0.08)",
+        position: "absolute", top: "50%", left: 0, right: 0, bottom: 0,
         display: "flex", alignItems: "flex-start", justifyContent: "center",
         overflow: "hidden",
+        background: "#0e0e0e",
       }}>
         <span style={{
-          fontSize: "clamp(36px, 7vw, 68px)",
-          fontWeight: 300,
-          fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-          color: "rgba(255,255,255,0.90)",
+          fontSize, fontWeight: 700,
+          fontFamily: "'Helvetica Neue', Arial, sans-serif",
+          color: "#b8b8b8",
           lineHeight: 1,
-          marginTop: "-2px",
-          letterSpacing: "-0.03em",
-        }}>{current}</span>
+          marginTop: `calc(${tileH} * -0.5)`,
+          letterSpacing: "-0.04em",
+          userSelect: "none",
+        }}>{cur}</span>
       </div>
 
-      {/* Static top half — current value */}
+      {/* Top half — shows current digit, clipped to top */}
       <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: "50%",
-        background: "rgba(255,255,255,0.08)",
+        position: "absolute", top: 0, left: 0, right: 0, bottom: "50%",
         display: "flex", alignItems: "flex-end", justifyContent: "center",
         overflow: "hidden",
-        borderBottom: "0.5px solid rgba(0,0,0,0.4)",
+        background: "#141414",
       }}>
         <span style={{
-          fontSize: "clamp(36px, 7vw, 68px)",
-          fontWeight: 300,
-          fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-          color: "rgba(255,255,255,0.90)",
+          fontSize, fontWeight: 700,
+          fontFamily: "'Helvetica Neue', Arial, sans-serif",
+          color: "#b8b8b8",
           lineHeight: 1,
-          marginBottom: "-2px",
-          letterSpacing: "-0.03em",
-        }}>{current}</span>
+          marginBottom: `calc(${tileH} * -0.5)`,
+          letterSpacing: "-0.04em",
+          userSelect: "none",
+        }}>{cur}</span>
       </div>
 
-      {/* Flip card — animates from top down when digit changes */}
-      {flipping && (
+      {/* Flip animation — top half rotates down showing previous digit */}
+      {phase === "flipping" && (
         <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: "50%",
-          background: "rgba(255,255,255,0.08)",
+          position: "absolute", top: 0, left: 0, right: 0, bottom: "50%",
           display: "flex", alignItems: "flex-end", justifyContent: "center",
           overflow: "hidden",
+          background: "#141414",
           transformOrigin: "bottom center",
-          animation: "flipDown 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards",
-          borderBottom: "0.5px solid rgba(0,0,0,0.4)",
+          animation: "sfFlip 0.3s cubic-bezier(0.4,0,0.6,1) forwards",
           zIndex: 10,
         }}>
           <span style={{
-            fontSize: "clamp(36px, 7vw, 68px)",
-            fontWeight: 300,
-            fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-            color: "rgba(255,255,255,0.90)",
+            fontSize, fontWeight: 700,
+            fontFamily: "'Helvetica Neue', Arial, sans-serif",
+            color: "#b8b8b8",
             lineHeight: 1,
-            marginBottom: "-2px",
-            letterSpacing: "-0.03em",
-          }}>{current}</span>
+            marginBottom: `calc(${tileH} * -0.5)`,
+            letterSpacing: "-0.04em",
+            userSelect: "none",
+          }}>{prev}</span>
         </div>
       )}
-      {flipping && (
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
-          background: "rgba(255,255,255,0.04)",
-          borderTop: "0.5px solid rgba(255,255,255,0.08)",
-          display: "flex", alignItems: "flex-start", justifyContent: "center",
-          overflow: "hidden",
-          transformOrigin: "top center",
-          animation: "revealBottom 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards",
-          zIndex: 9,
-        }}>
-          <span style={{
-            fontSize: "clamp(36px, 7vw, 68px)",
-            fontWeight: 300,
-            fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-            color: "rgba(255,255,255,0.90)",
-            lineHeight: 1,
-            marginTop: "-2px",
-            letterSpacing: "-0.03em",
-          }}>{next}</span>
-        </div>
-      )}
+
+      {/* Center split line */}
+      <div style={{
+        position: "absolute", top: "50%", left: 0, right: 0,
+        height: "2px",
+        background: "rgba(0,0,0,0.9)",
+        transform: "translateY(-50%)",
+        zIndex: 20,
+      }} />
+
+      {/* Subtle inner shadow on split */}
+      <div style={{
+        position: "absolute", top: "calc(50% + 1px)", left: 0, right: 0,
+        height: "6px",
+        background: "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
+        zIndex: 19,
+      }} />
     </div>
   );
 }
 
-// Flipclock display: MM:SS
-function FlipClock({ mins, secs, isRunning }: { mins: number; secs: number; isRunning: boolean }) {
+function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number; isRunning: boolean }) {
   const m0 = String(Math.floor(mins / 10));
   const m1 = String(mins % 10);
   const s0 = String(Math.floor(secs / 10));
@@ -137,95 +128,159 @@ function FlipClock({ mins, secs, isRunning }: { mins: number; secs: number; isRu
   return (
     <>
       <style>{`
-        @keyframes flipDown {
-          0%   { transform: perspective(400px) rotateX(0deg); }
-          100% { transform: perspective(400px) rotateX(-90deg); opacity: 0.3; }
+        @keyframes sfFlip {
+          0%   { transform: perspective(600px) rotateX(0deg);    opacity: 1; }
+          100% { transform: perspective(600px) rotateX(-90deg);  opacity: 0.4; }
         }
-        @keyframes revealBottom {
-          0%   { transform: perspective(400px) rotateX(90deg); opacity: 0.3; }
-          100% { transform: perspective(400px) rotateX(0deg); }
-        }
-        @keyframes bbcScrollOut {
-          0%   { transform: translateY(0);    opacity: 1; }
-          100% { transform: translateY(-50px); opacity: 0; }
-        }
-        @keyframes bbcScrollIn {
-          0%   { transform: translateY(50px);  opacity: 0; }
-          100% { transform: translateY(0);    opacity: 1; }
+        @keyframes bbcIn {
+          from { transform: translateY(45px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
-      <div style={{ display: "flex", alignItems: "center", gap: "clamp(4px, 1vw, 10px)" }}>
-        <FlipDigit value={m0} />
-        <FlipDigit value={m1} />
-        {/* Colon */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0 4px" }}>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "clamp(6px,1.5vw,14px)" }}>
+        {/* MM tiles */}
+        <SplitflapTile digit={m0} />
+        <SplitflapTile digit={m1} />
+
+        {/* Colon dots */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "clamp(8px,1.5vw,14px)", margin: "0 2px" }}>
           <div style={{
-            width: "6px", height: "6px", borderRadius: "50%",
-            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.3)",
-            boxShadow: isRunning ? "0 0 8px var(--accent)" : "none",
-            animation: isRunning ? "none" : "none",
+            width: "clamp(6px,1vw,10px)", height: "clamp(6px,1vw,10px)",
+            borderRadius: "50%",
+            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.25)",
+            boxShadow: isRunning ? "0 0 8px var(--accent-glow)" : "none",
           }} />
           <div style={{
-            width: "6px", height: "6px", borderRadius: "50%",
-            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.3)",
-            boxShadow: isRunning ? "0 0 8px var(--accent)" : "none",
+            width: "clamp(6px,1vw,10px)", height: "clamp(6px,1vw,10px)",
+            borderRadius: "50%",
+            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.25)",
+            boxShadow: isRunning ? "0 0 8px var(--accent-glow)" : "none",
           }} />
         </div>
-        <FlipDigit value={s0} />
-        <FlipDigit value={s1} />
+
+        {/* SS tiles */}
+        <SplitflapTile digit={s0} />
+        <SplitflapTile digit={s1} />
       </div>
     </>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BBC-STYLE FULLSCREEN OVERLAY
+// BBC FULLSCREEN — exactly like image 1:
+// left-aligned giant numbers, label top-right each row, alternating row bg,
+// thin dividers, compass wheel at bottom
 // ─────────────────────────────────────────────────────────────────────────────
-function BBCScrollNumber({ value, label }: { value: string; label: string }) {
-  const [displayed, setDisplayed] = useState(value);
-  const [animKey, setAnimKey]     = useState(0);
-  const prevRef = useRef(value);
+function BBCRow({
+  value, label, bg, animKey
+}: { value: string; label: string; bg: string; animKey: number }) {
+  return (
+    <div style={{
+      position: "relative",
+      background: bg,
+      padding: "0 clamp(20px,5vw,72px)",
+      display: "flex", alignItems: "flex-end",
+      flex: 1, overflow: "hidden",
+      minHeight: 0,
+    }}>
+      {/* Label — top right */}
+      <span style={{
+        position: "absolute",
+        top: "clamp(8px,2vw,18px)",
+        right: "clamp(20px,5vw,72px)",
+        fontSize: "clamp(12px,1.8vw,20px)",
+        fontWeight: 400,
+        letterSpacing: "0.06em",
+        color: "rgba(255,255,255,0.30)",
+        fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+        textTransform: "uppercase",
+      }}>{label}</span>
 
-  useEffect(() => {
-    if (value === prevRef.current) return;
-    prevRef.current = value;
-    setAnimKey((k) => k + 1);
-    const t = setTimeout(() => setDisplayed(value), 1);
-    return () => clearTimeout(t);
-  }, [value]);
+      {/* Giant number */}
+      <span key={animKey} style={{
+        fontSize: "clamp(5.5rem,24vw,20rem)",
+        fontWeight: 200,
+        fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
+        color: "rgba(255,255,255,0.90)",
+        lineHeight: 0.88,
+        letterSpacing: "-0.04em",
+        paddingBottom: "clamp(4px,1vw,12px)",
+        animation: animKey > 0 ? "bbcIn 0.32s cubic-bezier(0.2,0.8,0.2,1) both" : "none",
+        userSelect: "none",
+      }}>{value}</span>
+    </div>
+  );
+}
+
+function CompassWheel({ progress }: { progress: number }) {
+  // Thin curved dial at bottom — like the world map/compass in image 1
+  const labels = ["SRN", "Focus", "Deep", "Work", "Flow", "Zone", "Peak", "Done"];
+  const angle = progress * 360;
 
   return (
     <div style={{
       position: "relative",
-      padding: "clamp(8px,2vw,20px) clamp(16px,4vw,48px)",
-      display: "flex",
-      alignItems: "baseline",
+      height: "clamp(60px,10vw,100px)",
       overflow: "hidden",
+      flexShrink: 0,
     }}>
-      {/* Big number */}
-      <div key={animKey} style={{
-        fontSize: "clamp(5rem, 22vw, 18rem)",
-        fontWeight: 200,
-        fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
-        color: "rgba(255,255,255,0.92)",
-        lineHeight: 0.9,
-        letterSpacing: "-0.04em",
-        animation: animKey > 0 ? "bbcScrollIn 0.35s cubic-bezier(0.2,0.8,0.2,1) both" : "none",
-      }}>
-        {displayed}
-      </div>
-      {/* Label top-right */}
-      <span style={{
+      {/* Arc background */}
+      <div style={{
         position: "absolute",
-        top: "clamp(10px,2vw,20px)",
-        right: "clamp(16px,4vw,48px)",
-        fontSize: "clamp(11px,1.8vw,18px)",
-        fontWeight: 400,
-        letterSpacing: "0.10em",
-        color: "rgba(255,255,255,0.28)",
-        fontFamily: "-apple-system, sans-serif",
-        textTransform: "uppercase",
-      }}>{label}</span>
+        left: "50%", bottom: "-clamp(100px,15vw,160px)",
+        transform: "translateX(-50%)",
+        width: "clamp(320px,60vw,700px)",
+        height: "clamp(320px,60vw,700px)",
+        borderRadius: "50%",
+        border: "0.5px solid rgba(255,255,255,0.12)",
+        boxSizing: "border-box",
+      }} />
+
+      {/* Tick marks around the arc (bottom portion visible) */}
+      {labels.map((label, i) => {
+        const totalAngle = 180;
+        const startAngle = -90;
+        const step = totalAngle / (labels.length - 1);
+        const a = startAngle + i * step;
+        const rad = (a * Math.PI) / 180;
+        const r = 42; // % from center
+        const x = 50 + r * Math.cos(rad);
+        const y = 100 + r * Math.sin(rad) * 0.6;
+        return (
+          <span key={label} style={{
+            position: "absolute",
+            left: `${x}%`, top: `${Math.min(y, 95)}%`,
+            transform: "translate(-50%, -50%)",
+            fontSize: "clamp(9px,1.2vw,13px)",
+            color: i === Math.floor((labels.length - 1) * progress)
+              ? "rgba(255,255,255,0.70)"
+              : "rgba(255,255,255,0.22)",
+            fontFamily: "-apple-system, sans-serif",
+            letterSpacing: "0.04em",
+            whiteSpace: "nowrap",
+            transition: "color 0.5s ease",
+          }}>{label}</span>
+        );
+      })}
+
+      {/* Center pointer line */}
+      <div style={{
+        position: "absolute",
+        left: "50%", bottom: 0,
+        width: "1px", height: "clamp(20px,4vw,40px)",
+        background: "rgba(255,255,255,0.50)",
+        transform: "translateX(-50%)",
+      }} />
+      <div style={{
+        position: "absolute",
+        left: "50%", bottom: "clamp(18px,3.5vw,36px)",
+        width: "6px", height: "6px",
+        borderRadius: "50%",
+        background: "rgba(255,255,255,0.80)",
+        transform: "translateX(-50%)",
+        boxShadow: "0 0 8px rgba(255,255,255,0.5)",
+      }} />
     </div>
   );
 }
@@ -241,115 +296,111 @@ function FullscreenTimer({
   const hours    = Math.floor(timeLeft / 3600);
   const mins     = Math.floor((timeLeft % 3600) / 60);
   const secs     = timeLeft % 60;
-  const progress = Math.round(((duration * 60 - timeLeft) / (duration * 60)) * 100);
+  const progress = (duration * 60 - timeLeft) / (duration * 60);
   const now      = new Date();
+
+  const [hKey, setHKey]   = useState(0);
+  const [mKey, setMKey]   = useState(0);
+  const [sKey, setSKey]   = useState(0);
+  const prevH = useRef(hours); const prevM = useRef(mins); const prevS = useRef(secs);
+
+  useEffect(() => {
+    if (hours !== prevH.current) { setHKey((k) => k + 1); prevH.current = hours; }
+    if (mins  !== prevM.current) { setMKey((k) => k + 1); prevM.current = mins;  }
+    if (secs  !== prevS.current) { setSKey((k) => k + 1); prevS.current = secs;  }
+  }, [hours, mins, secs]);
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 200,
-      background: "#080808",
+      background: "#0a0a0a",
       display: "flex", flexDirection: "column",
       fontFamily: "-apple-system, 'Helvetica Neue', sans-serif",
       overflow: "hidden",
     }}>
       <style>{`
-        @keyframes bbcScrollIn {
-          from { transform: translateY(40px); opacity: 0; }
+        @keyframes sfFlip {
+          0%   { transform: perspective(600px) rotateX(0deg);   opacity: 1; }
+          100% { transform: perspective(600px) rotateX(-90deg); opacity: 0.3; }
+        }
+        @keyframes bbcIn {
+          from { transform: translateY(45px); opacity: 0; }
           to   { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{
         flexShrink: 0,
         display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-        padding: "clamp(16px,3vw,32px) clamp(20px,4vw,48px) 0",
+        padding: "clamp(14px,2.5vw,28px) clamp(20px,5vw,72px) 0",
       }}>
         <div>
-          <p style={{ fontSize: "clamp(14px,2vw,20px)", fontWeight: 400, color: "rgba(255,255,255,0.80)", margin: 0, letterSpacing: "-0.02em" }}>
+          <p style={{ fontSize: "clamp(15px,2vw,22px)", fontWeight: 500, color: "rgba(255,255,255,0.82)", margin: 0, letterSpacing: "-0.02em" }}>
             {taskName}
           </p>
-          <p style={{ fontSize: "clamp(11px,1.4vw,14px)", color: "rgba(255,255,255,0.28)", margin: "3px 0 0", fontWeight: 400 }}>
+          <p style={{ fontSize: "clamp(11px,1.3vw,14px)", color: "rgba(255,255,255,0.28)", margin: "3px 0 0", fontWeight: 400 }}>
             {format(now, "EEEE, MMMM d")} · Today {todayMinutes}min
           </p>
         </div>
         <button onClick={onClose} style={{
           background: "rgba(255,255,255,0.07)",
-          border: "0.5px solid rgba(255,255,255,0.12)",
-          color: "rgba(255,255,255,0.50)",
+          border: "0.5px solid rgba(255,255,255,0.14)",
+          color: "rgba(255,255,255,0.45)",
           borderRadius: "100px",
           padding: "clamp(6px,1vw,10px) clamp(14px,2vw,22px)",
-          fontSize: "clamp(11px,1.3vw,13px)",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          letterSpacing: "0.02em",
+          fontSize: "clamp(11px,1.2vw,13px)",
+          cursor: "pointer", fontFamily: "inherit",
         }}>✕ Exit</button>
       </div>
 
-      {/* Divider */}
-      <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)", margin: "clamp(10px,2vw,20px) 0 0" }} />
+      {/* ── Top divider ── */}
+      <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)", margin: "clamp(10px,1.5vw,18px) 0 0", flexShrink: 0 }} />
 
-      {/* Clock rows */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", overflow: "hidden" }}>
-        {/* Hours — only if duration ≥ 60 */}
+      {/* ── Clock rows ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
         {duration >= 60 && (
           <>
-            <BBCScrollNumber value={String(hours).padStart(2, "0")} label="H" />
-            <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", margin: "0 clamp(16px,4vw,48px)" }} />
+            <BBCRow value={String(hours).padStart(2, "0")} label="H"   bg="#111111" animKey={hKey} />
+            <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
           </>
         )}
-
-        <BBCScrollNumber value={String(mins).padStart(2, "0")} label="Min" />
-        <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", margin: "0 clamp(16px,4vw,48px)" }} />
-        <BBCScrollNumber value={String(secs).padStart(2, "0")} label="Sec" />
+        <BBCRow value={String(mins).padStart(2, "0")} label="Min" bg={duration >= 60 ? "#0e0e0e" : "#111111"} animKey={mKey} />
+        <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
+        <BBCRow value={String(secs).padStart(2, "0")} label="Sec" bg="#0b0b0b" animKey={sKey} />
       </div>
 
-      {/* Divider */}
-      <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)" }} />
+      {/* ── Bottom divider ── */}
+      <div style={{ height: "0.5px", background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
 
-      {/* Progress bar */}
-      <div style={{ flexShrink: 0, padding: "clamp(8px,1.5vw,16px) clamp(20px,4vw,48px)" }}>
-        <div style={{ height: "2px", background: "rgba(255,255,255,0.07)", borderRadius: "2px", overflow: "hidden" }}>
-          <div style={{
-            height: "100%", borderRadius: "2px",
-            background: "rgba(255,255,255,0.45)",
-            width: `${progress}%`,
-            transition: "width 1s linear",
-          }} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.20)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            {isRunning ? "Focusing" : "Ready"}
-          </span>
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.20)" }}>{progress}%</span>
-        </div>
-      </div>
+      {/* ── Compass wheel ── */}
+      <CompassWheel progress={progress} />
 
-      {/* Controls */}
+      {/* ── Controls ── */}
       <div style={{
         flexShrink: 0,
         display: "flex", gap: "10px", justifyContent: "center", alignItems: "center",
-        padding: "clamp(10px,2vw,20px) clamp(20px,4vw,48px) clamp(24px,4vw,48px)",
+        padding: "clamp(8px,1.5vw,14px) clamp(20px,5vw,72px) clamp(16px,3vw,32px)",
       }}>
         {isRunning ? (
           <>
             <button onClick={onComplete} style={{
-              background: "rgba(255,255,255,0.90)", color: "#080808",
+              background: "rgba(255,255,255,0.88)", color: "#0a0a0a",
               border: "none", borderRadius: "100px",
-              padding: "clamp(10px,1.5vw,14px) clamp(28px,4vw,44px)",
-              fontSize: "clamp(13px,1.5vw,15px)", fontWeight: 500,
+              padding: "clamp(10px,1.5vw,13px) clamp(28px,4vw,44px)",
+              fontSize: "clamp(13px,1.4vw,15px)", fontWeight: 500,
               cursor: "pointer", fontFamily: "inherit", letterSpacing: "-0.01em",
             }}>✓ Complete</button>
             <button onClick={onStop} style={{
-              background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)",
-              border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: "100px",
-              padding: "clamp(10px,1.5vw,14px) clamp(22px,3vw,36px)",
+              background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.50)",
+              border: "0.5px solid rgba(255,255,255,0.14)", borderRadius: "100px",
+              padding: "clamp(10px,1.5vw,13px) clamp(22px,3vw,36px)",
               fontSize: "clamp(12px,1.3vw,14px)",
               cursor: "pointer", fontFamily: "inherit",
             }}>✕ Stop</button>
           </>
         ) : (
-          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.28)", margin: 0 }}>
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", margin: 0 }}>
             Start a session first
           </p>
         )}
@@ -363,20 +414,20 @@ function FullscreenTimer({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function FocusPage() {
   const { todos } = useRealtimeTodos();
-  const [duration, setDuration]             = useState(25);
-  const [timeLeft, setTimeLeft]             = useState(25 * 60);
-  const [isRunning, setIsRunning]           = useState(false);
-  const [currentSession, setCurrentSession] = useState<FocusSession | null>(null);
-  const [selectedTodo, setSelectedTodo]     = useState("");
-  const [sessions, setSessions]             = useState<FocusSession[]>([]);
-  const [showManual, setShowManual]         = useState(false);
-  const [fullscreen, setFullscreen]         = useState(false);
-  const [manualDate, setManualDate]         = useState(format(new Date(), "yyyy-MM-dd"));
-  const [manualHour, setManualHour]         = useState("09");
-  const [manualDuration, setManualDuration] = useState(25);
-  const [manualTodo, setManualTodo]         = useState("");
+  const [duration, setDuration]               = useState(25);
+  const [timeLeft, setTimeLeft]               = useState(25 * 60);
+  const [isRunning, setIsRunning]             = useState(false);
+  const [currentSession, setCurrentSession]   = useState<FocusSession | null>(null);
+  const [selectedTodo, setSelectedTodo]       = useState("");
+  const [sessions, setSessions]               = useState<FocusSession[]>([]);
+  const [showManual, setShowManual]           = useState(false);
+  const [fullscreen, setFullscreen]           = useState(false);
+  const [manualDate, setManualDate]           = useState(format(new Date(), "yyyy-MM-dd"));
+  const [manualHour, setManualHour]           = useState("09");
+  const [manualDuration, setManualDuration]   = useState(25);
+  const [manualTodo, setManualTodo]           = useState("");
   const [manualCustomDur, setManualCustomDur] = useState("");
-  const [savingManual, setSavingManual]     = useState(false);
+  const [savingManual, setSavingManual]       = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { fetchFocusSessions(30).then(setSessions).catch(() => {}); }, []);
@@ -400,12 +451,12 @@ export default function FocusPage() {
   const avgMinutes       = activeDays > 0 ? Math.round(weekMinutes / activeDays) : 0;
 
   const hourDistribution = useMemo(() => {
-    const hours: Record<number, number> = {};
+    const hrs: Record<number, number> = {};
     sessions.filter((s) => s.completed).forEach((s) => {
-      const hour = new Date(s.started_at).getHours();
-      hours[hour] = (hours[hour] || 0) + s.duration_minutes;
+      const h = new Date(s.started_at).getHours();
+      hrs[h] = (hrs[h] || 0) + s.duration_minutes;
     });
-    const best = Object.entries(hours).sort(([, a], [, b]) => b - a)[0];
+    const best = Object.entries(hrs).sort(([, a], [, b]) => b - a)[0];
     return best ? `${Number(best[0]) % 12 || 12}${Number(best[0]) >= 12 ? "PM" : "AM"}` : "—";
   }, [sessions]);
 
@@ -456,14 +507,13 @@ export default function FocusPage() {
     } finally { setSavingManual(false); }
   };
 
-  const mins     = Math.floor(timeLeft / 60);
-  const secs     = timeLeft % 60;
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
   const selectedTask = todos.find((t) => t.id === selectedTodo);
   const taskName     = selectedTask?.title ?? "Free focus";
 
   return (
     <>
-      {/* ── FULLSCREEN OVERLAY ── */}
       {fullscreen && (
         <FullscreenTimer
           timeLeft={timeLeft} duration={duration} isRunning={isRunning}
@@ -473,7 +523,6 @@ export default function FocusPage() {
         />
       )}
 
-      {/* ── NORMAL PAGE ── */}
       <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto pb-32 md:pb-10">
 
         {/* Header */}
@@ -577,10 +626,10 @@ export default function FocusPage() {
           <div className="lg:col-span-2">
             <div className="liquid-glass rounded-[24px] p-6 sm:p-8 text-center mb-4 animate-fade-in-up">
 
-              {/* Flip clock display */}
+              {/* Splitflap clock */}
               <div className="flex flex-col items-center mb-6">
-                <FlipClock mins={mins} secs={secs} isRunning={isRunning} />
-                <p className="text-[10px] font-mono mt-3 uppercase tracking-widest"
+                <SplitflapClock mins={mins} secs={secs} isRunning={isRunning} />
+                <p className="text-[10px] font-mono mt-4 uppercase tracking-widest"
                   style={{ color: isRunning ? "var(--accent)" : "var(--text-muted)" }}>
                   {isRunning ? "focusing" : "ready"}
                 </p>
@@ -610,7 +659,7 @@ export default function FocusPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="flex items-center justify-center gap-2 mb-1">
                     <button onClick={() => setFullscreen(true)} className="cc-btn px-4 py-2 text-xs"
                       style={{ color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
                       <span style={{ position: "relative", zIndex: 3 }}>⛶ Focus mode</span>
