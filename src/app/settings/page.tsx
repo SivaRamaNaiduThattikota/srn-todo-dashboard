@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/components/ThemeProvider";
 import { useState, useEffect } from "react";
-import { fetchTemplates, addTemplate, deleteTemplate, createTodoFromTemplate, type TaskTemplate, type TodoPriority } from "@/lib/supabase";
+import { supabase, fetchTemplates, addTemplate, deleteTemplate, createTodoFromTemplate, type TaskTemplate, type TodoPriority } from "@/lib/supabase";
 import { RecycleBinModal, type BinTable } from "@/components/RecycleBinModal";
 
 const ACCENTS = [
@@ -15,10 +15,10 @@ const ACCENTS = [
 ];
 
 const BIN_ENTRIES: { table: BinTable; label: string; icon: string; color: string }[] = [
-  { table: "todos",           label: "Tasks",          icon: "☑",  color: "#6ee7b7" },
-  { table: "notes",           label: "Notes",          icon: "📝", color: "#60a5fa" },
-  { table: "projects",        label: "Projects",       icon: "🚀", color: "#a78bfa" },
-  { table: "decisions",       label: "Decisions",      icon: "⚖️", color: "#f59e0b" },
+  { table: "todos",           label: "Tasks",           icon: "☑",  color: "#6ee7b7" },
+  { table: "notes",           label: "Notes",           icon: "📝", color: "#60a5fa" },
+  { table: "projects",        label: "Projects",        icon: "🚀", color: "#a78bfa" },
+  { table: "decisions",       label: "Decisions",       icon: "⚖️", color: "#f59e0b" },
   { table: "learning_phases", label: "Learning Phases", icon: "📚", color: "#f87171" },
 ];
 
@@ -32,6 +32,10 @@ export default function SettingsPage() {
   const [templateError, setTemplateError]       = useState<string | null>(null);
   const [calendarCopied, setCalendarCopied]     = useState(false);
   const [activeBin, setActiveBin]               = useState<BinTable | null>(null);
+
+  // Export state
+  const [exportLoading, setExportLoading]       = useState<string | null>(null);
+  const [exportStatus,  setExportStatus]        = useState<string | null>(null);
 
   useEffect(() => { fetchTemplates().then(setTemplates).catch(() => {}); }, []);
 
@@ -49,6 +53,115 @@ export default function SettingsPage() {
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Created: ${t.title}`, type: "success" } }));
   };
 
+  // ── Export handler — downloads data from Supabase as JSON/CSV ──
+  const handleExport = async (type: "all" | "tasks" | "focus" | "learning") => {
+    setExportLoading(type);
+    setExportStatus(null);
+    try {
+      let filename = "";
+      let content  = "";
+
+      if (type === "all") {
+        // Full backup — all tables
+        const [todos, notes, projects, decisions, sessions, habits, habitLog, learningProgress, learningWeekProgress, interviewPrep] = await Promise.all([
+          supabase.from("todos").select("*").order("created_at"),
+          supabase.from("notes").select("*").order("created_at"),
+          supabase.from("projects").select("*").order("sort_order"),
+          supabase.from("decisions").select("*").order("created_at"),
+          supabase.from("focus_sessions").select("*").order("started_at"),
+          supabase.from("daily_habits").select("*").order("sort_order"),
+          supabase.from("habit_log").select("*").order("completed_date"),
+          supabase.from("learning_progress").select("*"),
+          supabase.from("learning_week_progress").select("*"),
+          supabase.from("interview_prep").select("*"),
+        ]);
+        const backup = {
+          exported_at:  new Date().toISOString(),
+          version:      "v11.1",
+          note:         "To restore: run supabase-master-migration.sql on new DB, then import each table from this file.",
+          tables: {
+            todos:                    todos.data                 || [],
+            notes:                    notes.data                 || [],
+            projects:                 projects.data              || [],
+            decisions:                decisions.data             || [],
+            focus_sessions:           sessions.data              || [],
+            daily_habits:             habits.data                || [],
+            habit_log:                habitLog.data              || [],
+            learning_progress:        learningProgress.data      || [],
+            learning_week_progress:   learningWeekProgress.data  || [],
+            interview_prep:           interviewPrep.data         || [],
+          },
+        };
+        content  = JSON.stringify(backup, null, 2);
+        filename = `srn-full-backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+      } else if (type === "tasks") {
+        const { data } = await supabase.from("todos").select("*").order("created_at");
+        const rows    = data || [];
+        const headers = ["id", "title", "status", "priority", "category", "due_date", "start_date", "completed_at", "tags", "estimated_mins", "created_at", "updated_at"];
+        const csv = [
+          headers.join(","),
+          ...rows.map(r => headers.map(h => {
+            const v = (r as any)[h];
+            const s = Array.isArray(v) ? v.join("|") : String(v ?? "");
+            return s.includes(",") || s.includes('"') || s.includes("\n")
+              ? `"${s.replace(/"/g, '""')}"` : s;
+          }).join(",")),
+        ].join("\n");
+        content  = csv;
+        filename = `srn-tasks-${new Date().toISOString().slice(0, 10)}.csv`;
+
+      } else if (type === "focus") {
+        const { data } = await supabase.from("focus_sessions").select("*").order("started_at");
+        const rows    = data || [];
+        const headers = ["id", "todo_id", "duration_minutes", "completed", "started_at", "ended_at"];
+        const csv = [
+          headers.join(","),
+          ...rows.map(r => headers.map(h => String((r as any)[h] ?? "")).join(",")),
+        ].join("\n");
+        content  = csv;
+        filename = `srn-focus-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+
+      } else if (type === "learning") {
+        const [progress, weekProgress] = await Promise.all([
+          supabase.from("learning_progress").select("*"),
+          supabase.from("learning_week_progress").select("*"),
+        ]);
+        content  = JSON.stringify({
+          exported_at:             new Date().toISOString(),
+          learning_progress:       progress.data      || [],
+          learning_week_progress:  weekProgress.data  || [],
+        }, null, 2);
+        filename = `srn-learning-progress-${new Date().toISOString().slice(0, 10)}.json`;
+      }
+
+      // Trigger browser download
+      const blob = new Blob([content], {
+        type: filename.endsWith(".json") ? "application/json" : "text/csv",
+      });
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement("a");
+      a.href     = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setExportStatus(`✓ Downloaded ${filename}`);
+      setTimeout(() => setExportStatus(null), 4000);
+
+      window.dispatchEvent(new CustomEvent("srn:toast", {
+        detail: { message: `Exported: ${filename}`, type: "success" },
+      }));
+
+    } catch (err: any) {
+      setExportStatus(`✕ ${err.message || "Export failed"}`);
+    } finally {
+      setExportLoading(null);
+    }
+  };
+
   const calendarUrl  = typeof window !== "undefined" ? `${window.location.origin}/api/export-calendar` : "";
   const downloadUrl  = typeof window !== "undefined" ? `${window.location.origin}/api/export-calendar?download=true` : "";
 
@@ -59,153 +172,160 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto pb-32 md:pb-10">
-      <header className="mb-6 sm:mb-8 animate-fade-in-up">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Settings</h1>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto pb-32 md:pb-10">
+      <header className="mb-6 animate-fade-in-up">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
+          style={{ color: "var(--text-primary)", letterSpacing: "-0.025em" }}>Settings</h1>
+        <p className="text-xs font-mono mt-1" style={{ color: "var(--text-muted)" }}>Preferences, templates & data</p>
       </header>
 
       <div className="space-y-4">
+
         {/* Appearance */}
         <div className="glass rounded-2xl p-5 animate-fade-in-up">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Appearance</h2>
+          <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>Appearance</h2>
+
+          {/* Dark / Light */}
+          <div className="flex items-center justify-between mb-4 pb-4"
+            style={{ borderBottom: "0.5px solid var(--glass-border)" }}>
+            <div>
+              <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                {mode === "dark" ? "Dark mode" : "Light mode"}
+              </span>
+              <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                Toggle theme
+              </p>
+            </div>
             <button onClick={toggleMode}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all"
-              style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}>
-              {mode === "dark" ? "☀ Light" : "🌙 Dark"}
+              className="relative w-11 h-6 rounded-full transition-all duration-300"
+              style={{ background: mode === "dark" ? "var(--accent)" : "rgba(120,120,128,0.32)" }}>
+              <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300"
+                style={{ left: mode === "dark" ? "calc(100% - 22px)" : "2px" }} />
             </button>
           </div>
-          <div className="grid grid-cols-6 gap-2">
-            {ACCENTS.map((t) => (
-              <button key={t.id} onClick={() => setAccent(t.id)}
+
+          {/* Accent colours */}
+          <p className="text-xs font-medium mb-3" style={{ color: "var(--text-primary)" }}>Accent colour</p>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {ACCENTS.map((a) => (
+              <button key={a.id} onClick={() => setAccent(a.id)}
                 className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all"
-                style={{ background: accent === t.id ? "var(--glass-fill-hover)" : "transparent", border: accent === t.id ? "0.5px solid var(--glass-border)" : "0.5px solid transparent" }}>
-                <div className="w-7 h-7 rounded-full" style={{ backgroundColor: t.color, boxShadow: accent === t.id ? `0 0 12px ${t.color}40` : "none" }} />
-                <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Recycle Bins */}
-        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "20ms" }}>
-          <h2 className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>🗑 Recycle Bins</h2>
-          <p className="text-[10px] font-mono mb-4" style={{ color: "var(--text-muted)" }}>
-            Deleted items are soft-deleted and recoverable. Open any bin to restore or permanently delete.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {BIN_ENTRIES.map((bin) => (
-              <button key={bin.table} onClick={() => setActiveBin(bin.table)}
-                className="flex items-center gap-3 p-3 rounded-[14px] text-left transition-all hover-lift"
-                style={{ background: "var(--bg-card)", border: "0.5px solid var(--glass-border)" }}>
-                <span className="text-lg flex-shrink-0">{bin.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium block" style={{ color: "var(--text-primary)" }}>{bin.label}</span>
-                  <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>View & restore deleted {bin.label.toLowerCase()}</span>
+                style={{ background: accent === a.id ? "var(--glass-fill)" : "transparent",
+                  border: `0.5px solid ${accent === a.id ? "var(--glass-border)" : "transparent"}` }}>
+                <div className="w-7 h-7 rounded-full relative"
+                  style={{ background: a.color, boxShadow: accent === a.id ? `0 0 12px ${a.color}88` : "none" }}>
+                  {accent === a.id && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                        <path d="M2 6l3 3 5-5"/>
+                      </svg>
+                    </div>
+                  )}
                 </div>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--text-muted)", flexShrink: 0 }}>
-                  <path d="M9 18l6-6-6-6"/>
-                </svg>
+                <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{a.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Google Calendar Sync */}
+        {/* Recycle bins */}
         <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
-          <h2 className="text-sm font-medium mb-2" style={{ color: "var(--text-primary)" }}>Google Calendar</h2>
-          <p className="text-xs font-mono mb-4" style={{ color: "var(--text-muted)" }}>
-            Tasks with due dates appear as all-day events. Priority shown as colored dots. Reminders set for critical and high tasks.
+          <h2 className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Recycle Bin</h2>
+          <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>
+            Soft-deleted items are kept here until permanently removed.
           </p>
-
-          <div className="p-3 rounded-xl mb-3" style={{ background: "var(--bg-card)" }}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Auto-sync (subscribe once)</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ background: "rgba(110,231,183,0.1)", color: "#6ee7b7" }}>Recommended</span>
-            </div>
-            <p className="text-[10px] font-mono mb-2" style={{ color: "var(--text-muted)" }}>
-              Google Calendar auto-refreshes every few hours. Add this URL once and forget.
-            </p>
-            <div className="flex gap-2">
-              <input type="text" readOnly value={calendarUrl}
-                className="flex-1 rounded-lg px-3 py-1.5 text-[10px] font-mono focus:outline-none"
-                style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-secondary)" }} />
-              <button onClick={copyCalendarUrl}
-                className="px-3 py-1.5 text-[10px] font-mono rounded-lg shrink-0 transition-all"
-                style={{ background: calendarCopied ? "rgba(110,231,183,0.15)" : "var(--accent-muted)", color: calendarCopied ? "#6ee7b7" : "var(--accent)" }}>
-                {calendarCopied ? "Copied!" : "Copy URL"}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {BIN_ENTRIES.map((entry) => (
+              <button key={entry.table} onClick={() => setActiveBin(entry.table)}
+                className="flex items-center gap-2 p-3 rounded-xl text-left transition-all hover:opacity-80"
+                style={{ background: `${entry.color}12`, border: `0.5px solid ${entry.color}30` }}>
+                <span style={{ fontSize: "16px" }}>{entry.icon}</span>
+                <span className="text-xs font-medium" style={{ color: entry.color }}>{entry.label}</span>
               </button>
-            </div>
-            <p className="text-[9px] font-mono mt-1.5" style={{ color: "var(--text-muted)", opacity: 0.5 }}>
-              Google Calendar → Settings → Add calendar → From URL
-            </p>
-          </div>
-
-          <div className="p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Instant sync</span>
-                <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  Download .ics and open in Google Calendar to update now
-                </p>
-              </div>
-              <a href={downloadUrl}
-                className="px-3 py-1.5 text-[10px] font-mono rounded-lg shrink-0 transition-all"
-                style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
-                Download .ics
-              </a>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Task Templates */}
+        {/* Google Calendar */}
+        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
+          <h2 className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Google Calendar Sync</h2>
+          <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>
+            Subscribe to your tasks in Google Calendar (tasks with due dates).
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-[10px] font-mono px-3 py-2 rounded-xl truncate"
+                style={{ background: "var(--bg-input)", color: "var(--text-secondary)",
+                  border: "0.5px solid var(--glass-border)" }}>
+                {calendarUrl || "https://your-domain.vercel.app/api/export-calendar"}
+              </code>
+              <button onClick={copyCalendarUrl}
+                className="px-3 py-2 text-[10px] font-mono rounded-xl flex-shrink-0 transition-all"
+                style={{ background: calendarCopied ? "var(--accent-muted)" : "var(--bg-input)",
+                  color: calendarCopied ? "var(--accent)" : "var(--text-secondary)",
+                  border: "0.5px solid var(--glass-border)" }}>
+                {calendarCopied ? "✓ Copied" : "Copy"}
+              </button>
+            </div>
+            <a href={downloadUrl} download="srn-tasks.ics"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-mono w-fit transition-all hover:opacity-80"
+              style={{ background: "var(--accent-muted)", color: "var(--accent)",
+                border: "0.5px solid var(--accent-dim)" }}>
+              ↓ Download .ics file
+            </a>
+          </div>
+        </div>
+
+        {/* Templates */}
         <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Task templates</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Task Templates</h2>
             <button onClick={() => setShowNewTemplate(!showNewTemplate)}
-              className="text-xs font-mono px-3 py-1.5 rounded-lg"
-              style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
-              {showNewTemplate ? "Cancel" : "+ New"}
+              className="px-3 py-1.5 text-[10px] font-mono rounded-xl transition-all"
+              style={{ background: showNewTemplate ? "var(--accent-muted)" : "var(--bg-input)",
+                color: showNewTemplate ? "var(--accent)" : "var(--text-secondary)",
+                border: "0.5px solid var(--glass-border)" }}>
+              {showNewTemplate ? "✕ Cancel" : "+ New"}
             </button>
           </div>
 
           {showNewTemplate && (
-            <div className="mb-4 p-3 rounded-xl space-y-2" style={{ background: "var(--bg-input)" }}>
-              {templateError && <p className="text-xs font-mono" style={{ color: "#f87171" }}>{templateError}</p>}
-              <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+            <div className="space-y-2 mb-3 p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
+              <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Template title…"
-                className="w-full rounded-lg px-3 py-2 text-xs font-mono focus:outline-none"
-                style={{ background: "var(--bg-card)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}
+                className="w-full text-xs font-mono px-3 py-2 rounded-xl focus:outline-none"
+                style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)",
+                  color: "var(--text-primary)" }}
                 onKeyDown={(e) => e.key === "Enter" && handleAddTemplate()} />
               <div className="flex gap-2">
                 <select value={newPriority} onChange={(e) => setNewPriority(e.target.value as TodoPriority)}
-                  className="flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-card)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
+                  className="flex-1 text-[10px] font-mono px-2 py-1.5 rounded-xl focus:outline-none"
+                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-secondary)" }}>
+                  {["critical","high","medium","low"].map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
                 <select value={newRecurrence} onChange={(e) => setNewRecurrence(e.target.value as any)}
-                  className="flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none"
-                  style={{ background: "var(--bg-card)", border: "0.5px solid var(--glass-border)", color: "var(--text-primary)" }}>
+                  className="flex-1 text-[10px] font-mono px-2 py-1.5 rounded-xl focus:outline-none"
+                  style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-secondary)" }}>
                   <option value="">One-time</option>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                 </select>
-                <button onClick={handleAddTemplate} className="px-3 py-1.5 text-xs font-medium rounded-lg"
-                  style={{ background: "var(--accent)", color: "#0a0a0b" }}>Add</button>
               </div>
+              {templateError && <p className="text-[10px] font-mono" style={{ color: "#f87171" }}>{templateError}</p>}
+              <button onClick={handleAddTemplate}
+                className="w-full py-2 text-xs font-mono rounded-xl transition-all"
+                style={{ background: "var(--accent-muted)", color: "var(--accent)",
+                  border: "0.5px solid var(--accent-dim)" }}>
+                ✓ Save template
+              </button>
             </div>
           )}
 
           {templates.length === 0 ? (
-            <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
-              No templates yet. Create reusable task blueprints.
-            </p>
+            <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>No templates yet.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {templates.map((t) => (
                 <div key={t.id} className="flex items-center justify-between p-3 rounded-xl"
                   style={{ background: "var(--bg-card)" }}>
@@ -228,6 +348,91 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* ── EXPORT & BACKUP ── */}
+        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Export & Backup</h2>
+            {exportStatus && (
+              <span className="text-[10px] font-mono px-2 py-1 rounded-lg"
+                style={{
+                  background: exportStatus.includes("✓") ? "rgba(94,207,149,0.12)" : "rgba(248,65,65,0.12)",
+                  color:      exportStatus.includes("✓") ? "#5ecf95"                : "#f87171",
+                }}>
+                {exportStatus}
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] font-mono mb-4" style={{ color: "var(--text-muted)" }}>
+            Your data lives in Supabase — not in the master SQL file. Export it so you can restore
+            to any database later. The master SQL only recreates structure, not your actual data.
+          </p>
+
+          {/* 4 export buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            {([
+              {
+                label:  "Export All Data",
+                desc:   "Complete backup — all tables as JSON",
+                icon:   "💾",
+                action: "all"     as const,
+                accent: "#5ecf95",
+              },
+              {
+                label:  "Export Tasks (CSV)",
+                desc:   "All tasks, status, priority, dates",
+                icon:   "☑",
+                action: "tasks"   as const,
+                accent: "#4da6ff",
+              },
+              {
+                label:  "Export Focus Sessions",
+                desc:   "All focus sessions with durations",
+                icon:   "⏱",
+                action: "focus"   as const,
+                accent: "#f5a623",
+              },
+              {
+                label:  "Export Learning Progress",
+                desc:   "Phase topic progress as JSON",
+                icon:   "📚",
+                action: "learning" as const,
+                accent: "#b48eff",
+              },
+            ]).map((btn) => (
+              <button key={btn.action}
+                onClick={() => handleExport(btn.action)}
+                disabled={exportLoading === btn.action}
+                className="flex items-start gap-3 p-3 rounded-xl text-left transition-all hover:opacity-90 disabled:opacity-40"
+                style={{ background: `${btn.accent}12`, border: `0.5px solid ${btn.accent}30` }}>
+                <span style={{ fontSize: "18px", flexShrink: 0, marginTop: "1px" }}>{btn.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold" style={{ color: btn.accent }}>
+                    {exportLoading === btn.action ? "Exporting…" : btn.label}
+                  </p>
+                  <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    {btn.desc}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Info / warning */}
+          <div className="flex items-start gap-2 p-3 rounded-xl"
+            style={{ background: "rgba(248,65,65,0.06)", border: "0.5px solid rgba(248,65,65,0.20)" }}>
+            <span style={{ fontSize: "14px", flexShrink: 0 }}>⚠️</span>
+            <div>
+              <p className="text-[10px] font-mono font-semibold" style={{ color: "#f87171" }}>
+                Supabase free: 500MB storage · no time limit
+              </p>
+              <p className="text-[10px] font-mono mt-0.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                Switching databases? Run master SQL on new DB → import your exported JSON.
+                Recommended: export monthly as a safety backup. Your data is yours.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* API */}
@@ -255,7 +460,8 @@ export default function SettingsPage() {
               {[["New task","N"],["Search","/"],["Board","B"],["Analytics","A"],["Tasks","T"],["AI","I"],["Close","Esc"]].map(([l, k]) => (
                 <div key={l} className="flex justify-between">
                   <span>{l}</span>
-                  <span className="px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}>{k}</span>
+                  <span className="px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}>{k}</span>
                 </div>
               ))}
             </div>
@@ -264,7 +470,7 @@ export default function SettingsPage() {
             <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>About</h3>
             <div className="space-y-2 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
               {[
-                ["Version", "v10.7"],
+                ["Version", "v11.1"],
                 ["DB",      "Supabase"],
                 ["Host",    "Vercel"],
                 ["Realtime","WebSocket"],
@@ -279,6 +485,7 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
       </div>
 
       {activeBin && <RecycleBinModal table={activeBin} onClose={() => setActiveBin(null)} />}
