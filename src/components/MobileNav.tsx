@@ -59,6 +59,16 @@ const ALL_NAV = [
     ),
   },
   {
+    href: "/interview",
+    label: "Interview",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    ),
+  },
+  {
     href: "/notes",
     label: "Notes",
     icon: (
@@ -167,15 +177,14 @@ const ALL_NAV = [
   },
 ];
 
-const PRIMARY_TABS = ALL_NAV.slice(0, 4); // Today, Tasks, Streaks, Focus
-const MORE_ITEMS   = ALL_NAV.slice(4);    // Learning + everything else
+const PRIMARY_TABS = ALL_NAV.slice(0, 4);
+const MORE_ITEMS   = ALL_NAV.slice(4);
 
 export function MobileNav() {
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => { setSheetOpen(false); }, [pathname]);
-
   useEffect(() => {
     document.body.style.overflow = sheetOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -185,31 +194,15 @@ export function MobileNav() {
 
   return (
     <>
-      {/* ── Bottom Tab Bar ── */}
-      <nav
-        className="mobile-bottom-nav"
-        style={{
-          background: "var(--cc-glass-base)",
-          borderTop: "0.5px solid var(--cc-tile-border)",
-          backdropFilter: "blur(48px) saturate(2.2)",
-          WebkitBackdropFilter: "blur(48px) saturate(2.2)",
-          boxShadow: "0 -1px 0 var(--cc-tile-border), 0 -8px 40px rgba(0,0,0,0.12)",
-          zIndex: 50,
-        }}
-      >
+      <nav className="mobile-bottom-nav" style={{ background: "var(--cc-glass-base)", borderTop: "0.5px solid var(--cc-tile-border)", backdropFilter: "blur(48px) saturate(2.2)", WebkitBackdropFilter: "blur(48px) saturate(2.2)", boxShadow: "0 -1px 0 var(--cc-tile-border), 0 -8px 40px rgba(0,0,0,0.12)", zIndex: 50 }}>
         <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg, transparent 0%, var(--specular-top) 50%, transparent 100%)", pointerEvents: "none" }} />
-
         <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-around", padding: "6px 4px", paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))" }}>
           {PRIMARY_TABS.map((item) => {
             const isActive = pathname === item.href;
             return <TabItem key={item.href} href={item.href} label={item.label} icon={item.icon} isActive={isActive} />;
           })}
-
-          {/* More button */}
-          <button
-            onClick={() => setSheetOpen(true)}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", padding: "4px 4px", borderRadius: "12px", background: (isMoreActive || sheetOpen) ? "var(--cc-glass-hover)" : "transparent", border: "0.5px solid transparent", cursor: "pointer", transition: "all 0.18s ease", minWidth: "52px", position: "relative" }}
-          >
+          <button onClick={() => setSheetOpen(true)}
+            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", padding: "4px 4px", borderRadius: "12px", background: (isMoreActive || sheetOpen) ? "var(--cc-glass-hover)" : "transparent", border: "0.5px solid transparent", cursor: "pointer", transition: "all 0.18s ease", minWidth: "52px", position: "relative" }}>
             {isMoreActive && !sheetOpen && (
               <div style={{ position: "absolute", top: "5px", width: "4px", height: "4px", borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 6px var(--accent-glow)" }} />
             )}
@@ -235,7 +228,6 @@ export function MobileNav() {
         </div>
       </nav>
 
-      {/* ── More Sheet ── */}
       {sheetOpen && (
         <>
           <div onClick={() => setSheetOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 48, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", animation: "fadeIn 0.18s ease both" }} />

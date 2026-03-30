@@ -18,14 +18,22 @@ const LEARNING_ICON = (
   </svg>
 );
 
+const INTERVIEW_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4"/>
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+);
+
 const PRIMARY_NAV = [
-  { href: "/today",    label: "Today",    icon: ICON("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 6v6l4 2") },
-  { href: "/",         label: "Tasks",    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
-  { href: "/streaks",  label: "Streaks",  icon: ICON("M13 2L3 14h9l-1 8 10-12h-9l1-8z") },
-  { href: "/focus",    label: "Focus",    icon: ICON("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 8v4M12 16v0") },
-  { href: "/notes",    label: "Notes",    icon: ICON("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8") },
-  { href: "/projects", label: "Projects", icon: ICON("M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z") },
-  { href: "/learning", label: "Learning", icon: LEARNING_ICON },
+  { href: "/today",     label: "Today",     icon: ICON("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 6v6l4 2") },
+  { href: "/",          label: "Tasks",     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
+  { href: "/streaks",   label: "Streaks",   icon: ICON("M13 2L3 14h9l-1 8 10-12h-9l1-8z") },
+  { href: "/focus",     label: "Focus",     icon: ICON("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM12 8v4M12 16v0") },
+  { href: "/notes",     label: "Notes",     icon: ICON("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8") },
+  { href: "/projects",  label: "Projects",  icon: ICON("M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z") },
+  { href: "/learning",  label: "Learning",  icon: LEARNING_ICON },
+  { href: "/interview", label: "Interview", icon: INTERVIEW_ICON },
 ];
 
 const MORE_NAV = [
@@ -45,42 +53,28 @@ const SETTINGS_ICON = (
   </svg>
 );
 
-/* ── Nav item ── */
 function NavLink({ href, label, icon, pathname, showLabel }: {
   href: string; label: string; icon: React.ReactNode; pathname: string; showLabel: boolean;
 }) {
   const isActive = pathname === href;
   return (
-    <Link
-      href={href}
-      title={!showLabel ? label : undefined}
+    <Link href={href} title={!showLabel ? label : undefined}
       style={{
-        display: "flex",
-        alignItems: "center",
+        display: "flex", alignItems: "center",
         gap: showLabel ? "10px" : "0",
         justifyContent: showLabel ? "flex-start" : "center",
-        height: "40px",
-        padding: showLabel ? "0 12px" : "0",
-        borderRadius: "13px",
-        position: "relative",
+        height: "40px", padding: showLabel ? "0 12px" : "0",
+        borderRadius: "13px", position: "relative",
         background:           isActive ? "var(--cc-glass-hover)" : "transparent",
         backdropFilter:       isActive ? "blur(16px) saturate(1.8)" : "none",
         WebkitBackdropFilter: isActive ? "blur(16px) saturate(1.8)" : "none",
         boxShadow:            isActive ? "var(--cc-inner-shadow), 0 2px 8px rgba(0,0,0,0.10)" : "none",
         border:               isActive ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent",
-        textDecoration: "none",
-        flexShrink: 0,
-      }}
-    >
-      {isActive && (
-        <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: "2.5px", borderRadius: "0 3px 3px 0", background: "var(--accent)", boxShadow: "0 0 8px var(--accent-glow)" }} />
-      )}
-      {isActive && (
-        <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg,transparent,var(--specular-top),transparent)", pointerEvents: "none" }} />
-      )}
-      <span style={{ flexShrink: 0, color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex" }}>
-        {icon}
-      </span>
+        textDecoration: "none", flexShrink: 0,
+      }}>
+      {isActive && <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: "2.5px", borderRadius: "0 3px 3px 0", background: "var(--accent)", boxShadow: "0 0 8px var(--accent-glow)" }} />}
+      {isActive && <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg,transparent,var(--specular-top),transparent)", pointerEvents: "none" }} />}
+      <span style={{ flexShrink: 0, color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex" }}>{icon}</span>
       {showLabel && (
         <span style={{ fontSize: "13.5px", fontWeight: 500, color: isActive ? "var(--text-primary)" : "var(--cc-text)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {label}
@@ -90,9 +84,6 @@ function NavLink({ href, label, icon, pathname, showLabel }: {
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   SIDEBAR
-   ══════════════════════════════════════════════════════════ */
 export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, setCollapsed } = useSidebar();
@@ -107,7 +98,6 @@ export function Sidebar() {
   }, []);
 
   const showLabels = isLg && !collapsed;
-
   const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => {
     if (MORE_NAV.some((i) => i.href === pathname)) setMoreOpen(true);
@@ -117,27 +107,9 @@ export function Sidebar() {
 
   return (
     <>
-      {/* ── Sidebar panel ── */}
-      <aside
-        className="glass-sidebar"
-        style={{
-          position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 40,
-          width: `${sidebarW}px`,
-          transition: "width 0.28s cubic-bezier(0.2,0.8,0.2,1)",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {/* Logo header */}
-        <div style={{
-          flexShrink: 0,
-          display: "flex", alignItems: "center",
-          height: "64px",
-          padding: showLabels ? "0 12px 0 14px" : "0",
-          justifyContent: showLabels ? "flex-start" : "center",
-          gap: "10px",
-        }}>
+      <aside className="glass-sidebar" style={{ position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 40, width: `${sidebarW}px`, transition: "width 0.28s cubic-bezier(0.2,0.8,0.2,1)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {/* Logo */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", height: "64px", padding: showLabels ? "0 12px 0 14px" : "0", justifyContent: showLabels ? "flex-start" : "center", gap: "10px" }}>
           <div style={{ width: "36px", height: "36px", borderRadius: "11px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", background: "linear-gradient(135deg, var(--accent-dim), var(--accent-muted))", border: "0.5px solid var(--cc-tile-border)", boxShadow: "0 2px 10px var(--accent-glow), inset 0 0.5px 0 rgba(255,255,255,0.30)" }}>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg,rgba(255,255,255,0.28),transparent)", borderRadius: "11px 11px 0 0" }} />
             <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: "14px", position: "relative", zIndex: 1 }}>S</span>
@@ -150,31 +122,18 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* Divider */}
         <div style={{ flexShrink: 0, height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 4px" }} />
 
-        {/* ── SCROLLABLE NAV ── */}
-        <nav style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          padding: "4px 8px 4px",
-          scrollbarWidth: "none",
-        }}>
-          {/* Primary nav items — includes Learning */}
+        <nav style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "4px 8px 4px", scrollbarWidth: "none" }}>
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
           ))}
 
           <div style={{ height: "8px" }} />
 
-          {/* More toggle */}
           {showLabels ? (
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", height: "36px", padding: "0 12px", borderRadius: "13px", border: "none", background: "transparent", cursor: "pointer", color: "var(--cc-text-muted)", flexShrink: 0 }}
-            >
+            <button onClick={() => setMoreOpen(!moreOpen)}
+              style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", height: "36px", padding: "0 12px", borderRadius: "13px", border: "none", background: "transparent", cursor: "pointer", color: "var(--cc-text-muted)", flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
                 style={{ transform: moreOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}>
                 <path d="M9 18l6-6-6-6"/>
@@ -183,18 +142,14 @@ export function Sidebar() {
               <span style={{ marginLeft: "auto", fontSize: "11px", fontFamily: "monospace", opacity: 0.45 }}>{MORE_NAV.length}</span>
             </button>
           ) : (
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              title={moreOpen ? "Hide more" : "Show more"}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "34px", width: "100%", borderRadius: "13px", cursor: "pointer", background: moreOpen ? "var(--cc-glass-base)" : "transparent", border: moreOpen ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent", color: "var(--cc-text-muted)", flexShrink: 0 }}
-            >
+            <button onClick={() => setMoreOpen(!moreOpen)} title={moreOpen ? "Hide more" : "Show more"}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "34px", width: "100%", borderRadius: "13px", cursor: "pointer", background: moreOpen ? "var(--cc-glass-base)" : "transparent", border: moreOpen ? "0.5px solid var(--cc-tile-border)" : "0.5px solid transparent", color: "var(--cc-text-muted)", flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/>
               </svg>
             </button>
           )}
 
-          {/* More nav items */}
           {moreOpen && MORE_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
           ))}
@@ -202,38 +157,17 @@ export function Sidebar() {
           <div style={{ height: "8px" }} />
         </nav>
 
-        {/* Divider above Settings */}
         <div style={{ flexShrink: 0, height: "0.5px", background: "var(--cc-tile-border)", margin: "0 12px 4px" }} />
-
-        {/* Settings — always pinned at bottom */}
         <div style={{ flexShrink: 0, padding: "0 8px 16px" }}>
           <NavLink href="/settings" label="Settings" icon={SETTINGS_ICON} pathname={pathname} showLabel={showLabels} />
         </div>
       </aside>
 
-      {/* ── Floating collapse/expand button ── */}
       {isLg && (
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          style={{
-            position: "fixed",
-            left: `${sidebarW - 13}px`,
-            top: "48px",
-            zIndex: 50,
-            width: "26px", height: "26px",
-            borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "var(--bg-primary)",
-            border: "1.5px solid var(--glass-border-hover)",
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.40), inset 0 0.5px 0 rgba(255,255,255,0.12)",
-            transition: "left 0.28s cubic-bezier(0.2,0.8,0.2,1)",
-          }}
+        <button onClick={() => setCollapsed(!collapsed)} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          style={{ position: "fixed", left: `${sidebarW - 13}px`, top: "48px", zIndex: 50, width: "26px", height: "26px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)", border: "1.5px solid var(--glass-border-hover)", color: "var(--text-secondary)", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.40), inset 0 0.5px 0 rgba(255,255,255,0.12)", transition: "left 0.28s cubic-bezier(0.2,0.8,0.2,1)" }}
           onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.15)")}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        >
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"
             style={{ transform: collapsed ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s ease" }}>
             <path d="M15 18l-6-6 6-6" />
