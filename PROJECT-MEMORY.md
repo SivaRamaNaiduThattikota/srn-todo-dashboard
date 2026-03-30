@@ -1,5 +1,5 @@
 # SRN Command Center — PROJECT-MEMORY.md
-> **Last updated:** Session v11.1 — Interview Prep page complete (Supabase persistence, ⓘ info modal, DS vs MLE clarity)
+> **Last updated:** Session v11.2 — SQL patch written, Today page updated, Settings Export confirmed
 > **Stack:** Next.js 14 · Supabase · Tailwind CSS · TypeScript · Framer Motion
 
 ---
@@ -13,31 +13,31 @@
 | Live URL | https://srn-todo-dashboard.vercel.app/ |
 | Local path | `C:\Users\2321764\Downloads\00 - SRN Command Center\todo-dashboard` |
 | Supabase project ID | `azpjxezbackhzuoznccg` (Mumbai region) |
-| Design version | **v11.1** — iOS 26 Liquid Glass |
+| Design version | **v11.2** — iOS 26 Liquid Glass |
 | CSS framework | **Tailwind CSS** + custom CSS vars in globals.css |
 | Font system | `-apple-system / SF Pro Display` + `JetBrains Mono` |
 
 ---
 
-## 🎨 Design System — v11.1 (globals.css is source of truth)
-Key classes: `.liquid-glass`, `.liquid-glass-sweep`, `.cc-btn`, `.cc-btn-accent`, `.cc-chip`
+## 🎨 Design System — v11.2 (globals.css is source of truth)
+Key classes: `.liquid-glass`, `.liquid-glass-sweep`, `.cc-btn`, `.cc-btn-accent`, `.cc-chip`, `.cc-tile`, `.cc-habit`
 CSS vars: `--accent`, `--glass-fill`, `--glass-border`, `--specular-top`, `--cc-glass-base`, `--shadow-xl`
 Inline styles with CSS vars only — never hardcoded Tailwind colour classes.
 
 ---
 
-## 📁 All 16 Pages — Current Status (v11.1)
+## 📁 All 16 Pages — Current Status (v11.2)
 
 | Page | Route | Status | Key features |
 |---|---|---|---|
 | Tasks | `/` | ✅ v11.0 | Liquid glass cards, mobile-first layout, status pill, progress bar header |
-| Today | `/today` | ✅ | Habits, tasks, ML Roadmap progress card, quick actions |
+| Today | `/today` | ✅ v11.2 | Habits, tasks, stats, ML roadmap, 6 quick actions (now includes Interview) |
 | Streaks | `/streaks` | ✅ | Heatmap horizontal-scroll on mobile, 5s undo delete |
 | Focus | `/focus` | ✅ v11.0 | Splitflap clock + BBC fullscreen + auto-rotating compass |
 | Notes | `/notes` | ✅ | Search + highlight, tag counts, undo delete, Recycle Bin |
 | Projects | `/projects` | ✅ | Mobile UX overhaul, 2×2 grid, Recycle Bin |
 | Learning | `/learning` | ✅ | 10 phases DB-driven, ⓘ modal, ⏱ timeline header button |
-| **Interview** | `/interview` | ✅ v11.1 | 4 tabs, Supabase persistence, ⓘ modal, DS+MLE badge |
+| Interview | `/interview` | ✅ v11.1 | 4 tabs, Supabase persistence, ⓘ modal, DS+MLE badge |
 | Board | `/board` | ✅ | Drag desktop, tap-to-move mobile |
 | Analytics | `/analytics` | ✅ | ML Roadmap progress, 14-day chart, velocity |
 | AI Assistant | `/assistant` | ✅ | Smart rules engine, insight cards |
@@ -45,72 +45,37 @@ Inline styles with CSS vars only — never hardcoded Tailwind colour classes.
 | Decisions | `/decisions` | ✅ | Search + category filter + 5s undo, Recycle Bin |
 | Briefing | `/briefing` | ✅ | Auto-generated daily brief |
 | Calendar | `/calendar` | ✅ | Desktop drag-drop, mobile long-press → tap to move |
-| Settings | `/settings` | ✅ | Accent themes, Google Calendar sync, templates |
+| Settings | `/settings` | ✅ v11.1 | Accent themes, Google Calendar sync, templates, Export & Backup |
 
 ---
 
-## ✅ v11.1 Session Changes
+## ✅ v11.2 Session Changes
 
-### Interview Prep Page — 3 fixes
+### SQL patch file created (new)
+- `sql-patch-v11.1-interview-prep.sql` — small safe patch file
+- Run this in Supabase SQL Editor to add the `interview_prep` table
+- Uses `CREATE TABLE IF NOT EXISTS` — safe to run multiple times
+- `supabase-master-migration.sql` also updated with the new table + v11.1 end comment
 
-**Fix 1: Supabase persistence (replaces localStorage)**
-- New DB table: `interview_prep` (key-value, JSONB data column)
-- Key: `srn_interview_prep_v1`
-- Stores: `{ topics: string[], final: number[], readiness: Record<string,number> }`
-- Debounced save (800ms) after every checkbox click or slider change
-- Load on mount via `useEffect` → works on ANY browser, ANY device
-- Shows "✓ Progress saved to cloud" indicator in header
+### Today Page (`src/app/today/page.tsx`) — Updated
+- **Quick actions expanded:** 4 → 6 items (2×3 grid)
+  - Added: 🎯 Interview prep → `/interview`
+  - Added: ⚡ Streaks → `/streaks`
+  - Kept: ⏱ Start focus, 📝 Add a note, 🎓 Learning, 📊 Analytics
+- **Stats row:** Added "Due today" count with color coding (red=overdue, yellow=due, green=none)
+- **Focus sessions:** Fetches 30 days (was 1) to properly capture today's sessions
+- **deleted_at filter:** All task queries now exclude soft-deleted tasks
+- **In-progress tasks:** assigned_agent only shows if set (no empty @)
+- **Empty states:** Better empty state messages with links
 
-**Fix 2: ⓘ Info modal — top right, before readiness %**
-- Circular ⓘ button opens bottom sheet (mobile) / centered modal (desktop)
-- Contains full explanation of:
-  - DS vs MLE role coverage (table with ✅/⚠️/❌ for each domain)
-  - Learning page vs Interview page difference (purpose, time horizon, daily use)
-  - Recommended daily routine (Morning = Learning, Evening = Focus timer, Monthly = Interview page)
-  - When to flip (8-10 weeks before actively applying)
-
-**Fix 3: Auto-opening domain removed**
-- Changed `useState<string | null>("stats")` → `useState<string | null>(null)`
-- Nothing auto-opens on page load
-
-### Interview Prep Page — Design summary
-
-**4 tabs:**
-- **Domains** — 6 domains expandable with checkable topics + self-readiness slider per domain
-- **Company** — 4 company cards (Microsoft highlighted), round types with pass rates, behavioral Qs
-- **12-Week** — Weekly study plan + must-know resources
-- **Checklist** — 8-item final readiness list with circular progress ring
-
-**Header:**
-- Title + "FAANG · MICROSOFT" (red) + "DS + MLE" (blue) badges
-- "Covers ~80% of DS + MLE overlap. MLE needs deeper System Design & Coding."
-- ⓘ button (top right) + readiness % card
-- Topics studied counter + overall progress bar
-- Cloud save indicator
-
-### Key mental model (documented in ⓘ modal)
-```
-Learning page  = Daily driver (12-18 months). Build the skill.
-Interview page = Monthly check (use monthly). Confirm the skill.
-
-Flip point: 8-10 weeks before actively applying → Interview page becomes daily.
-```
-
-### DB: interview_prep table (new — v11.1)
-```sql
-CREATE TABLE IF NOT EXISTS interview_prep (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  key        text UNIQUE NOT NULL,
-  data       jsonb NOT NULL DEFAULT '{}'::jsonb,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
--- RLS: anon full access (same pattern as all other tables)
-```
-**Run in Supabase SQL Editor** — already added to `supabase-master-migration.sql`
+### Settings Page (`src/app/settings/page.tsx`) — Confirmed v11.1
+- Export & Backup section with 4 buttons confirmed present on disk
+- All data exports to JSON/CSV from Supabase
+- Supabase free tier note included
 
 ---
 
-## 🗃 Database Schema v11.1 (15 tables)
+## 🗃 Database Schema v11.2 (15 tables — same as v11.1)
 
 | Table | Key columns |
 |---|---|
@@ -128,7 +93,7 @@ CREATE TABLE IF NOT EXISTS interview_prep (
 | `learning_phases` | id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice, deleted_at |
 | `learning_progress` | id, phase_id (FK), track_index, topic_index, is_done, done_at |
 | `learning_week_progress` | id, phase_id (FK), week_index, is_done, done_at |
-| **`interview_prep`** | **id, key (UNIQUE), data (jsonb), updated_at** — NEW v11.1 |
+| `interview_prep` | id, key (UNIQUE), data (jsonb), updated_at |
 
 ---
 
@@ -151,68 +116,71 @@ CREATE TABLE IF NOT EXISTS interview_prep (
 
 ---
 
-## 🗑 Recycle Bin (unchanged — 5 tables)
+## 🗑 Recycle Bin (5 tables — unchanged)
 Soft-delete on: `todos`, `notes`, `decisions`, `projects`, `learning_phases`
-**RecycleBinModal** (`src/components/RecycleBinModal.tsx`) — shared, takes `table` prop.
 
 ---
 
 ## 📱 Mobile Layout Rules
 
-### Modal positioning pattern
+### Modal pattern
 ```
-fixed z-[61] left-0 right-0 bottom-0
-maxHeight: 92dvh
-borderRadius: 24px 24px 0 0
+fixed z-[61] bottom-0 left-0 right-0
+maxHeight: 92dvh, borderRadius: 24px 24px 0 0
 paddingBottom: calc(32px + env(safe-area-inset-bottom, 0px))
 ```
 Desktop: `sm:fixed sm:inset-0 sm:m-auto sm:rounded-[24px] sm:max-w-lg sm:max-h-[80vh]`
 
 ---
 
-## 🔧 Key Files Modified (v11.1)
+## 🔧 Key Files Modified (v11.2)
 
 | File | Changes |
 |---|---|
-| `src/app/interview/page.tsx` | Supabase persistence, ⓘ modal, null default for expandedDomain, DS+MLE content |
-| `src/components/Sidebar.tsx` | Interview nav item added (checkmark icon) |
-| `src/components/MobileNav.tsx` | Interview added to More sheet |
-| `supabase-master-migration.sql` | `interview_prep` table added — **run this in Supabase** |
+| `src/app/today/page.tsx` | 6 quick actions (added Interview + Streaks), 30-day sessions, deleted_at filter, stats row |
+| `src/app/settings/page.tsx` | Export & Backup section (4 buttons: all JSON, tasks CSV, focus CSV, learning JSON) |
+| `src/app/interview/page.tsx` | Supabase persistence, ⓘ modal, DS+MLE clarity, null expandedDomain |
+| `src/components/Sidebar.tsx` | Interview nav added |
+| `src/components/MobileNav.tsx` | Interview in More sheet |
+| `sql-patch-v11.1-interview-prep.sql` | NEW — run in Supabase to add interview_prep table |
+| `supabase-master-migration.sql` | Updated with interview_prep + v11.1 end comment + DATA NOTE |
+| `PROJECT-MEMORY.md` | Updated to v11.2 |
 
 ---
 
-## 🚀 Deployment — v11.1
+## 🚀 Deployment — v11.2
 
-### Step 1 — Run NEW SQL in Supabase SQL Editor
+### Step 1 — Run SQL patch in Supabase SQL Editor
 ```sql
--- Run ONLY this new block (or the full migration file):
+-- File: sql-patch-v11.1-interview-prep.sql
+-- Or copy-paste directly:
 CREATE TABLE IF NOT EXISTS interview_prep (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  key        text UNIQUE NOT NULL,
-  data       jsonb NOT NULL DEFAULT '{}'::jsonb,
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  key        text        UNIQUE NOT NULL,
+  data       jsonb       NOT NULL DEFAULT '{}'::jsonb,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE interview_prep ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all_interview_prep" ON interview_prep;
-CREATE POLICY "anon_all_interview_prep" ON interview_prep FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_interview_prep"
+  ON interview_prep FOR ALL TO anon
+  USING (true) WITH CHECK (true);
 ```
 
 ### Step 2 — Push to GitHub
 ```bash
 cd "C:\Users\2321764\Downloads\00 - SRN Command Center\todo-dashboard"
 git add -A
-git commit -m "feat: v11.1 - interview prep page complete (Supabase, info modal, DS+MLE)"
+git commit -m "feat: v11.2 - Today page updated, SQL patch for interview_prep, Export confirmed"
 git push origin main
 ```
 
 ### Step 3 — Verify
 | Check | Expected |
 |---|---|
-| `/interview` loads | 4 tabs visible, nothing auto-expanded |
-| ⓘ button | Opens modal with DS vs MLE table + daily routine |
-| Check a topic | Saved instantly to Supabase — survives refresh |
-| Open in different browser | Checkboxes still checked |
-| Readiness slider | Updates the overall % in header |
+| Today page | 6 quick action tiles in 2×3 grid including 🎯 Interview prep |
+| Settings → Export & Backup | 4 buttons visible, downloads work |
+| Interview page checkboxes | Persist across browsers after running SQL patch |
 
 ---
 
@@ -220,22 +188,22 @@ git push origin main
 - ❌ No "Claude" or "AI" branding — use "AI assistant" or "agent"
 - ✅ Every session ends with a summary table
 - ✅ Always read full file before writing replacement
-- ✅ Inline styles using CSS vars (never hardcoded Tailwind colour classes)
-- ✅ supabase-master-migration.sql is the single source of truth for DB
+- ✅ Inline styles using CSS vars only
+- ✅ supabase-master-migration.sql is single source of truth for DB schema
+- ✅ sql-patch-*.sql files are for targeted DB upgrades
 
 ---
 
-## ⏳ Feature Backlog (updated v11.1)
+## ⏳ Feature Backlog (updated v11.2)
 
 | Priority | Feature | Notes |
 |---|---|---|
-| 🔴 High | **Today page review** | Daily driver — needs habit + focus + task summary |
 | 🔴 High | **Power BI flow bugs** | Empty Excel for compliant towers + missing Hierarchy_Master employees |
-| 🔴 High | iOS 26 Liquid Glass CSS rewrite | Light mode especially |
+| 🔴 High | iOS 26 Liquid Glass CSS rewrite | Light mode especially — globals.css overhaul |
 | 🟡 Medium | Focus page BBC mobile test | Verify vh-based font on 320-430px screens |
 | 🟡 Medium | AddTodoModal quick add | Skip Details/Resources, submit with title only |
 | 🟡 Medium | Recycle bin auto-purge | Auto-hard-delete items older than 30 days |
 | 🟡 Medium | Learning: phase reorder | Drag to reorder phases |
 | 🟡 Medium | Analytics category filter | Filter 14-day chart by task category |
-| 🟢 Low | Interview page: active week tracker | Highlight current week in 12-week plan |
-| 🟢 Low | Data export | Export notes, focus sessions, habits to CSV |
+| 🟢 Low | Interview page: active week highlight | Highlight current week in 12-week plan |
+| 🟢 Low | Today page: focus start shortcut | One-tap focus start with last used duration |
