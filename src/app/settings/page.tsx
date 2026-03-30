@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const { accent, mode, setAccent, toggleMode } = useTheme();
   const [templates, setTemplates]               = useState<TaskTemplate[]>([]);
   const [showNewTemplate, setShowNewTemplate]   = useState(false);
-  const [templatesOpen, setTemplatesOpen]       = useState(false);   // ← collapsible
+  const [templatesOpen, setTemplatesOpen]       = useState(false);  // always collapsed on load
   const [newTitle, setNewTitle]                 = useState("");
   const [newPriority, setNewPriority]           = useState<TodoPriority>("medium");
   const [newRecurrence, setNewRecurrence]       = useState<"daily" | "weekly" | "monthly" | "">("");
@@ -42,7 +42,7 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchTemplates().then((t) => {
       setTemplates(t);
-      if (t.length > 0) setTemplatesOpen(true);
+      // Don't auto-open — user controls collapse state
     }).catch(() => {});
   }, []);
 
@@ -61,7 +61,7 @@ export default function SettingsPage() {
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // EXPORT — downloads data from Supabase as JSON / CSV
+  // EXPORT
   // ─────────────────────────────────────────────────────────────────
   const handleExport = async (type: "all" | "tasks" | "focus" | "learning") => {
     setExportLoading(type);
@@ -155,31 +155,19 @@ export default function SettingsPage() {
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // IMPORT — reads exported JSON and upserts back into Supabase
-  // How it works:
-  //   1. You click "Import from backup"
-  //   2. Pick the srn-full-backup-YYYY-MM-DD.json file
-  //   3. It reads the file, loops through each table
-  //   4. Upserts every row back into Supabase (insert or update by id)
-  //   5. Your data is fully restored on the new database
+  // IMPORT — reads exported JSON, upserts all rows back into Supabase
   // ─────────────────────────────────────────────────────────────────
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setImportLoading(true);
     setImportStatus(null);
-
     try {
-      // Step 1: Read the file
-      const text = await file.text();
+      const text   = await file.text();
       const backup = JSON.parse(text);
-
       if (!backup.tables) throw new Error("Invalid backup file — missing tables key");
 
       const { tables } = backup;
-      const results: string[] = [];
-
-      // Step 2: Upsert each table (insert if not exists, update if id matches)
       const tableMap: Record<string, string> = {
         todos:                  "todos",
         notes:                  "notes",
@@ -193,31 +181,22 @@ export default function SettingsPage() {
         interview_prep:         "interview_prep",
       };
 
+      const results: string[] = [];
       for (const [key, tableName] of Object.entries(tableMap)) {
         const rows: any[] = tables[key] || [];
         if (rows.length === 0) continue;
-
-        // Upsert in batches of 100 to avoid payload limits
-        const batchSize = 100;
-        let inserted = 0;
-        for (let i = 0; i < rows.length; i += batchSize) {
-          const batch = rows.slice(i, i + batchSize);
-          const { error } = await supabase
-            .from(tableName)
-            .upsert(batch, { onConflict: "id" });
+        for (let i = 0; i < rows.length; i += 100) {
+          const batch = rows.slice(i, i + 100);
+          const { error } = await supabase.from(tableName).upsert(batch, { onConflict: "id" });
           if (error) throw new Error(`Failed on ${tableName}: ${error.message}`);
-          inserted += batch.length;
         }
-        results.push(`${tableName}: ${inserted} rows`);
+        results.push(`${tableName}: ${rows.length}`);
       }
 
-      const summary = `✓ Restored ${results.length} tables`;
-      setImportStatus(summary);
+      setImportStatus(`✓ Restored ${results.length} tables`);
       window.dispatchEvent(new CustomEvent("srn:toast", {
         detail: { message: `Import complete! ${results.join(", ")}`, type: "success" },
       }));
-
-      // Reset file input
       if (importFileRef.current) importFileRef.current.value = "";
 
     } catch (err: any) {
@@ -225,13 +204,18 @@ export default function SettingsPage() {
       window.dispatchEvent(new CustomEvent("srn:toast", {
         detail: { message: err.message || "Import failed", type: "error" },
       }));
-    } finally {
-      setImportLoading(false);
-    }
+    } finally { setImportLoading(false); }
   };
 
-  const calendarUrl  = typeof window !== "undefined" ? `${window.location.origin}/api/export-calendar` : "";
-  const downloadUrl  = typeof window !== "undefined" ? `${window.location.origin}/api/export-calendar?download=true` : "";
+  // Fix: calendarUrl must be client-only to avoid hydration mismatch
+  // Server renders "" → client fills in real URL after mount
+  const [calendarUrl, setCalendarUrl] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState("");
+  useEffect(() => {
+    setCalendarUrl(`${window.location.origin}/api/export-calendar`);
+    setDownloadUrl(`${window.location.origin}/api/export-calendar?download=true`);
+  }, []);
+
   const copyCalendarUrl = () => {
     navigator.clipboard.writeText(calendarUrl);
     setCalendarCopied(true);
@@ -317,28 +301,28 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <code className="flex-1 text-[10px] font-mono px-3 py-2 rounded-xl truncate"
                 style={{ background: "var(--bg-input)", color: "var(--text-secondary)", border: "0.5px solid var(--glass-border)" }}>
-                {calendarUrl || "https://your-domain.vercel.app/api/export-calendar"}
+                {calendarUrl || "Loading…"}
               </code>
-              <button onClick={copyCalendarUrl}
-                className="px-3 py-2 text-[10px] font-mono rounded-xl flex-shrink-0 transition-all"
+              <button onClick={copyCalendarUrl} disabled={!calendarUrl}
+                className="px-3 py-2 text-[10px] font-mono rounded-xl flex-shrink-0 transition-all disabled:opacity-40"
                 style={{ background: calendarCopied ? "var(--accent-muted)" : "var(--bg-input)",
                   color: calendarCopied ? "var(--accent)" : "var(--text-secondary)", border: "0.5px solid var(--glass-border)" }}>
                 {calendarCopied ? "✓ Copied" : "Copy"}
               </button>
             </div>
-            <a href={downloadUrl} download="srn-tasks.ics"
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-mono w-fit transition-all hover:opacity-80"
-              style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
-              ↓ Download .ics file
-            </a>
+            {downloadUrl && (
+              <a href={downloadUrl} download="srn-tasks.ics"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-mono w-fit transition-all hover:opacity-80"
+                style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
+                ↓ Download .ics file
+              </a>
+            )}
           </div>
         </div>
 
         {/* ── Task Templates — collapsible ── */}
         <div className="glass rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: "80ms" }}>
-          {/* Header row — clicking toggles the card */}
-          <button
-            className="w-full flex items-center justify-between p-5 text-left"
+          <button className="w-full flex items-center justify-between p-5 text-left"
             onClick={() => setTemplatesOpen(!templatesOpen)}>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Task Templates</h2>
@@ -351,8 +335,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               {templatesOpen && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowNewTemplate(!showNewTemplate); }}
+                <button onClick={(e) => { e.stopPropagation(); setShowNewTemplate(!showNewTemplate); }}
                   className="px-3 py-1.5 text-[10px] font-mono rounded-xl transition-all"
                   style={{ background: showNewTemplate ? "var(--accent-muted)" : "var(--bg-input)",
                     color: showNewTemplate ? "var(--accent)" : "var(--text-secondary)",
@@ -367,18 +350,14 @@ export default function SettingsPage() {
             </div>
           </button>
 
-          {/* Collapsed: just show count summary */}
-          {!templatesOpen && templates.length > 0 && (
+          {/* Collapsed preview */}
+          {!templatesOpen && (
             <div className="px-5 pb-4">
               <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
-                {templates.slice(0, 3).map(t => t.title).join(" · ")}
-                {templates.length > 3 ? ` · +${templates.length - 3} more` : ""}
+                {templates.length === 0
+                  ? "No templates yet — tap to add one."
+                  : `${templates.slice(0, 3).map(t => t.title).join(" · ")}${templates.length > 3 ? ` · +${templates.length - 3} more` : ""}`}
               </p>
-            </div>
-          )}
-          {!templatesOpen && templates.length === 0 && (
-            <div className="px-5 pb-4">
-              <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>No templates yet — tap to add one.</p>
             </div>
           )}
 
@@ -415,7 +394,6 @@ export default function SettingsPage() {
                   </button>
                 </div>
               )}
-
               {templates.length === 0 && !showNewTemplate ? (
                 <p className="text-[10px] font-mono mt-4" style={{ color: "var(--text-muted)" }}>No templates yet.</p>
               ) : (
@@ -465,7 +443,6 @@ export default function SettingsPage() {
             The master SQL only recreates structure — not your actual data.
           </p>
 
-          {/* Export buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
             {([
               { label: "Export All Data",         desc: "Complete backup — all tables as JSON", icon: "💾", action: "all"      as const, accent: "#5ecf95" },
@@ -489,36 +466,22 @@ export default function SettingsPage() {
             ))}
           </div>
 
-          {/* Import button + explanation */}
+          {/* Import */}
           <div className="rounded-xl p-4 mb-3"
             style={{ background: "rgba(77,166,255,0.06)", border: "0.5px solid rgba(77,166,255,0.20)" }}>
-            <p className="text-xs font-semibold mb-1" style={{ color: "#4da6ff" }}>
-              📥 Import from backup
-            </p>
+            <p className="text-xs font-semibold mb-1" style={{ color: "#4da6ff" }}>📥 Import from backup</p>
             <p className="text-[10px] font-mono mb-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              How it works: pick the <code style={{ color: "#4da6ff" }}>srn-full-backup-*.json</code> file
-              you exported earlier → it reads every row → upserts back into your Supabase database.
-              Safe to run on a fresh DB after running the master SQL.
+              Pick the <code style={{ color: "#4da6ff" }}>srn-full-backup-*.json</code> file you exported earlier
+              → reads every row → upserts back into your Supabase. Safe to run on a fresh DB after running the master SQL.
             </p>
-
-            {/* Hidden file input */}
-            <input
-              ref={importFileRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              style={{ display: "none" }}
-              id="import-file-input"
-            />
-
+            <input ref={importFileRef} type="file" accept=".json" onChange={handleImport}
+              style={{ display: "none" }} id="import-file-input" />
             <label htmlFor="import-file-input"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all hover:opacity-90 w-fit"
               style={{
                 background: importLoading ? "rgba(77,166,255,0.08)" : "rgba(77,166,255,0.14)",
-                border: "0.5px solid rgba(77,166,255,0.35)",
-                color: "#4da6ff",
-                pointerEvents: importLoading ? "none" : "auto",
-                opacity: importLoading ? 0.6 : 1,
+                border: "0.5px solid rgba(77,166,255,0.35)", color: "#4da6ff",
+                pointerEvents: importLoading ? "none" : "auto", opacity: importLoading ? 0.6 : 1,
               }}>
               {importLoading ? (
                 <>
@@ -537,7 +500,6 @@ export default function SettingsPage() {
                 </>
               )}
             </label>
-
             {importStatus && (
               <p className="text-[10px] font-mono mt-2"
                 style={{ color: importStatus.includes("✓") ? "#5ecf95" : "#f87171" }}>
@@ -546,7 +508,7 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Warning note */}
+          {/* Warning */}
           <div className="flex items-start gap-2 p-3 rounded-xl"
             style={{ background: "rgba(248,65,65,0.06)", border: "0.5px solid rgba(248,65,65,0.20)" }}>
             <span style={{ fontSize: "14px", flexShrink: 0 }}>⚠️</span>
@@ -556,7 +518,7 @@ export default function SettingsPage() {
               </p>
               <p className="text-[10px] font-mono mt-0.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
                 Switching databases: run master SQL on new DB → click Import → pick your backup file.
-                Export monthly as a safety habit. Your data is yours.
+                Export monthly as a safety habit.
               </p>
             </div>
           </div>
@@ -564,17 +526,39 @@ export default function SettingsPage() {
 
         {/* ── API ── */}
         <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
-          <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>API</h2>
+          <h2 className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>API</h2>
+          <p className="text-[10px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>
+            Lets external tools (Power Automate, scripts) create or update tasks without opening the browser.
+            Useful for automation — e.g. auto-create a task from your Power BI or Excel flow.
+          </p>
           <div className="p-3 rounded-xl" style={{ background: "var(--bg-card)" }}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Webhook API</span>
                 <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  POST /api/webhooks — create, update, list, delete
+                  REST endpoint for task automation
                 </p>
               </div>
               <span className="text-[10px] font-mono px-2 py-1 rounded-lg"
                 style={{ background: "rgba(110,231,183,0.1)", color: "#6ee7b7" }}>Active</span>
+            </div>
+            <div className="space-y-1.5">
+              {[
+                { method: "POST",   path: "/api/webhooks",     desc: "Create a new task"           },
+                { method: "PATCH",  path: "/api/webhooks/:id", desc: "Update task status/priority" },
+                { method: "GET",    path: "/api/webhooks",     desc: "List all tasks"              },
+                { method: "DELETE", path: "/api/webhooks/:id", desc: "Delete a task"               },
+              ].map((r) => (
+                <div key={r.path + r.method} className="flex items-center gap-2">
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                    style={{
+                      background: r.method === "POST" ? "rgba(94,207,149,0.15)" : r.method === "GET" ? "rgba(77,166,255,0.15)" : r.method === "PATCH" ? "rgba(245,166,35,0.15)" : "rgba(248,65,65,0.15)",
+                      color: r.method === "POST" ? "#5ecf95" : r.method === "GET" ? "#4da6ff" : r.method === "PATCH" ? "#f5a623" : "#f87171",
+                    }}>{r.method}</span>
+                  <code className="text-[9px] font-mono flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{r.path}</code>
+                  <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>— {r.desc}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
