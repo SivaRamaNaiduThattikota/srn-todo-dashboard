@@ -15,11 +15,15 @@ export type ResourceLinkType = "article" | "video" | "github" | "doc" | "tool" |
 
 export interface ResourceLink { title: string; url: string; type: ResourceLinkType; }
 
+// ── Checklist ──────────────────────────────────────────────
+export interface ChecklistItem { id: string; text: string; done: boolean; }
+
 export interface Todo {
   id: string; title: string; description: string; status: TodoStatus; priority: TodoPriority;
   assigned_agent: string; due_date: string | null; start_date: string | null;
   completed_at: string | null; sort_order: number;
   category: TodoCategory; resource_links: ResourceLink[]; tags: string[]; estimated_mins: number | null;
+  checklist: ChecklistItem[];
   deleted_at: string | null;
   created_at: string; updated_at: string;
 }
@@ -86,20 +90,39 @@ const now = () => new Date().toISOString();
 export async function fetchTodos() {
   const { data, error } = await supabase.from("todos").select("*").is("deleted_at", null).order("updated_at", { ascending: false });
   if (error) throw error;
-  return (data as Todo[]).map((t) => ({ ...t, resource_links: t.resource_links ?? [], tags: t.tags ?? [], estimated_mins: t.estimated_mins ?? null, start_date: t.start_date ?? null, deleted_at: t.deleted_at ?? null }));
+  return (data as Todo[]).map((t) => ({
+    ...t,
+    resource_links: t.resource_links ?? [],
+    tags: t.tags ?? [],
+    estimated_mins: t.estimated_mins ?? null,
+    start_date: t.start_date ?? null,
+    deleted_at: t.deleted_at ?? null,
+    checklist: t.checklist ?? [],
+  }));
 }
 export async function addTodo(todo: Partial<Todo>) {
-  const { data, error } = await supabase.from("todos").insert({ ...todo, resource_links: todo.resource_links ?? [], tags: todo.tags ?? [], estimated_mins: todo.estimated_mins ?? null, start_date: todo.start_date ?? null, deleted_at: null }).select().single();
+  const { data, error } = await supabase.from("todos").insert({
+    ...todo,
+    resource_links: todo.resource_links ?? [],
+    tags: todo.tags ?? [],
+    estimated_mins: todo.estimated_mins ?? null,
+    start_date: todo.start_date ?? null,
+    deleted_at: null,
+    checklist: todo.checklist ?? [],
+  }).select().single();
   if (error) throw error; return data as Todo;
 }
-export async function updateTodo(id: string, updates: Partial<Todo>) { const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single(); if (error) throw error; return data as Todo; }
+export async function updateTodo(id: string, updates: Partial<Todo>) {
+  const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single();
+  if (error) throw error; return data as Todo;
+}
 export async function deleteTodo(id: string) { const { error } = await supabase.from("todos").update({ deleted_at: now() }).eq("id", id); if (error) throw error; }
 export async function hardDeleteTodo(id: string) { const { error } = await supabase.from("todos").delete().eq("id", id); if (error) throw error; }
 export async function restoreTodo(id: string) { const { error } = await supabase.from("todos").update({ deleted_at: null }).eq("id", id); if (error) throw error; }
 export async function fetchDeletedTodos() {
   const { data, error } = await supabase.from("todos").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false });
   if (error) throw error;
-  return (data as Todo[]).map((t) => ({ ...t, resource_links: t.resource_links ?? [], tags: t.tags ?? [], estimated_mins: t.estimated_mins ?? null, start_date: t.start_date ?? null }));
+  return (data as Todo[]).map((t) => ({ ...t, resource_links: t.resource_links ?? [], tags: t.tags ?? [], estimated_mins: t.estimated_mins ?? null, start_date: t.start_date ?? null, checklist: t.checklist ?? [] }));
 }
 export async function emptyRecycleBin(table: "todos" | "notes" | "decisions" | "projects" | "learning_phases" = "todos") {
   const { error } = await supabase.from(table).delete().not("deleted_at", "is", null);

@@ -124,12 +124,12 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "clamp(8px,2vw,16px)", alignItems: "center" }}>
           <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%",
-            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)",
-            boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none",
+            background: isRunning && !isPaused ? "var(--accent)" : isRunning && isPaused ? "rgba(245,166,35,0.6)" : "rgba(255,255,255,0.22)",
+            boxShadow: isRunning && !isPaused ? "0 0 10px var(--accent-glow)" : "none",
             transition: "background 0.3s, box-shadow 0.3s" }} />
           <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%",
-            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)",
-            boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none",
+            background: isRunning && !isPaused ? "var(--accent)" : isRunning && isPaused ? "rgba(245,166,35,0.6)" : "rgba(255,255,255,0.22)",
+            boxShadow: isRunning && !isPaused ? "0 0 10px var(--accent-glow)" : "none",
             transition: "background 0.3s, box-shadow 0.3s" }} />
         </div>
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
@@ -246,12 +246,13 @@ function CompassWheel({ progress }: { progress: number }) {
 }
 
 function FullscreenTimer({
-  timeLeft, duration, isRunning, taskName, todayMinutes,
-  onClose, onComplete, onStop,
+  timeLeft, duration, isRunning, isPaused, taskName, todayMinutes,
+  onClose, onComplete, onStop, onPause, onResume,
 }: {
-  timeLeft: number; duration: number; isRunning: boolean;
+  timeLeft: number; duration: number; isRunning: boolean; isPaused: boolean;
   taskName: string; todayMinutes: number;
   onClose: () => void; onComplete: () => void; onStop: () => void;
+  onPause: () => void; onResume: () => void;
 }) {
   const hours    = Math.floor(timeLeft / 3600);
   const mins     = Math.floor((timeLeft % 3600) / 60);
@@ -338,6 +339,23 @@ function FullscreenTimer({
       }}>
         {isRunning ? (
           <>
+            {isPaused ? (
+              <button onClick={onResume} style={{
+                background: "var(--accent, #f5a623)", color: "#0a0a0a",
+                border: "none", borderRadius: "100px",
+                padding: "clamp(10px,1.5vw,13px) clamp(28px,4vw,44px)",
+                fontSize: "clamp(13px,1.4vw,15px)", fontWeight: 500,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>▶ Resume</button>
+            ) : (
+              <button onClick={onPause} style={{
+                background: "rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.80)",
+                border: "0.5px solid rgba(255,255,255,0.25)", borderRadius: "100px",
+                padding: "clamp(10px,1.5vw,13px) clamp(28px,4vw,44px)",
+                fontSize: "clamp(13px,1.4vw,15px)", fontWeight: 500,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>⏸ Pause</button>
+            )}
             <button onClick={onComplete} style={{
               background: "rgba(255,255,255,0.88)", color: "#0a0a0a",
               border: "none", borderRadius: "100px",
@@ -379,6 +397,7 @@ export default function FocusPage() {
   const [manualTodo, setManualTodo]           = useState("");
   const [manualCustomDur, setManualCustomDur] = useState("");
   const [savingManual, setSavingManual]       = useState(false);
+  const [isPaused, setIsPaused]               = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { fetchFocusSessions(30).then(setSessions).catch(() => {}); }, []);
@@ -412,11 +431,11 @@ export default function FocusPage() {
   }, [sessions]);
 
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
+    if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     } else if (timeLeft === 0 && isRunning) { handleComplete(); }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, timeLeft]);
+  }, [isRunning, isPaused, timeLeft]);
 
   const handleStart = async () => {
     const session = await startFocusSession(selectedTodo || null, duration);
@@ -424,7 +443,7 @@ export default function FocusPage() {
     setFullscreen(true);
   };
   const handleComplete = async () => {
-    setIsRunning(false); setFullscreen(false);
+    setIsRunning(false); setIsPaused(false); setFullscreen(false);
     if (currentSession) {
       await completeFocusSession(currentSession.id);
       playDoneSound();
@@ -433,8 +452,10 @@ export default function FocusPage() {
     }
     setCurrentSession(null);
   };
+  const handlePause  = () => { setIsPaused(true);  };
+  const handleResume = () => { setIsPaused(false); };
   const handleStop = () => {
-    setIsRunning(false); setFullscreen(false);
+    setIsRunning(false); setIsPaused(false); setFullscreen(false);
     setTimeLeft(duration * 60); setCurrentSession(null);
   };
 
@@ -467,10 +488,11 @@ export default function FocusPage() {
     <>
       {fullscreen && (
         <FullscreenTimer
-          timeLeft={timeLeft} duration={duration} isRunning={isRunning}
+          timeLeft={timeLeft} duration={duration} isRunning={isRunning} isPaused={isPaused}
           taskName={taskName} todayMinutes={todayMinutes}
           onClose={() => setFullscreen(false)}
           onComplete={handleComplete} onStop={handleStop}
+          onPause={handlePause} onResume={handleResume}
         />
       )}
 
@@ -574,11 +596,11 @@ export default function FocusPage() {
           <div className="lg:col-span-2">
             <div className="liquid-glass rounded-[24px] p-5 sm:p-8 text-center mb-4 animate-fade-in-up">
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", marginBottom: "24px" }}>
-                <SplitflapClock mins={mins} secs={secs} isRunning={isRunning} />
+                <SplitflapClock mins={mins} secs={secs} isRunning={isRunning && !isPaused} />
                 <p style={{ fontSize: "10px", fontFamily: "monospace", letterSpacing: "0.14em",
                   textTransform: "uppercase", color: isRunning ? "var(--accent)" : "var(--text-muted)",
                   transition: "color 0.3s" }}>
-                  {isRunning ? "focusing" : "ready"}
+                  {isRunning ? (isPaused ? "paused" : "focusing") : "ready"}
                 </p>
               </div>
 
@@ -612,9 +634,20 @@ export default function FocusPage() {
                       <span style={{ position: "relative", zIndex: 3 }}>⛶ Focus mode</span>
                     </button>
                   </div>
-                  <button onClick={handleComplete} className="cc-btn cc-btn-accent px-10 py-3 text-sm" style={{ minWidth: "150px" }}>
-                    <span style={{ position: "relative", zIndex: 3 }}>✓ Complete</span>
-                  </button>
+                  <div className="flex items-center justify-center gap-2">
+                    {isPaused ? (
+                      <button onClick={handleResume} className="cc-btn cc-btn-accent px-8 py-3 text-sm" style={{ minWidth: "130px" }}>
+                        <span style={{ position: "relative", zIndex: 3 }}>▶ Resume</span>
+                      </button>
+                    ) : (
+                      <button onClick={handlePause} className="cc-btn px-8 py-3 text-sm" style={{ minWidth: "130px", color: "var(--text-primary)", border: "0.5px solid var(--glass-border)" }}>
+                        <span style={{ position: "relative", zIndex: 3 }}>⏸ Pause</span>
+                      </button>
+                    )}
+                    <button onClick={handleComplete} className="cc-btn cc-btn-accent px-8 py-3 text-sm" style={{ minWidth: "130px" }}>
+                      <span style={{ position: "relative", zIndex: 3 }}>✓ Complete</span>
+                    </button>
+                  </div>
                   <div>
                     <button onClick={handleStop} className="cc-btn cc-btn-danger px-8 py-2.5 text-xs" style={{ minWidth: "120px" }}>
                       <span style={{ position: "relative", zIndex: 3 }}>✕ Stop</span>

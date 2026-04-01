@@ -45,13 +45,18 @@ function formatDate(d: string | null, status?: string) {
   return           { label: `${diff}d`,                          color: "#94a3b8" };
 }
 
-interface ModalProps { todo?: Todo | null; onSave: (data: Partial<Todo>) => Promise<void>; onClose: () => void; }
+interface ModalProps {
+  todo?: Todo | null;
+  onSave: (data: Partial<Todo>) => Promise<void>;
+  onClose: () => void;
+}
 
 function TodoModal({ todo, onSave, onClose }: ModalProps) {
   const isEdit = !!todo;
   const [saving, setSaving]       = useState(false);
   const [tabIdx, setTabIdx]       = useState(0);
   const tab: TabId                = TABS[tabIdx];
+
   const [title, setTitle]             = useState(todo?.title ?? "");
   const [description, setDescription] = useState(todo?.description ?? "");
   const [status, setStatus]           = useState<TodoStatus>(todo?.status ?? "pending");
@@ -78,9 +83,19 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
     if (!title.trim() || saving) return;
     setSaving(true);
     try {
-      await onSave({ title: title.trim(), description: description.trim(), status, priority, category, assigned_agent: agent.trim() || "srn", due_date: dueDate || null, start_date: startDate || null, estimated_mins: estimatedMins ? parseInt(estimatedMins) : null, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), resource_links: resources });
+      await onSave({
+        title: title.trim(), description: description.trim(),
+        status, priority, category,
+        assigned_agent: agent.trim() || "srn",
+        due_date: dueDate || null, start_date: startDate || null,
+        estimated_mins: estimatedMins ? parseInt(estimatedMins) : null,
+        tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+        resource_links: resources,
+      });
       onClose();
-    } catch { setSaving(false); }
+    } catch {
+      setSaving(false);
+    }
   };
 
   const isLastTab  = tabIdx === TABS.length - 1;
@@ -93,112 +108,234 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-0 sm:px-4"
+    <div
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-0 sm:px-4"
       style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[26px] flex flex-col animate-slide-up"
-        style={{ background: "rgba(12,12,22,0.82)", border: "0.5px solid rgba(255,255,255,0.18)", backdropFilter: "blur(64px) saturate(2.8) brightness(1.08)", WebkitBackdropFilter: "blur(64px) saturate(2.8) brightness(1.08)", boxShadow: "0 32px 96px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.18)", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", position: "relative" }}>
-        <div className="flex justify-center pt-3 flex-shrink-0 sm:hidden"><div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "rgba(255,255,255,0.25)", opacity: 0.5 }} /></div>
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[26px] flex flex-col animate-slide-up"
+        style={{
+          background: "rgba(12,12,22,0.82)",
+          border: "0.5px solid rgba(255,255,255,0.18)",
+          backdropFilter: "blur(64px) saturate(2.8) brightness(1.08)",
+          WebkitBackdropFilter: "blur(64px) saturate(2.8) brightness(1.08)",
+          boxShadow: "0 32px 96px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.18)",
+          maxHeight: "calc(100dvh - 32px)",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        <div className="flex justify-center pt-3 flex-shrink-0 sm:hidden">
+          <div style={{ width: "36px", height: "4px", borderRadius: "100px", background: "rgba(255,255,255,0.25)", opacity: 0.5 }} />
+        </div>
         <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.40), transparent)", pointerEvents: "none", zIndex: 1 }} />
         <div style={{ height: "2px", background: "linear-gradient(90deg, var(--accent), transparent)", flexShrink: 0 }} />
+
         <div className="flex items-start justify-between px-5 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}>
           <div>
             <h3 className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.94)" }}>{isEdit ? "Edit task" : "New task"}</h3>
             <p className="text-[11px] font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.42)" }}>Fill in the details below</p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0" style={{ color: "rgba(255,255,255,0.55)", fontSize: "18px", background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.14)" }}>×</button>
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0"
+            style={{ color: "rgba(255,255,255,0.55)", fontSize: "18px", background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.14)" }}>×</button>
         </div>
+
         <div className="flex gap-1 px-5 pt-3 pb-1 flex-shrink-0">
           {TABS.map((t, i) => (
-            <button key={t} onClick={() => setTabIdx(i)} className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium rounded-xl transition-all"
+            <button key={t} onClick={() => setTabIdx(i)}
+              className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium rounded-xl transition-all"
               style={{ background: tab === t ? "var(--accent-muted)" : "rgba(255,255,255,0.06)", color: tab === t ? "var(--accent)" : "rgba(255,255,255,0.50)", border: `0.5px solid ${tab === t ? "var(--accent-dim)" : "rgba(255,255,255,0.10)"}` }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d={TAB_ICONS[t]}/></svg>
               {TAB_LABELS[t]}
             </button>
           ))}
           <div className="flex items-center gap-1 ml-auto">
-            {TABS.map((_, i) => (<div key={i} style={{ width: i === tabIdx ? "16px" : "6px", height: "6px", borderRadius: "100px", background: i === tabIdx ? "var(--accent)" : i < tabIdx ? "var(--accent-dim)" : "rgba(255,255,255,0.15)", transition: "all 0.22s ease" }} />))}
+            {TABS.map((_, i) => (
+              <div key={i} style={{ width: i === tabIdx ? "16px" : "6px", height: "6px", borderRadius: "100px", background: i === tabIdx ? "var(--accent)" : i < tabIdx ? "var(--accent-dim)" : "rgba(255,255,255,0.15)", transition: "all 0.22s ease" }} />
+            ))}
           </div>
         </div>
+
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4" style={{ WebkitOverflowScrolling: "touch", minHeight: 0 }}>
           {tab === "basics" && (
             <>
-              <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); setTabIdx(1); } }} placeholder="Task title *" className="w-full rounded-[14px] px-4 py-3 text-sm font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: `0.5px solid ${title ? "var(--accent)" : "rgba(255,255,255,0.12)"}`, color: "rgba(255,255,255,0.94)" }} />
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none resize-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+              <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); setTabIdx(1); } }}
+                placeholder="Task title *" className="w-full rounded-[14px] px-4 py-3 text-sm font-mono focus:outline-none"
+                style={{ background: "rgba(255,255,255,0.07)", border: `0.5px solid ${title ? "var(--accent)" : "rgba(255,255,255,0.12)"}`, color: "rgba(255,255,255,0.94)" }} />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description (optional)" rows={2}
+                className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none resize-none"
+                style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Status</label>
-                  <div className="space-y-1">{STATUS_OPTIONS.map((s) => (<button key={s.value} onClick={() => setStatus(s.value)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-[11px] font-mono transition-all text-left" style={{ background: status === s.value ? `${s.color}20` : "rgba(255,255,255,0.05)", color: status === s.value ? s.color : "rgba(255,255,255,0.50)", border: `0.5px solid ${status === s.value ? s.color + "55" : "rgba(255,255,255,0.10)"}`, fontWeight: status === s.value ? 600 : 400 }}><span style={{ fontSize: "14px" }}>{s.icon}</span><span>{s.label}</span></button>))}</div>
+                  <div className="space-y-1">
+                    {STATUS_OPTIONS.map((s) => (
+                      <button key={s.value} onClick={() => setStatus(s.value)}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-[11px] font-mono transition-all text-left"
+                        style={{ background: status === s.value ? `${s.color}20` : "rgba(255,255,255,0.05)", color: status === s.value ? s.color : "rgba(255,255,255,0.50)", border: `0.5px solid ${status === s.value ? s.color + "55" : "rgba(255,255,255,0.10)"}`, fontWeight: status === s.value ? 600 : 400 }}>
+                        <span style={{ fontSize: "14px" }}>{s.icon}</span><span>{s.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Priority</label>
-                  <div className="space-y-1">{PRIORITY_OPTIONS.map((p) => (<button key={p.value} onClick={() => setPriority(p.value)} className="w-full px-2.5 py-2 rounded-[10px] text-[11px] font-mono capitalize transition-all text-left" style={{ background: priority === p.value ? `${p.color}20` : "rgba(255,255,255,0.05)", color: priority === p.value ? p.color : "rgba(255,255,255,0.50)", border: `0.5px solid ${priority === p.value ? p.color + "55" : "rgba(255,255,255,0.10)"}`, fontWeight: priority === p.value ? 600 : 400 }}>{p.label}</button>))}</div>
+                  <div className="space-y-1">
+                    {PRIORITY_OPTIONS.map((p) => (
+                      <button key={p.value} onClick={() => setPriority(p.value)}
+                        className="w-full px-2.5 py-2 rounded-[10px] text-[11px] font-mono capitalize transition-all text-left"
+                        style={{ background: priority === p.value ? `${p.color}20` : "rgba(255,255,255,0.05)", color: priority === p.value ? p.color : "rgba(255,255,255,0.50)", border: `0.5px solid ${priority === p.value ? p.color + "55" : "rgba(255,255,255,0.10)"}`, fontWeight: priority === p.value ? 600 : 400 }}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Category</label>
-                <div className="flex flex-wrap gap-1.5">{CATEGORY_OPTIONS.map((c) => (<button key={c.value} onClick={() => setCategory(c.value)} className="px-3 py-1.5 rounded-[10px] text-[11px] font-mono transition-all" style={{ background: category === c.value ? "var(--accent-muted)" : "rgba(255,255,255,0.05)", color: category === c.value ? "var(--accent)" : "rgba(255,255,255,0.50)", border: `0.5px solid ${category === c.value ? "var(--accent-dim)" : "rgba(255,255,255,0.10)"}`, fontWeight: category === c.value ? 600 : 400 }}>{c.label}</button>))}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <button key={c.value} onClick={() => setCategory(c.value)}
+                      className="px-3 py-1.5 rounded-[10px] text-[11px] font-mono transition-all"
+                      style={{ background: category === c.value ? "var(--accent-muted)" : "rgba(255,255,255,0.05)", color: category === c.value ? "var(--accent)" : "rgba(255,255,255,0.50)", border: `0.5px solid ${category === c.value ? "var(--accent-dim)" : "rgba(255,255,255,0.10)"}`, fontWeight: category === c.value ? 600 : 400 }}>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Assigned to</label>
-                <input value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="developer, designer, yourself…" className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+                <input value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="developer, designer, yourself…"
+                  className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
               </div>
             </>
           )}
+
           {tab === "details" && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Start date</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full rounded-[14px] px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} /></div>
-                <div><label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Due date</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded-[14px] px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} /></div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Start date</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full rounded-[14px] px-3 py-2.5 text-xs font-mono focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Due date</label>
+                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full rounded-[14px] px-3 py-2.5 text-xs font-mono focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+                </div>
               </div>
-              <div><label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Estimated minutes</label><input type="number" value={estimatedMins} onChange={(e) => setEstimatedMins(e.target.value)} placeholder="e.g. 60" className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} /></div>
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Estimated minutes</label>
+                <input type="number" value={estimatedMins} onChange={(e) => setEstimatedMins(e.target.value)} placeholder="e.g. 60"
+                  className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+              </div>
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-wider block mb-1.5" style={{ color: "rgba(255,255,255,0.40)" }}>Tags</label>
-                <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="python, ml, urgent (comma-separated)" className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
-                {tags && (<div className="flex flex-wrap gap-1 mt-2">{tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (<span key={t} className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>{t}</span>))}</div>)}
+                <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="python, ml, urgent (comma-separated)"
+                  className="w-full rounded-[14px] px-4 py-3 text-xs font-mono focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+                {tags && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                      <span key={t} className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                        style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>{t}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
+
           {tab === "resources" && (
             <>
               {resources.length > 0 && (
                 <div className="space-y-1.5">
                   {resources.map((r, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-[12px]" style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.10)" }}>
-                      <div className="flex-1 min-w-0"><div className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.88)" }}>{r.title}</div><div className="text-[10px] font-mono truncate" style={{ color: "rgba(255,255,255,0.38)" }}>{r.url}</div></div>
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>{r.type}</span>
-                      <button onClick={() => removeResource(i)} className="w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0" style={{ color: "#f87171", fontSize: "16px", background: "rgba(248,65,65,0.10)" }}>×</button>
+                    <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-[12px]"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.10)" }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.88)" }}>{r.title}</div>
+                        <div className="text-[10px] font-mono truncate" style={{ color: "rgba(255,255,255,0.38)" }}>{r.url}</div>
+                      </div>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>{r.type}</span>
+                      <button onClick={() => removeResource(i)} className="w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0"
+                        style={{ color: "#f87171", fontSize: "16px", background: "rgba(248,65,65,0.10)" }}>×</button>
                     </div>
                   ))}
                 </div>
               )}
               <div className="rounded-[16px] p-3 space-y-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "0.5px solid rgba(255,255,255,0.10)" }}>
                 <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.38)" }}>Add resource link</p>
-                <input value={newResTitle} onChange={(e) => setNewResTitle(e.target.value)} placeholder="Title (e.g. Andrew Ng Course)" className="w-full rounded-[12px] px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
-                <input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="URL (https://...)" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addResource(); } }} className="w-full rounded-[12px] px-3 py-2.5 text-xs font-mono focus:outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+                <input value={newResTitle} onChange={(e) => setNewResTitle(e.target.value)} placeholder="Title (e.g. Andrew Ng Course)"
+                  className="w-full rounded-[12px] px-3 py-2.5 text-xs font-mono focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
+                <input value={newResUrl} onChange={(e) => setNewResUrl(e.target.value)} placeholder="URL (https://...)"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addResource(); } }}
+                  className="w-full rounded-[12px] px-3 py-2.5 text-xs font-mono focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.94)" }} />
                 <div className="flex gap-2">
-                  <select value={newResType} onChange={(e) => setNewResType(e.target.value as ResourceLink["type"])} className="flex-1 rounded-[12px] px-3 text-[11px] font-mono focus:outline-none cursor-pointer" style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.70)", height: "36px" }}>
+                  <select value={newResType} onChange={(e) => setNewResType(e.target.value as ResourceLink["type"])}
+                    className="flex-1 rounded-[12px] px-3 text-[11px] font-mono focus:outline-none cursor-pointer"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.70)", height: "36px" }}>
                     {RESOURCE_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
-                  <button onClick={addResource} disabled={!newResTitle.trim() || !newResUrl.trim()} className="px-4 py-2 text-xs font-medium rounded-[12px] disabled:opacity-30 transition-all" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>+ Add</button>
+                  <button onClick={addResource} disabled={!newResTitle.trim() || !newResUrl.trim()}
+                    className="px-4 py-2 text-xs font-medium rounded-[12px] disabled:opacity-30 transition-all"
+                    style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>+ Add</button>
                 </div>
               </div>
-              {resources.length === 0 && (<div className="text-center py-4"><p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.35)" }}>No resources yet</p><p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>Add articles, videos, GitHub links…</p></div>)}
+              {resources.length === 0 && (
+                <div className="text-center py-4">
+                  <p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.35)" }}>No resources yet</p>
+                  <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>Add articles, videos, GitHub links…</p>
+                </div>
+              )}
             </>
           )}
           <div style={{ height: "4px" }} />
         </div>
+
         <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "0.5px solid rgba(255,255,255,0.08)" }}>
           {isLastTab ? (
             <div className="flex gap-2">
-              <button onClick={() => setTabIdx(tabIdx - 1)} className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all" style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
-              <button onClick={handleSave} disabled={!title.trim() || saving} className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all" style={{ background: "var(--accent)", color: "#0a0a0b" }}>{saving ? "Saving…" : isEdit ? "Save changes" : "Add task"}</button>
+              <button onClick={() => setTabIdx(tabIdx - 1)} className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all"
+                style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Back
+              </button>
+              <button onClick={handleSave} disabled={!title.trim() || saving}
+                className="flex-1 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all"
+                style={{ background: "var(--accent)", color: "#0a0a0b" }}>
+                {saving ? "Saving…" : isEdit ? "Save changes" : "Add task"}
+              </button>
             </div>
           ) : (
             <div className="flex gap-2">
-              {!isFirstTab ? (<button onClick={() => setTabIdx(tabIdx - 1)} className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all" style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>)
-              : (<button onClick={onClose} className="px-4 py-3 text-xs rounded-[16px] flex-shrink-0" style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)" }}>Cancel</button>)}
-              <button onClick={() => setTabIdx(tabIdx + 1)} disabled={tab === "basics" && !title.trim()} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all" style={{ background: "var(--accent)", color: "#0a0a0b" }}>Next — {TABS[tabIdx + 1] ? TAB_LABELS[TABS[tabIdx + 1]] : ""}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+              {!isFirstTab ? (
+                <button onClick={() => setTabIdx(tabIdx - 1)} className="flex items-center gap-1.5 px-4 py-3 text-xs rounded-[16px] flex-shrink-0 transition-all"
+                  style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  Back
+                </button>
+              ) : (
+                <button onClick={onClose} className="px-4 py-3 text-xs rounded-[16px] flex-shrink-0"
+                  style={{ color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.14)" }}>Cancel</button>
+              )}
+              <button onClick={() => setTabIdx(tabIdx + 1)} disabled={tab === "basics" && !title.trim()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium rounded-[16px] disabled:opacity-30 transition-all"
+                style={{ background: "var(--accent)", color: "#0a0a0b" }}>
+                Next — {TABS[tabIdx + 1] ? TAB_LABELS[TABS[tabIdx + 1]] : ""}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
             </div>
           )}
         </div>
@@ -207,114 +344,46 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
   );
 }
 
-// ── CHECKLIST PANEL ──────────────────────────────────────────────────────────
-function ChecklistPanel({ todo }: { todo: Todo }) {
-  const [items, setItems]     = React.useState<ChecklistItem[]>(todo.checklist ?? []);
-  const [newText, setNewText] = React.useState("");
-  const [saving, setSaving]   = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // Sync when todo.checklist changes externally (realtime updates, refresh)
-  React.useEffect(() => {
-    setItems(todo.checklist ?? []);
-  }, [todo.id, JSON.stringify(todo.checklist)]);
+// ── ChecklistInput — inline add row ──────────────────────
+function ChecklistInput({ onAdd }: { onAdd: (text: string) => Promise<void> }) {
+  const [text, setText] = React.useState("");
+  const [adding, setAdding] = React.useState(false);
 
-  const save = async (updated: ChecklistItem[]) => {
-    setSaving(true);
-    try {
-      await updateTodo(todo.id, { checklist: updated });
-      setItems(updated);
-    } catch (err: any) {
-      window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: err?.message || "Failed to save checklist", type: "error" } }));
-    } finally { setSaving(false); }
+  const handleAdd = async () => {
+    const t = text.trim();
+    if (!t || adding) return;
+    setAdding(true);
+    try { await onAdd(t); setText(""); }
+    finally { setAdding(false); }
   };
-
-  const addItem = async () => {
-    const text = newText.trim();
-    if (!text) return;
-    const item: ChecklistItem = { id: crypto.randomUUID(), text, done: false };
-    await save([...items, item]);
-    setNewText("");
-    inputRef.current?.focus();
-  };
-
-  const toggleItem = async (id: string) => {
-    await save(items.map((i) => i.id === id ? { ...i, done: !i.done } : i));
-  };
-
-  const deleteItem = async (id: string) => {
-    await save(items.filter((i) => i.id !== id));
-  };
-
-  const doneCount  = items.filter((i) => i.done).length;
-  const totalCount = items.length;
-  const pct        = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   return (
-    <div className="rounded-[12px] p-3" style={{ background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--glass-border)" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[9px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>☑ Checklist</p>
-        {totalCount > 0 && (
-          <span className="text-[9px] font-mono" style={{ color: doneCount === totalCount ? "#5ecf95" : "var(--text-muted)" }}>
-            {doneCount}/{totalCount} · {pct}%
-          </span>
-        )}
+    <div className="flex items-center gap-2 mt-2">
+      <div className="flex-shrink-0 w-4 h-4 rounded flex items-center justify-center"
+        style={{ border: "1.5px dashed rgba(255,255,255,0.18)" }}>
+        <svg width="7" height="7" viewBox="0 0 12 12" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M6 2v8M2 6h8"/>
+        </svg>
       </div>
-
-      {/* Progress bar */}
-      {totalCount > 0 && (
-        <div className="h-1 rounded-full overflow-hidden mb-2.5" style={{ background: "var(--glass-fill)" }}>
-          <div className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: doneCount === totalCount ? "#5ecf95" : "var(--accent)" }} />
-        </div>
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") handleAdd(); }}
+        onClick={(e) => e.stopPropagation()}
+        placeholder="Add a step…"
+        className="flex-1 bg-transparent focus:outline-none text-[11px] font-mono"
+        style={{ color: "var(--text-muted)" }}
+      />
+      {text.trim() && (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleAdd(); }}
+          disabled={adding}
+          className="flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded-[6px] disabled:opacity-40"
+          style={{ background: "rgba(94,207,149,0.15)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.30)" }}>
+          {adding ? "…" : "Add"}
+        </button>
       )}
-
-      {/* Items */}
-      {items.length > 0 && (
-        <div className="space-y-1.5 mb-2.5">
-          {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-2 group/item py-0.5">
-              <button onClick={() => toggleItem(item.id)}
-                className="flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-all"
-                style={{ background: item.done ? "#5ecf95" : "transparent", border: `1.5px solid ${item.done ? "#5ecf95" : "var(--glass-border)"}`, minWidth: "16px" }}>
-                {item.done && (
-                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 6l3 3 5-5"/>
-                  </svg>
-                )}
-              </button>
-              <span className="flex-1 text-[11px] font-mono"
-                style={{ color: item.done ? "var(--text-muted)" : "var(--text-primary)", textDecoration: item.done ? "line-through" : "none", opacity: item.done ? 0.55 : 1 }}>
-                {item.text}
-              </span>
-              <button onClick={() => deleteItem(item.id)}
-                className="opacity-0 group-hover/item:opacity-100 w-4 h-4 flex items-center justify-center flex-shrink-0 transition-opacity"
-                style={{ color: "#f87171" }}>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add new step */}
-      <div className="flex gap-1.5 items-center">
-        <input ref={inputRef} value={newText} onChange={(e) => setNewText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } if (e.key === "Escape") setNewText(""); }}
-          placeholder="+ Add a step…"
-          className="flex-1 focus:outline-none bg-transparent text-[11px] font-mono"
-          style={{ color: "var(--text-primary)", borderBottom: "0.5px solid var(--glass-border)", paddingBottom: "3px" }} />
-        {newText.trim() && (
-          <button onClick={addItem} disabled={saving}
-            className="flex-shrink-0 text-[10px] font-mono px-2 py-1 rounded-[8px] disabled:opacity-40 transition-all"
-            style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
-            {saving ? "…" : "Add"}
-          </button>
-        )}
-      </div>
     </div>
   );
 }
@@ -347,28 +416,41 @@ export default function TasksPage() {
     if (filterCategory && t.category !== filterCategory) return false;
     if (search) {
       const q = search.toLowerCase();
-      return t.title.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q) || (t.tags ?? []).some((tag) => tag.toLowerCase().includes(q));
+      return (
+        t.title.toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q) ||
+        (t.tags ?? []).some((tag) => tag.toLowerCase().includes(q))
+      );
     }
     return true;
   });
 
   const handleSave = useCallback(async (data: Partial<Todo>) => {
-    try {
-      if (editTodo) await updateTodo(editTodo.id, data);
-      else          await addTodo(data);
-      setEditTodo(null); setShowModal(false);
-    } catch (err: any) {
-      window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: err?.message || "Failed to save task", type: "error" } }));
-    }
+    if (editTodo) await updateTodo(editTodo.id, data);
+    else          await addTodo(data);
+    setEditTodo(null);
+    setShowModal(false);
   }, [editTodo]);
 
   const handleDelete = useCallback(async (id: string) => { await deleteTodo(id); }, []);
-  const handleBulkDelete = useCallback(async () => { await Promise.all([...selectedIds].map(deleteTodo)); setSelectedIds(new Set()); setBulkMode(false); }, [selectedIds]);
-  const handleBulkStatus = useCallback(async (s: TodoStatus) => { await Promise.all([...selectedIds].map((id) => updateTodo(id, { status: s }))); setSelectedIds(new Set()); setBulkMode(false); }, [selectedIds]);
-  const toggleSelect = (id: string) => { setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); };
+
+  const handleBulkDelete = useCallback(async () => {
+    await Promise.all([...selectedIds].map(deleteTodo));
+    setSelectedIds(new Set()); setBulkMode(false);
+  }, [selectedIds]);
+
+  const handleBulkStatus = useCallback(async (s: TodoStatus) => {
+    await Promise.all([...selectedIds].map((id) => updateTodo(id, { status: s })));
+    setSelectedIds(new Set()); setBulkMode(false);
+  }, [selectedIds]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
 
   const handleUseTemplate = async (tmpl: TaskTemplate) => {
-    await createTodoFromTemplate(tmpl); setShowTemplates(false);
+    await createTodoFromTemplate(tmpl);
+    setShowTemplates(false);
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Created: ${tmpl.title}`, type: "success" } }));
   };
 
@@ -377,21 +459,25 @@ export default function TasksPage() {
     if (!t || quickAdding) return;
     setQuickAdding(true);
     try {
-      await addTodo({ title: t, description: "", status: "pending" as const, priority: "medium" as const, category: "general" as const, assigned_agent: "srn", tags: [], resource_links: [], estimated_mins: null, start_date: null, due_date: null });
+      await addTodo({ title: t, description: "", status: "pending", priority: "medium",
+        category: "general", assigned_agent: "srn", tags: [], resource_links: [] });
       setQuickTitle("");
       window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Added: ${t}`, type: "success" } }));
-    } catch (err: any) {
-      window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: err?.message || "Failed to add task", type: "error" } }));
-    } finally { setQuickAdding(false); }
+    } catch {}
+    setQuickAdding(false);
   };
 
   const exportCSV = () => {
     const rows = [["Title", "Status", "Priority", "Category", "Agent", "Due", "Tags"]];
     filtered.forEach((t) => rows.push([t.title, t.status, t.priority, t.category, t.assigned_agent, t.due_date ?? "", (t.tags ?? []).join("|")]));
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" })); a.download = "tasks.csv"; a.click();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" }));
+    a.download = "tasks.csv"; a.click();
   };
   const exportJSON = () => {
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" })); a.download = "tasks.json"; a.click();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" }));
+    a.download = "tasks.json"; a.click();
   };
 
   const total   = todos.length;
@@ -406,44 +492,123 @@ export default function TasksPage() {
             <h1 className="font-bold tracking-tight" style={{ color: "var(--text-primary)", fontSize: "clamp(22px, 5vw, 28px)", letterSpacing: "-0.03em" }}>Tasks</h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>{done}/{total} done</span>
-              {overdue > 0 && (<span className="text-[10px] font-mono px-2 py-0.5 rounded-full animate-fade-in" style={{ background: "rgba(248,65,65,0.12)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.28)" }}>{overdue} overdue</span>)}
-              {done > 0 && total > 0 && (<div className="flex items-center gap-1.5" style={{ minWidth: "80px" }}><div className="flex-1 h-1 rounded-full" style={{ background: "var(--glass-fill)" }}><div className="h-1 rounded-full transition-all duration-700" style={{ width: `${Math.round((done/total)*100)}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-light))" }} /></div><span className="text-[9px] font-mono" style={{ color: "var(--accent)" }}>{Math.round((done/total)*100)}%</span></div>)}
+              {overdue > 0 && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full animate-fade-in"
+                  style={{ background: "rgba(248,65,65,0.12)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.28)" }}>
+                  {overdue} overdue
+                </span>
+              )}
+              {done > 0 && total > 0 && (
+                <div className="flex items-center gap-1.5" style={{ minWidth: "80px" }}>
+                  <div className="flex-1 h-1 rounded-full" style={{ background: "var(--glass-fill)" }}>
+                    <div className="h-1 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.round((done/total)*100)}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-light))" }} />
+                  </div>
+                  <span className="text-[9px] font-mono" style={{ color: "var(--accent)" }}>{Math.round((done/total)*100)}%</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}><span style={{ position: "relative", zIndex: 3 }}>⊞</span></button>
-            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}><span style={{ position: "relative", zIndex: 3 }}>CSV</span></button>
-            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}><span style={{ position: "relative", zIndex: 3 }}>JSON</span></button>
-            <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}><span style={{ position: "relative", zIndex: 3 }}>Bulk</span></button>
-            <button onClick={() => { setShowQuickAdd((v) => !v); setTimeout(() => quickInputRef.current?.focus(), 50); }} className="cc-btn px-3 py-2 text-xs flex-shrink-0" style={{ color: showQuickAdd ? "var(--accent)" : "var(--cc-text-muted)", border: showQuickAdd ? "0.5px solid var(--accent-dim)" : undefined }}><span style={{ position: "relative", zIndex: 3 }}>⚡ Quick</span></button>
-            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0"><span style={{ position: "relative", zIndex: 3 }}>+ Task</span></button>
+            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
+            </button>
+            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
+            </button>
+            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
+            </button>
+            <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
+              style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
+              <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
+            </button>
+            <button
+              onClick={() => { setShowQuickAdd((v) => !v); setTimeout(() => quickInputRef.current?.focus(), 50); }}
+              className="cc-btn px-3 py-2 text-xs flex-shrink-0"
+              style={{ color: showQuickAdd ? "var(--accent)" : "var(--cc-text-muted)", border: showQuickAdd ? "0.5px solid var(--accent-dim)" : undefined }}>
+              <span style={{ position: "relative", zIndex: 3 }}>⚡ Quick</span>
+            </button>
+            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0">
+              <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
+            </button>
           </div>
         </div>
 
         <div className="relative mb-3">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-muted)" }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks, tags…" className="w-full rounded-[16px] pl-9 pr-4 py-3 text-xs font-mono focus:outline-none transition-all" style={{ background: "var(--bg-input)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`, color: "var(--text-primary)", boxShadow: search ? `0 0 0 3px var(--accent-muted), inset 0 1px 0 var(--specular-inner)` : "inset 0 1px 0 var(--specular-inner), var(--shadow-sm)" }} />
-          {search && (<button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>)}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-muted)" }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks, tags…"
+            className="w-full rounded-[16px] pl-9 pr-4 py-3 text-xs font-mono focus:outline-none transition-all"
+            style={{
+              background: "var(--bg-input)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`,
+              color: "var(--text-primary)",
+              boxShadow: search ? `0 0 0 3px var(--accent-muted), inset 0 1px 0 var(--specular-inner)` : "inset 0 1px 0 var(--specular-inner), var(--shadow-sm)",
+            }} />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>
+          )}
         </div>
 
         <div className="flex gap-2" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "4px" }}>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as TodoStatus | "")} className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}><option value="">All status</option>{STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
-          <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as TodoPriority | "")} className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}><option value="">All priority</option>{PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as TodoCategory | "")} className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}><option value="">All categories</option>{CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select>
-          {(filterStatus || filterPriority || filterCategory || search) && (<button onClick={() => { setFilterStatus(""); setFilterPriority(""); setFilterCategory(""); setSearch(""); }} className="px-3 py-2 rounded-xl text-[11px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>Clear</button>)}
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as TodoStatus | "")}
+            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
+            <option value="">All status</option>
+            {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+          <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as TodoPriority | "")}
+            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
+            <option value="">All priority</option>
+            {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as TodoCategory | "")}
+            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
+            <option value="">All categories</option>
+            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+          {(filterStatus || filterPriority || filterCategory || search) && (
+            <button onClick={() => { setFilterStatus(""); setFilterPriority(""); setFilterCategory(""); setSearch(""); }}
+              className="px-3 py-2 rounded-xl text-[11px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+              Clear
+            </button>
+          )}
         </div>
       </header>
 
       {/* Quick Add Bar */}
       {showQuickAdd && (
         <div className="mb-3 animate-slide-up">
-          <div className="flex gap-2 items-center rounded-[18px] px-4 py-2.5" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)", border: "0.5px solid var(--accent-dim)", boxShadow: "var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--accent)", flexShrink: 0 }}><path d="M12 5v14M5 12h14"/></svg>
-            <input ref={quickInputRef} value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(); if (e.key === "Escape") setShowQuickAdd(false); }} placeholder="Quick add — type and press Enter…" className="flex-1 focus:outline-none bg-transparent text-sm font-mono" style={{ color: "var(--text-primary)", minWidth: 0 }} autoFocus />
-            {quickTitle.trim() && (<button onClick={handleQuickAdd} disabled={quickAdding} className="flex-shrink-0 text-[11px] font-mono px-3 py-1.5 rounded-[10px] disabled:opacity-40 transition-all" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>{quickAdding ? "…" : "Add →"}</button>)}
-            <button onClick={() => setShowQuickAdd(false)} className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full" style={{ color: "var(--text-muted)", background: "var(--glass-fill)" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+          <div className="flex gap-2 items-center rounded-[18px] px-4 py-2.5"
+            style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)",
+              border: "0.5px solid var(--accent-dim)",
+              boxShadow: "var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+              style={{ color: "var(--accent)", flexShrink: 0 }}><path d="M12 5v14M5 12h14"/></svg>
+            <input ref={quickInputRef} value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(); if (e.key === "Escape") setShowQuickAdd(false); }}
+              placeholder="Quick add — type and press Enter…"
+              className="flex-1 focus:outline-none bg-transparent text-sm font-mono"
+              style={{ color: "var(--text-primary)", minWidth: 0 }}
+              autoFocus />
+            {quickTitle.trim() && (
+              <button onClick={handleQuickAdd} disabled={quickAdding}
+                className="flex-shrink-0 text-[11px] font-mono px-3 py-1.5 rounded-[10px] disabled:opacity-40 transition-all"
+                style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
+                {quickAdding ? "…" : "Add →"}
+              </button>
+            )}
+            <button onClick={() => setShowQuickAdd(false)}
+              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full"
+              style={{ color: "var(--text-muted)", background: "var(--glass-fill)" }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
           </div>
-          <p className="text-[10px] font-mono mt-1.5 ml-1" style={{ color: "var(--text-muted)" }}>Default: medium priority · pending · general. Use + Task for full details.</p>
+          <p className="text-[10px] font-mono mt-1.5 ml-1" style={{ color: "var(--text-muted)" }}>
+            Default: medium priority · pending · general. Use + Task for full details.
+          </p>
         </div>
       )}
 
@@ -451,26 +616,55 @@ export default function TasksPage() {
         <div className="mb-3 rounded-[16px] px-4 py-3 flex items-center gap-3 animate-fade-in" style={{ background: "var(--glass-fill)", backdropFilter: "blur(24px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)", overflowX: "auto", scrollbarWidth: "none" }}>
           <span className="text-xs font-mono flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{selectedIds.size} selected</span>
           <div className="flex gap-1.5 ml-auto flex-shrink-0">
-            {STATUS_OPTIONS.slice(0, 3).map((s) => (<button key={s.value} onClick={() => handleBulkStatus(s.value)} className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono whitespace-nowrap" style={{ background: `${s.color}15`, color: s.color, border: `0.5px solid ${s.color}35` }}>→ {s.label}</button>))}
-            <button onClick={handleBulkDelete} className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono" style={{ background: "rgba(248,65,65,0.12)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.28)" }}>Delete</button>
+            {STATUS_OPTIONS.slice(0, 3).map((s) => (
+              <button key={s.value} onClick={() => handleBulkStatus(s.value)}
+                className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono whitespace-nowrap"
+                style={{ background: `${s.color}15`, color: s.color, border: `0.5px solid ${s.color}35` }}>→ {s.label}</button>
+            ))}
+            <button onClick={handleBulkDelete} className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono"
+              style={{ background: "rgba(248,65,65,0.12)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.28)" }}>Delete</button>
           </div>
         </div>
       )}
 
       {showTemplates && templates.length > 0 && (
         <div className="mb-4 rounded-[22px] overflow-hidden animate-fade-in" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px) saturate(1.8)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
-          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}><span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Templates</span><button onClick={() => setShowTemplates(false)} style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button></div>
-          <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2">{templates.map((tmpl) => (<button key={tmpl.id} onClick={() => handleUseTemplate(tmpl)} className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-left transition-all liquid-glass-sweep" style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}><div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--accent)" }} /><div className="min-w-0"><div className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{tmpl.title}</div><div className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{tmpl.priority} · {tmpl.recurrence ?? "once"}</div></div></button>))}</div>
+          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "0.5px solid var(--glass-border-subtle)" }}>
+            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Templates</span>
+            <button onClick={() => setShowTemplates(false)} style={{ color: "var(--text-muted)", fontSize: "16px" }}>×</button>
+          </div>
+          <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {templates.map((tmpl) => (
+              <button key={tmpl.id} onClick={() => handleUseTemplate(tmpl)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-left transition-all liquid-glass-sweep"
+                style={{ background: "var(--glass-fill-deep)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--accent)" }} />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{tmpl.title}</div>
+                  <div className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{tmpl.priority} · {tmpl.recurrence ?? "once"}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 animate-fade-in"><div className="rounded-[22px] px-8 py-6 text-center" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}><div className="w-8 h-8 rounded-full border-2 border-transparent mx-auto mb-3 animate-spin" style={{ borderTopColor: "var(--accent)", borderRightColor: "var(--accent-dim)" }} /><p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Loading tasks…</p></div></div>
+        <div className="flex items-center justify-center py-20 animate-fade-in">
+          <div className="rounded-[22px] px-8 py-6 text-center" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
+            <div className="w-8 h-8 rounded-full border-2 border-transparent mx-auto mb-3 animate-spin" style={{ borderTopColor: "var(--accent)", borderRightColor: "var(--accent-dim)" }} />
+            <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Loading tasks…</p>
+          </div>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-[26px] p-10 text-center animate-scale-in" style={{ background: "var(--glass-fill)", backdropFilter: "blur(28px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-lg), inset 0 1px 0 var(--specular-top)" }}>
           <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>{todos.length === 0 ? "No tasks yet" : "No tasks match your filters"}</p>
           <p className="text-xs font-mono mb-4" style={{ color: "var(--text-muted)" }}>{todos.length === 0 ? "Add your first task to get started." : "Try clearing your search or filters."}</p>
-          {todos.length === 0 && (<button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-4 py-2 text-xs"><span style={{ position: "relative", zIndex: 3 }}>+ Add first task</span></button>)}
+          {todos.length === 0 && (
+            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-4 py-2 text-xs">
+              <span style={{ position: "relative", zIndex: 3 }}>+ Add first task</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -484,58 +678,165 @@ export default function TasksPage() {
             const focusSessCount = focusData.length;
 
             return (
-              <div key={todo.id} className="group relative rounded-[22px] overflow-hidden animate-fade-in-up liquid-glass-sweep"
-                style={{ animationDelay: `${idx * 30}ms`, opacity: todo.status === "done" ? 0.65 : 1, transition: "opacity 0.3s ease, transform 0.28s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.28s ease, border-color 0.22s ease", background: "var(--glass-fill)", backdropFilter: "blur(28px) saturate(1.8)", WebkitBackdropFilter: "blur(28px) saturate(1.8)", border: isSelected ? "0.5px solid var(--accent)" : "0.5px solid var(--glass-border)", boxShadow: isSelected ? "var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)" : "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
+              <div key={todo.id}
+                className="group relative rounded-[22px] overflow-hidden animate-fade-in-up liquid-glass-sweep"
+                style={{
+                  animationDelay: `${idx * 30}ms`,
+                  opacity: todo.status === "done" ? 0.65 : 1,
+                  transition: "opacity 0.3s ease, transform 0.28s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.28s ease, border-color 0.22s ease",
+                  background: "var(--glass-fill)",
+                  backdropFilter: "blur(28px) saturate(1.8)",
+                  WebkitBackdropFilter: "blur(28px) saturate(1.8)",
+                  border: isSelected ? "0.5px solid var(--accent)" : "0.5px solid var(--glass-border)",
+                  boxShadow: isSelected
+                    ? "var(--shadow-md), 0 0 0 2px var(--accent-muted), inset 0 1px 0 var(--specular-top)"
+                    : "var(--shadow-md), inset 0 1px 0 var(--specular-top)",
+                }}>
 
                 <div style={{ position: "absolute", top: 0, left: "6%", right: "6%", height: "0.5px", background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)", pointerEvents: "none", zIndex: 4 }} />
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "42%", background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)", pointerEvents: "none", zIndex: 2, mixBlendMode: "overlay", borderRadius: "22px 22px 0 0" }} />
 
                 <div className="relative flex items-center gap-2 px-3 py-3" style={{ zIndex: 5 }}>
-                  {bulkMode && (<button onClick={() => toggleSelect(todo.id)} className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all" style={{ background: isSelected ? "var(--accent)" : "var(--bg-input)", border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--glass-border)"}` }}>{isSelected && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6l3 3 5-5"/></svg>}</button>)}
+                  {bulkMode && (
+                    <button onClick={() => toggleSelect(todo.id)}
+                      className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all"
+                      style={{ background: isSelected ? "var(--accent)" : "var(--bg-input)", border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--glass-border)"}` }}>
+                      {isSelected && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6l3 3 5-5"/></svg>}
+                    </button>
+                  )}
 
-                  <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full" style={{ background: sc.color, boxShadow: `0 0 6px ${sc.color}90`, flexShrink: 0 }} />
+                  <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
+                    style={{ background: sc.color, boxShadow: `0 0 6px ${sc.color}90`, flexShrink: 0 }} />
 
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm font-medium truncate" style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>{todo.title}</span>
-                      <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>{todo.priority}</span>
-                      {due && (<span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: `${due.color}15`, color: due.color, border: `0.5px solid ${due.color}30` }}>{due.label}</span>)}
-                      {focusedMins > 0 && (<span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(77,166,255,0.12)", color: "#4da6ff", border: "0.5px solid rgba(77,166,255,0.25)" }}>⏱ {focusedMins < 60 ? `${focusedMins}m` : `${Math.floor(focusedMins/60)}h${focusedMins%60>0?` ${focusedMins%60}m`:""}`}</span>)}
-                      {(todo.checklist ?? []).length > 0 && (() => {
+                      <span className="text-sm font-medium truncate"
+                        style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>
+                        {todo.title}
+                      </span>
+                      <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>
+                        {todo.priority}
+                      </span>
+                      {due && (
+                        <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: `${due.color}15`, color: due.color, border: `0.5px solid ${due.color}30` }}>
+                          {due.label}
+                        </span>
+                      )}
+                      {focusedMins > 0 && (
+                        <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: "rgba(77,166,255,0.12)", color: "#4da6ff", border: "0.5px solid rgba(77,166,255,0.25)" }}>
+                          ⏱ {focusedMins < 60 ? `${focusedMins}m` : `${Math.floor(focusedMins/60)}h${focusedMins%60>0?` ${focusedMins%60}m`:""}`}
+                        </span>
+                      )}
+                      {(() => {
                         const cl = todo.checklist ?? [];
-                        const doneCount = cl.filter((c) => c.done).length;
-                        return (<span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: doneCount === cl.length ? "rgba(94,207,149,0.15)" : "rgba(255,255,255,0.08)", color: doneCount === cl.length ? "#5ecf95" : "var(--text-muted)", border: `0.5px solid ${doneCount === cl.length ? "rgba(94,207,149,0.30)" : "var(--glass-border)"}` }}>☑ {doneCount}/{cl.length}</span>);
+                        if (cl.length === 0) return null;
+                        const done = cl.filter((i: ChecklistItem) => i.done).length;
+                        return (
+                          <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
+                            style={{ background: "rgba(94,207,149,0.10)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.22)" }}>
+                            ☑ {done}/{cl.length}
+                          </span>
+                        );
                       })()}
                     </div>
-                    {todo.description && !isExpanded && (<p className="text-[11px] font-mono mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{todo.description}</p>)}
+                    {todo.description && !isExpanded && (
+                      <p className="text-[11px] font-mono mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{todo.description}</p>
+                    )}
                   </button>
 
                   <div className="flex items-center gap-0.5 flex-shrink-0">
                     <div className="relative flex-shrink-0" style={{ height: "28px" }}>
-                      <div className="flex items-center gap-1 px-2 h-full rounded-[10px] pointer-events-none" style={{ background: `${sc.color}18`, border: `0.5px solid ${sc.color}55`, boxShadow: `inset 0 1px 0 ${sc.color}25`, color: sc.color, fontSize: "10px", fontFamily: "monospace", fontWeight: 600, minWidth: "28px", whiteSpace: "nowrap" }}><span style={{ fontSize: "10px" }}>{sc.label}</span></div>
-                      <select value={todo.status} onChange={async (e) => { const next = e.target.value as TodoStatus; await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : { completed_at: null }) }); }} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" style={{ fontSize: "14px" }} onClick={(e) => e.stopPropagation()}>
-                        {STATUS_OPTIONS.map((s) => (<option key={s.value} value={s.value}>{s.icon} {s.label}</option>))}
+                      <div className="flex items-center gap-1 px-2 h-full rounded-[10px] pointer-events-none"
+                        style={{
+                          background: `${sc.color}18`, border: `0.5px solid ${sc.color}55`,
+                          boxShadow: `inset 0 1px 0 ${sc.color}25`, color: sc.color,
+                          fontSize: "10px", fontFamily: "monospace", fontWeight: 600,
+                          minWidth: "28px", whiteSpace: "nowrap",
+                        }}>
+                        <span style={{ fontSize: "10px" }}>{sc.label}</span>
+                      </div>
+                      <select value={todo.status}
+                        onChange={async (e) => {
+                          const next = e.target.value as TodoStatus;
+                          await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : { completed_at: null }) });
+                        }}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        style={{ fontSize: "14px" }}
+                        onClick={(e) => e.stopPropagation()}>
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s.value} value={s.value}>{s.icon} {s.label}</option>
+                        ))}
                       </select>
                     </div>
-                    <button onClick={() => { setEditTodo(todo); setShowModal(true); }} className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl" style={{ color: "var(--text-muted)", background: "var(--glass-fill)", backdropFilter: "blur(8px)", border: "0.5px solid var(--glass-border)", boxShadow: "inset 0 1px 0 var(--specular-inner), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                    <button onClick={() => handleDelete(todo.id)} className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl" style={{ color: "#f87171", background: "rgba(248,65,65,0.10)", backdropFilter: "blur(8px)", border: "0.5px solid rgba(248,65,65,0.22)", boxShadow: "inset 0 1px 0 rgba(255,100,100,0.15), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-                    <button onClick={() => setExpandedId(isExpanded ? null : todo.id)} className="w-7 h-7 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s cubic-bezier(0.34,1.4,0.64,1)" }}><path d="M6 9l6 6 6-6"/></svg></button>
+
+                    <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
+                      className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl"
+                      style={{ color: "var(--text-muted)", background: "var(--glass-fill)", backdropFilter: "blur(8px)", border: "0.5px solid var(--glass-border)", boxShadow: "inset 0 1px 0 var(--specular-inner), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                    <button onClick={() => handleDelete(todo.id)}
+                      className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl"
+                      style={{ color: "#f87171", background: "rgba(248,65,65,0.10)", backdropFilter: "blur(8px)", border: "0.5px solid rgba(248,65,65,0.22)", boxShadow: "inset 0 1px 0 rgba(255,100,100,0.15), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                      </svg>
+                    </button>
+
+                    <button onClick={() => setExpandedId(isExpanded ? null : todo.id)}
+                      className="w-7 h-7 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                        style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.28s cubic-bezier(0.34,1.4,0.64,1)" }}>
+                        <path d="M6 9l6 6 6-6"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
 
                 {isExpanded && (
                   <div className="px-4 pb-4 space-y-3 animate-fade-in" style={{ borderTop: "0.5px solid var(--glass-border-subtle)", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(8px)" }}>
                     <div className="flex items-center gap-2 pt-3 flex-wrap sm:hidden">
-                      <span className="text-[9px] font-mono px-2 py-1 rounded-full" style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>{todo.priority}</span>
-                      {due && (<span className="text-[9px] font-mono px-2 py-1 rounded-full" style={{ background: `${due.color}15`, color: due.color, border: `0.5px solid ${due.color}30` }}>{due.label}</span>)}
+                      <span className="text-[9px] font-mono px-2 py-1 rounded-full"
+                        style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>
+                        {todo.priority}
+                      </span>
+                      {due && (
+                        <span className="text-[9px] font-mono px-2 py-1 rounded-full"
+                          style={{ background: `${due.color}15`, color: due.color, border: `0.5px solid ${due.color}30` }}>
+                          {due.label}
+                        </span>
+                      )}
                       <div className="flex items-center gap-1.5 ml-auto">
-                        <button onClick={() => { setEditTodo(todo); setShowModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-mono" style={{ background: "var(--glass-fill)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>
-                        <button onClick={() => handleDelete(todo.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-mono" style={{ background: "rgba(248,65,65,0.10)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.22)" }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete</button>
+                        <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-mono"
+                          style={{ background: "var(--glass-fill)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          Edit
+                        </button>
+                        <button onClick={() => handleDelete(todo.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-mono"
+                          style={{ background: "rgba(248,65,65,0.10)", color: "#f87171", border: "0.5px solid rgba(248,65,65,0.22)" }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                          Delete
+                        </button>
                       </div>
                     </div>
 
-                    {todo.description && (<p className="text-xs font-mono" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{todo.description}</p>)}
-
+                    {todo.description && (
+                      <p className="text-xs font-mono" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{todo.description}</p>
+                    )}
                     <div className="flex flex-wrap gap-3 text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
                       <span>Status: <span style={{ color: sc.color }}>{sc.label}</span></span>
                       <span>Category: <span style={{ color: "var(--text-secondary)" }}>{todo.category}</span></span>
@@ -547,26 +848,137 @@ export default function TasksPage() {
 
                     {/* Focus time panel */}
                     {(focusedMins > 0 || todo.estimated_mins) && (
-                      <div className="rounded-[12px] px-3 py-2.5" style={{ background: "rgba(77,166,255,0.07)", border: "0.5px solid rgba(77,166,255,0.20)" }}>
+                      <div className="rounded-[12px] px-3 py-2.5"
+                        style={{ background: "rgba(77,166,255,0.07)", border: "0.5px solid rgba(77,166,255,0.20)" }}>
                         <p className="text-[9px] font-mono uppercase tracking-wider mb-2" style={{ color: "rgba(77,166,255,0.60)" }}>⏱ Focus time</p>
                         <div className="flex flex-wrap gap-4 text-[10px] font-mono">
-                          {todo.estimated_mins && (<span style={{ color: "var(--text-muted)" }}>Estimated: <span style={{ color: "var(--text-secondary)" }}>{todo.estimated_mins < 60 ? `${todo.estimated_mins}m` : `${Math.floor(todo.estimated_mins/60)}h${todo.estimated_mins%60>0?` ${todo.estimated_mins%60}m`:""}`}</span></span>)}
-                          {focusedMins > 0 && (<span style={{ color: "var(--text-muted)" }}>Focused: <span style={{ color: "#4da6ff", fontWeight: 600 }}>{focusedMins < 60 ? `${focusedMins}m` : `${Math.floor(focusedMins/60)}h${focusedMins%60>0?` ${focusedMins%60}m`:""}`}</span> <span style={{ color: "var(--text-tertiary)" }}>({focusSessCount} session{focusSessCount!==1?"s":""})</span></span>)}
-                          {todo.estimated_mins && focusedMins > 0 && ((() => { const r = todo.estimated_mins - focusedMins; return r > 0 ? <span style={{ color: "var(--text-muted)" }}>Remaining: <span style={{ color: "#f5a623" }}>{r}m</span></span> : <span style={{ color: "#f87171", fontWeight: 600 }}>Exceeded by {Math.abs(r)}m</span>; })())}
-                          {focusedMins === 0 && todo.estimated_mins && (<span style={{ color: "var(--text-tertiary)" }}>No sessions yet</span>)}
+                          {todo.estimated_mins && (
+                            <span style={{ color: "var(--text-muted)" }}>Estimated:{" "}
+                              <span style={{ color: "var(--text-secondary)" }}>
+                                {todo.estimated_mins < 60 ? `${todo.estimated_mins}m` : `${Math.floor(todo.estimated_mins/60)}h${todo.estimated_mins%60>0?` ${todo.estimated_mins%60}m`:""}`}
+                              </span>
+                            </span>
+                          )}
+                          {focusedMins > 0 && (
+                            <span style={{ color: "var(--text-muted)" }}>Focused:{" "}
+                              <span style={{ color: "#4da6ff", fontWeight: 600 }}>
+                                {focusedMins < 60 ? `${focusedMins}m` : `${Math.floor(focusedMins/60)}h${focusedMins%60>0?` ${focusedMins%60}m`:""}`}
+                              </span>
+                              {" "}<span style={{ color: "var(--text-tertiary)" }}>({focusSessCount} session{focusSessCount!==1?"s":""})</span>
+                            </span>
+                          )}
+                          {todo.estimated_mins && focusedMins > 0 && ((() => {
+                            const r = todo.estimated_mins - focusedMins;
+                            return r > 0
+                              ? <span style={{ color: "var(--text-muted)" }}>Remaining: <span style={{ color: "#f5a623" }}>{r}m</span></span>
+                              : <span style={{ color: "#f87171", fontWeight: 600 }}>Exceeded by {Math.abs(r)}m</span>;
+                          })())}
+                          {focusedMins === 0 && todo.estimated_mins && (
+                            <span style={{ color: "var(--text-tertiary)" }}>No sessions yet</span>
+                          )}
                         </div>
-                        {todo.estimated_mins && focusedMins > 0 && (<div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(77,166,255,0.12)" }}><div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, Math.round((focusedMins/todo.estimated_mins)*100))}%`, background: focusedMins > todo.estimated_mins ? "#f87171" : "#4da6ff" }} /></div>)}
+                        {todo.estimated_mins && focusedMins > 0 && (
+                          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(77,166,255,0.12)" }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${Math.min(100, Math.round((focusedMins/todo.estimated_mins)*100))}%`,
+                                background: focusedMins > todo.estimated_mins ? "#f87171" : "#4da6ff" }} />
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Checklist */}
-                    <ChecklistPanel todo={todo} />
+                    {/* ── Checklist Panel ── */}
+                    {(() => {
+                      const items: ChecklistItem[] = todo.checklist ?? [];
+                      const doneCount = items.filter((i) => i.done).length;
+                      const total = items.length;
+                      const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+                      const saveChecklist = async (updated: ChecklistItem[]) => {
+                        await updateTodo(todo.id, { checklist: updated });
+                      };
+                      return (
+                        <div className="rounded-[12px] px-3 py-2.5"
+                          style={{ background: "rgba(94,207,149,0.06)", border: "0.5px solid rgba(94,207,149,0.18)" }}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className="text-[9px] font-mono uppercase tracking-wider"
+                              style={{ color: "rgba(94,207,149,0.70)" }}>☑ Checklist</p>
+                            {total > 0 && (
+                              <span className="text-[9px] font-mono" style={{ color: "rgba(94,207,149,0.70)" }}>
+                                {doneCount}/{total} · {pct}%
+                              </span>
+                            )}
+                          </div>
+                          {total > 0 && (
+                            <div className="mb-2.5 h-1 rounded-full overflow-hidden"
+                              style={{ background: "rgba(94,207,149,0.12)" }}>
+                              <div className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%`, background: "#5ecf95" }} />
+                            </div>
+                          )}
+                          <div className="space-y-1.5">
+                            {items.map((item) => (
+                              <div key={item.id} className="flex items-center gap-2 group/item">
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await saveChecklist(items.map((i) => i.id === item.id ? { ...i, done: !i.done } : i));
+                                  }}
+                                  className="flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-all"
+                                  style={{ background: item.done ? "#5ecf95" : "transparent", border: `1.5px solid ${item.done ? "#5ecf95" : "rgba(255,255,255,0.22)"}` }}>
+                                  {item.done && (
+                                    <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#0a0a0b" strokeWidth="2.5" strokeLinecap="round">
+                                      <path d="M2 6l3 3 5-5"/>
+                                    </svg>
+                                  )}
+                                </button>
+                                <span className="flex-1 text-[11px] font-mono transition-all"
+                                  style={{ color: item.done ? "var(--text-muted)" : "var(--text-secondary)", textDecoration: item.done ? "line-through" : "none" }}>
+                                  {item.text}
+                                </span>
+                                <button
+                                  onClick={async (e) => { e.stopPropagation(); await saveChecklist(items.filter((i) => i.id !== item.id)); }}
+                                  className="opacity-0 group-hover/item:opacity-100 flex-shrink-0 w-4 h-4 flex items-center justify-center transition-opacity"
+                                  style={{ color: "#f87171" }}>
+                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <ChecklistInput
+                            onAdd={async (text) => {
+                              const newItem: ChecklistItem = { id: crypto.randomUUID(), text, done: false };
+                              await saveChecklist([...items, newItem]);
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
 
-                    {(todo.tags ?? []).length > 0 && (<div className="flex flex-wrap gap-1">{(todo.tags ?? []).map((tag) => (<span key={tag} className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>{tag}</span>))}</div>)}
+                    {(todo.tags ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {(todo.tags ?? []).map((tag) => (
+                          <span key={tag} className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                            style={{ background: "var(--glass-fill-deep)", color: "var(--text-muted)", border: "0.5px solid var(--glass-border-subtle)" }}>{tag}</span>
+                        ))}
+                      </div>
+                    )}
                     {(todo.resource_links ?? []).length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Resources</p>
-                        {todo.resource_links.map((r, i) => (<a key={i} href={r.url} target="_blank" rel="noopener" className="flex items-center gap-2 px-3 py-2 rounded-[11px] transition-all hover:opacity-80" style={{ background: "var(--accent-muted)", border: "0.5px solid var(--accent-dim)", textDecoration: "none" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--accent)", flexShrink: 0 }}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg><span className="text-[11px] font-mono flex-1 truncate" style={{ color: "var(--accent)" }}>{r.title}</span><span className="text-[9px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)" }}>{r.type}</span></a>))}
+                        {todo.resource_links.map((r, i) => (
+                          <a key={i} href={r.url} target="_blank" rel="noopener"
+                            className="flex items-center gap-2 px-3 py-2 rounded-[11px] transition-all hover:opacity-80"
+                            style={{ background: "var(--accent-muted)", border: "0.5px solid var(--accent-dim)", textDecoration: "none" }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--accent)", flexShrink: 0 }}>
+                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                              <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            <span className="text-[11px] font-mono flex-1 truncate" style={{ color: "var(--accent)" }}>{r.title}</span>
+                            <span className="text-[9px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)" }}>{r.type}</span>
+                          </a>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -577,7 +989,9 @@ export default function TasksPage() {
         </div>
       )}
 
-      {showModal && (<TodoModal key={editTodo?.id ?? "new"} todo={editTodo} onSave={handleSave} onClose={() => { setShowModal(false); setEditTodo(null); }} />)}
+      {showModal && (
+        <TodoModal key={editTodo?.id ?? "new"} todo={editTodo} onSave={handleSave} onClose={() => { setShowModal(false); setEditTodo(null); }} />
+      )}
     </div>
   );
 }

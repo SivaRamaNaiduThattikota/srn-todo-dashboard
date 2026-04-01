@@ -26,7 +26,28 @@ export default function AnalyticsPage() {
     todos.forEach((t) => { if (!byAgent[t.assigned_agent]) byAgent[t.assigned_agent] = { total: 0, done: 0 }; byAgent[t.assigned_agent].total++; if (t.status === "done") byAgent[t.assigned_agent].done++; });
     const byStatus = { pending: todos.filter((t) => t.status === "pending").length, in_progress: todos.filter((t) => t.status === "in_progress").length, done, blocked: todos.filter((t) => t.status === "blocked").length };
     const overdue = todos.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "done").length;
-    return { total, done, completionRate, byPriority, byAgent, byStatus, overdue };
+    // Checklist stats
+    const withChecklist = todos.filter((t) => (t.checklist ?? []).length > 0);
+    const checklistTotal = withChecklist.length;
+    const avgChecklistPct = checklistTotal > 0
+      ? Math.round(withChecklist.reduce((sum, t) => {
+          const cl = t.checklist ?? [];
+          return sum + (cl.length > 0 ? cl.filter((i: { done: boolean }) => i.done).length / cl.length : 0);
+        }, 0) / checklistTotal * 100)
+      : null;
+    const incompleteChecklists = withChecklist
+      .filter((t) => {
+        const cl = t.checklist ?? [];
+        return cl.length > 0 && cl.some((i: { done: boolean }) => !i.done);
+      })
+      .map((t) => {
+        const cl = t.checklist ?? [];
+        const done = cl.filter((i: { done: boolean }) => i.done).length;
+        return { title: t.title, done, total: cl.length, pct: Math.round((done / cl.length) * 100) };
+      })
+      .sort((a, b) => a.pct - b.pct)
+      .slice(0, 6);
+    return { total, done, completionRate, byPriority, byAgent, byStatus, overdue, checklistTotal, avgChecklistPct, incompleteChecklists };
   }, [todos]);
 
   const chartData = useMemo(() => {
@@ -220,6 +241,67 @@ export default function AnalyticsPage() {
               })}
             </div>
           </div>
+
+          {/* ── Checklist Completion ── */}
+          {stats.checklistTotal > 0 && (
+            <div className="glass rounded-2xl p-4 sm:p-6 animate-fade-in-up" style={{ animationDelay: "220ms" }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Checklist completion</h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+                    {stats.checklistTotal} task{stats.checklistTotal !== 1 ? "s" : ""} with checklists
+                  </span>
+                  {stats.avgChecklistPct !== null && (
+                    <span className="text-sm font-semibold font-mono"
+                      style={{ color: stats.avgChecklistPct >= 75 ? "#6ee7b7" : stats.avgChecklistPct >= 40 ? "#fbbf24" : "#f87171" }}>
+                      {stats.avgChecklistPct}% avg
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Avg progress bar */}
+              {stats.avgChecklistPct !== null && (
+                <div className="mb-4 h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${stats.avgChecklistPct}%`,
+                      background: stats.avgChecklistPct >= 75 ? "#6ee7b7" : stats.avgChecklistPct >= 40 ? "#fbbf24" : "#f87171",
+                    }} />
+                </div>
+              )}
+              {/* Incomplete checklists */}
+              {stats.incompleteChecklists.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
+                    Incomplete — tasks with unfinished steps
+                  </p>
+                  <div className="space-y-2">
+                    {stats.incompleteChecklists.map((item, i) => (
+                      <div key={i}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-mono truncate flex-1 mr-2" style={{ color: "var(--text-secondary)" }}>
+                            {item.title}
+                          </span>
+                          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--text-muted)" }}>
+                            {item.done}/{item.total} · {item.pct}%
+                          </span>
+                        </div>
+                        <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${item.pct}%`, background: item.pct >= 75 ? "#6ee7b7" : item.pct >= 40 ? "#fbbf24" : "#f87171" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {stats.incompleteChecklists.length === 0 && (
+                <p className="text-xs font-mono text-center py-2" style={{ color: "#6ee7b7" }}>
+                  ✓ All checklists complete!
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Recent Activity */}
           <div className="glass rounded-2xl p-4 sm:p-6 animate-fade-in-up" style={{ animationDelay: "240ms" }}>

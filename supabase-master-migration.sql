@@ -709,3 +709,47 @@ CREATE POLICY "anon_all_interview_prep"
 --
 -- Supabase free tier: 500MB storage, no time limit.
 -- For your usage (personal dashboard), this lasts 3-5+ years easily.
+
+
+-- Fix: split into BEFORE UPDATE (for completed_at) + AFTER INSERT (for activity log)
+
+-- Function for BEFORE UPDATE only — sets completed_at
+CREATE OR REPLACE FUNCTION set_completed_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.status != NEW.status THEN
+    IF NEW.status = 'done' THEN NEW.completed_at = now();
+    ELSE NEW.completed_at = NULL; END IF;
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+-- Function for AFTER INSERT OR UPDATE — logs to activity_log
+CREATE OR REPLACE FUNCTION log_todo_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO activity_log (todo_id, action, new_value)
+    VALUES (NEW.id, 'created', NEW.title);
+  ELSIF TG_OP = 'UPDATE' AND OLD.status != NEW.status THEN
+    INSERT INTO activity_log (todo_id, action, old_value, new_value)
+    VALUES (NEW.id, 'status_changed', OLD.status, NEW.status);
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+-- Drop old trigger
+DROP TRIGGER IF EXISTS log_todo_changes_trigger ON todos;
+
+-- BEFORE UPDATE for completed_at
+DROP TRIGGER IF EXISTS set_completed_at_trigger ON todos;
+CREATE TRIGGER set_completed_at_trigger
+  BEFORE UPDATE ON todos
+  FOR EACH ROW EXECUTE FUNCTION set_completed_at();
+
+-- AFTER INSERT OR UPDATE for activity log
+CREATE TRIGGER log_todo_changes_trigger
+  AFTER INSERT OR UPDATE ON todos
+  FOR EACH ROW EXECUTE FUNCTION log_todo_changes();
+  
+  ALTER TABLE todos ADD COLUMN IF NOT EXISTS checklist jsonb NOT NULL DEFAULT '[]'::jsonb;
