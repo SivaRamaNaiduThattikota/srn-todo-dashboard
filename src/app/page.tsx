@@ -34,8 +34,11 @@ const TABS = ["basics", "details", "resources"] as const;
 type TabId = typeof TABS[number];
 
 function priorityColor(p: TodoPriority) { return PRIORITY_OPTIONS.find((o) => o.value === p)?.color ?? "#94a3b8"; }
-function formatDate(d: string | null) {
+
+// Fix 2: formatDate now accepts status — done tasks never show overdue
+function formatDate(d: string | null, status?: string) {
   if (!d) return null;
+  if (status === "done") return null;  // Done tasks: hide due date badge entirely
   const diff = Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
   if (diff < 0)   return { label: `${Math.abs(diff)}d overdue`, color: "#f87171" };
   if (diff === 0) return { label: "Due today",                   color: "#f5a623" };
@@ -90,8 +93,11 @@ function TodoModal({ todo, onSave, onClose }: ModalProps) {
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         resource_links: resources,
       });
+      // onSave (TasksPage.handleSave) already calls setShowModal(false)
       onClose();
-    } catch { setSaving(false); }
+    } catch {
+      setSaving(false);  // Reset so button unblocks on error
+    }
   };
 
   const isLastTab  = tabIdx === TABS.length - 1;
@@ -371,10 +377,12 @@ export default function TasksPage() {
     return true;
   });
 
+  // Fix 1: handleSave closes modal on success for both add and edit
   const handleSave = useCallback(async (data: Partial<Todo>) => {
     if (editTodo) await updateTodo(editTodo.id, data);
     else          await addTodo(data);
     setEditTodo(null);
+    setShowModal(false);  // Always close after successful save
   }, [editTodo]);
 
   const handleDelete = useCallback(async (id: string) => { await deleteTodo(id); }, []);
@@ -442,23 +450,23 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-  <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-    <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
-  </button>
-  <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-    <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
-  </button>
-  <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-    <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
-  </button>
-  <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
-    style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
-    <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
-  </button>
-  <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0">
-    <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
-  </button>
-</div>
+            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
+            </button>
+            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
+            </button>
+            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
+            </button>
+            <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
+              style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
+              <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
+            </button>
+            <button onClick={() => { setEditTodo(null); setShowModal(true); }} className="cc-btn cc-btn-accent px-3 sm:px-4 py-2 text-xs flex-shrink-0">
+              <span style={{ position: "relative", zIndex: 3 }}>+ Task</span>
+            </button>
+          </div>
         </div>
 
         <div className="relative mb-3">
@@ -469,9 +477,7 @@ export default function TasksPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks, tags…"
             className="w-full rounded-[16px] pl-9 pr-4 py-3 text-xs font-mono focus:outline-none transition-all"
             style={{
-              background: "var(--bg-input)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+              background: "var(--bg-input)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
               border: `0.5px solid ${search ? "var(--accent)" : "var(--glass-border)"}`,
               color: "var(--text-primary)",
               boxShadow: search ? `0 0 0 3px var(--accent-muted), inset 0 1px 0 var(--specular-inner)` : "inset 0 1px 0 var(--specular-inner), var(--shadow-sm)",
@@ -565,7 +571,7 @@ export default function TasksPage() {
           {filtered.map((todo, idx) => {
             const isExpanded = expandedId === todo.id;
             const isSelected = selectedIds.has(todo.id);
-            const due = formatDate(todo.due_date);
+            const due = formatDate(todo.due_date, todo.status);  // Pass status — done tasks get null
             const sc  = STATUS_OPTIONS.find((s) => s.value === todo.status)!;
 
             return (
@@ -584,9 +590,7 @@ export default function TasksPage() {
                     : "var(--shadow-md), inset 0 1px 0 var(--specular-top)",
                 }}>
 
-                {/* Specular highlight */}
                 <div style={{ position: "absolute", top: 0, left: "6%", right: "6%", height: "0.5px", background: "linear-gradient(90deg, transparent, var(--specular-top), transparent)", pointerEvents: "none", zIndex: 4 }} />
-                {/* Inner glass overlay */}
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "42%", background: "linear-gradient(180deg, var(--specular-inner) 0%, transparent 100%)", pointerEvents: "none", zIndex: 2, mixBlendMode: "overlay", borderRadius: "22px 22px 0 0" }} />
 
                 <div className="relative flex items-center gap-2 px-3 py-3" style={{ zIndex: 5 }}>
@@ -598,18 +602,15 @@ export default function TasksPage() {
                     </button>
                   )}
 
-                  {/* Simple status dot */}
                   <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
                     style={{ background: sc.color, boxShadow: `0 0 6px ${sc.color}90`, flexShrink: 0 }} />
 
-                  {/* Title — always visible */}
                   <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : todo.id)}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-medium truncate"
                         style={{ color: todo.status === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: todo.status === "done" ? "line-through" : "none" }}>
                         {todo.title}
                       </span>
-                      {/* Badges — hidden on mobile, visible on sm+ */}
                       <span className="hidden sm:inline text-[9px] font-mono px-1.5 py-0.5 rounded-full flex-shrink-0"
                         style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>
                         {todo.priority}
@@ -626,42 +627,31 @@ export default function TasksPage() {
                     )}
                   </button>
 
-                  {/* Right controls */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
-
-                    {/* Status dropdown — always visible */}
                     <div className="relative flex-shrink-0" style={{ height: "28px" }}>
                       <div className="flex items-center gap-1 px-2 h-full rounded-[10px] pointer-events-none"
                         style={{
-                          background: `${sc.color}18`,
-                          border: `0.5px solid ${sc.color}55`,
-                          boxShadow: `inset 0 1px 0 ${sc.color}25`,
-                          color: sc.color,
-                          fontSize: "10px",
-                          fontFamily: "monospace",
-                          fontWeight: 600,
-                          minWidth: "28px",
-                          whiteSpace: "nowrap",
+                          background: `${sc.color}18`, border: `0.5px solid ${sc.color}55`,
+                          boxShadow: `inset 0 1px 0 ${sc.color}25`, color: sc.color,
+                          fontSize: "10px", fontFamily: "monospace", fontWeight: 600,
+                          minWidth: "28px", whiteSpace: "nowrap",
                         }}>
                         <span style={{ fontSize: "10px" }}>{sc.label}</span>
                       </div>
-                      <select
-                        value={todo.status}
+                      <select value={todo.status}
                         onChange={async (e) => {
                           const next = e.target.value as TodoStatus;
-                          await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) });
+                          await updateTodo(todo.id, { status: next, ...(next === "done" ? { completed_at: new Date().toISOString() } : { completed_at: null }) });
                         }}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                         style={{ fontSize: "14px" }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                        onClick={(e) => e.stopPropagation()}>
                         {STATUS_OPTIONS.map((s) => (
                           <option key={s.value} value={s.value}>{s.icon} {s.label}</option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Edit + Delete — hidden on mobile, visible on sm+ */}
                     <button onClick={() => { setEditTodo(todo); setShowModal(true); }}
                       className="hidden sm:flex w-7 h-7 items-center justify-center rounded-xl"
                       style={{ color: "var(--text-muted)", background: "var(--glass-fill)", backdropFilter: "blur(8px)", border: "0.5px solid var(--glass-border)", boxShadow: "inset 0 1px 0 var(--specular-inner), 0 1px 4px rgba(0,0,0,0.18)", transition: "all 0.18s ease" }}>
@@ -679,7 +669,6 @@ export default function TasksPage() {
                       </svg>
                     </button>
 
-                    {/* Chevron — always visible */}
                     <button onClick={() => setExpandedId(isExpanded ? null : todo.id)}
                       className="w-7 h-7 flex items-center justify-center rounded-xl" style={{ color: "var(--text-muted)" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
@@ -692,8 +681,6 @@ export default function TasksPage() {
 
                 {isExpanded && (
                   <div className="px-4 pb-4 space-y-3 animate-fade-in" style={{ borderTop: "0.5px solid var(--glass-border-subtle)", background: "rgba(0,0,0,0.12)", backdropFilter: "blur(8px)" }}>
-
-                    {/* Mobile-only: badges + action buttons */}
                     <div className="flex items-center gap-2 pt-3 flex-wrap sm:hidden">
                       <span className="text-[9px] font-mono px-2 py-1 rounded-full"
                         style={{ background: `${priorityColor(todo.priority)}15`, color: priorityColor(todo.priority), border: `0.5px solid ${priorityColor(todo.priority)}30` }}>
@@ -736,7 +723,7 @@ export default function TasksPage() {
                       <span>Agent: <span style={{ color: "var(--text-secondary)" }}>@{todo.assigned_agent}</span></span>
                       {todo.estimated_mins && <span>Est: <span style={{ color: "var(--text-secondary)" }}>{todo.estimated_mins}m</span></span>}
                       {todo.start_date && <span>Start: <span style={{ color: "var(--text-secondary)" }}>{todo.start_date.slice(0, 10)}</span></span>}
-                      {todo.due_date && <span>Due: <span style={{ color: due?.color ?? "var(--text-secondary)" }}>{todo.due_date.slice(0, 10)}</span></span>}
+                      {todo.due_date && <span>Due: <span style={{ color: todo.status === "done" ? "var(--text-secondary)" : (due?.color ?? "var(--text-secondary)") }}>{todo.due_date.slice(0, 10)}{todo.status === "done" ? " ✓" : ""}</span></span>}
                     </div>
                     {(todo.tags ?? []).length > 0 && (
                       <div className="flex flex-wrap gap-1">
