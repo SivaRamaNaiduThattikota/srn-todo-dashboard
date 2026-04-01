@@ -382,10 +382,16 @@ export default function TasksPage() {
   });
 
   const handleSave = useCallback(async (data: Partial<Todo>) => {
-    if (editTodo) await updateTodo(editTodo.id, data);
-    else          await addTodo(data);
-    setEditTodo(null);
-    setShowModal(false);
+    try {
+      if (editTodo) await updateTodo(editTodo.id, data);
+      else          await addTodo(data);
+      setEditTodo(null);
+      setShowModal(false);
+    } catch (err: any) {
+      window.dispatchEvent(new CustomEvent("srn:toast", {
+        detail: { message: err?.message || "Failed to save task", type: "error" },
+      }));
+    }
   }, [editTodo]);
 
   const handleDelete = useCallback(async (id: string) => { await deleteTodo(id); }, []);
@@ -415,12 +421,21 @@ export default function TasksPage() {
     if (!t || quickAdding) return;
     setQuickAdding(true);
     try {
-      await addTodo({ title: t, description: "", status: "pending", priority: "medium",
-        category: "general", assigned_agent: "srn", tags: [], resource_links: [] });
+      await addTodo({
+        title: t, description: "", status: "pending" as const,
+        priority: "medium" as const, category: "general" as const,
+        assigned_agent: "srn", tags: [], resource_links: [],
+        estimated_mins: null, start_date: null, due_date: null,
+      });
       setQuickTitle("");
       window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: `Added: ${t}`, type: "success" } }));
-    } catch {}
-    setQuickAdding(false);
+    } catch (err: any) {
+      window.dispatchEvent(new CustomEvent("srn:toast", {
+        detail: { message: err?.message || "Failed to add task", type: "error" },
+      }));
+    } finally {
+      setQuickAdding(false);
+    }
   };
 
   const exportCSV = () => {
