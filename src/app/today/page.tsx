@@ -17,7 +17,7 @@ export default function TodayPage() {
   useEffect(() => {
     fetchHabits().then(setHabits).catch(() => {});
     fetchHabitLogs(7).then(setLogs).catch(() => {});
-    fetchFocusSessions(30).then(setSessions).catch(() => {});  // 30 days to capture today properly
+    fetchFocusSessions(30).then(setSessions).catch(() => {});
     fetchLearningStats().then(setLearnStats).catch(() => {});
   }, []);
 
@@ -66,10 +66,21 @@ export default function TodayPage() {
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  // Daily score 0-100 — resets every day
+  // Habits 40% + Focus 35% (max at 60min) + Tasks done 25% (max at 3)
+  const dailyScore = useMemo(() => {
+    const habitPct = habitsTotal > 0 ? habitsCompleted / habitsTotal : 0;
+    const focusPct = Math.min(todayFocusMinutes / 60, 1);
+    const taskPct  = Math.min(todayDone.length / 3, 1);
+    return Math.round(habitPct * 40 + focusPct * 35 + taskPct * 25);
+  }, [habitsCompleted, habitsTotal, todayFocusMinutes, todayDone]);
+
+  const scoreColor = dailyScore >= 90 ? "var(--accent)" : dailyScore >= 70 ? "#5ecf95" : dailyScore >= 40 ? "#f5a623" : "#f87171";
+  const scoreLabel = dailyScore >= 90 ? "Excellent" : dailyScore >= 70 ? "Good day" : dailyScore >= 40 ? "Decent" : "Keep going";
+
   const learnPct = learnStats && learnStats.totalTopics > 0 ? Math.round((learnStats.doneTopics / learnStats.totalTopics) * 100) : null;
   const weeksPct = learnStats && learnStats.totalWeeks  > 0 ? Math.round((learnStats.doneWeeks  / learnStats.totalWeeks)  * 100) : null;
 
-  // Quick actions — 6 cards in 2x3 grid
   const QUICK_ACTIONS = [
     { href: "/focus",     label: "Start focus",   icon: "⏱", color: "#4da6ff" },
     { href: "/notes",     label: "Add a note",    icon: "📝", color: "#f5a623" },
@@ -93,9 +104,7 @@ export default function TodayPage() {
           {STATUS_ICON[t.status]}
         </button>
         <span className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{t.title}</span>
-        {overdue && (
-          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#ff6b6b" }}>overdue</span>
-        )}
+        {overdue && <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#ff6b6b" }}>overdue</span>}
       </div>
       <span className="text-[10px] font-mono flex-shrink-0 ml-2" style={{ color: "var(--text-muted)" }}>
         {t.priority}
@@ -106,15 +115,38 @@ export default function TodayPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto pb-32 md:pb-10">
 
-      {/* ── Header ── */}
+      {/* ── Header with Daily Score ── */}
       <header className="mb-6 sm:mb-8 animate-fade-in-up">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
-          style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
-          {greeting}, SRN
-        </h1>
-        <p className="text-xs sm:text-sm font-mono mt-1" style={{ color: "var(--text-muted)" }}>
-          {format(new Date(), "EEEE, MMMM d yyyy")}
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
+              style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
+              {greeting}, SRN
+            </h1>
+            <p className="text-xs sm:text-sm font-mono mt-1" style={{ color: "var(--text-muted)" }}>
+              {format(new Date(), "EEEE, MMMM d yyyy")}
+            </p>
+          </div>
+
+          {/* Daily Score Widget */}
+          <div className="flex-shrink-0 flex flex-col items-center px-4 py-2.5 rounded-[18px]"
+            style={{ background: "var(--glass-fill)", backdropFilter: "blur(20px)",
+              border: `0.5px solid ${scoreColor}40`,
+              boxShadow: `0 4px 16px ${scoreColor}18, inset 0 1px 0 rgba(255,255,255,0.15)` }}>
+            <span className="text-[28px] font-bold font-mono leading-none tracking-tight"
+              style={{ color: scoreColor, textShadow: dailyScore >= 90 ? `0 0 20px ${scoreColor}60` : "none" }}>
+              {dailyScore}
+            </span>
+            <span className="text-[9px] font-mono uppercase tracking-wider mt-0.5"
+              style={{ color: scoreColor, opacity: 0.8 }}>
+              {scoreLabel}
+            </span>
+            <div className="w-12 h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(255,255,255,0.12)" }}>
+              <div className="h-full rounded-full transition-all duration-1000"
+                style={{ width: `${dailyScore}%`, background: scoreColor }} />
+            </div>
+          </div>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -198,7 +230,7 @@ export default function TodayPage() {
             </div>
             {todayTasks.length === 0 && overdueTasks.length === 0 ? (
               <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
-                No tasks due today. 
+                No tasks due today.
                 <Link href="/" className="ml-1" style={{ color: "var(--accent)" }}>Add one →</Link>
               </p>
             ) : (
@@ -305,7 +337,7 @@ export default function TodayPage() {
             </Link>
           )}
 
-          {/* Quick actions — 2×3 grid including Interview Prep */}
+          {/* Quick actions */}
           <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
             <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
               Quick actions
