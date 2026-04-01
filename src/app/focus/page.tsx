@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
 import { supabase, startFocusSession, completeFocusSession, fetchFocusSessions, type FocusSession } from "@/lib/supabase";
 import { playDoneSound } from "@/lib/sounds";
@@ -399,6 +399,7 @@ export default function FocusPage() {
   const [savingManual, setSavingManual]       = useState(false);
   const [isPaused, setIsPaused]               = useState(false);
   const [isStarting, setIsStarting]           = useState(false);
+  const handleCompleteRef = useRef<() => void>(() => {});
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { fetchFocusSessions(30).then(setSessions).catch(() => {}); }, []);
@@ -431,15 +432,10 @@ export default function FocusPage() {
     return best ? `${Number(best[0]) % 12 || 12}${Number(best[0]) >= 12 ? "PM" : "AM"}` : "—";
   }, [sessions]);
 
-  // Store handleComplete in a ref so useEffect can call latest version without stale closure
-  const handleCompleteRef = useRef<() => void>(() => {});
-
   useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      handleCompleteRef.current();
-    }
+    } else if (timeLeft === 0 && isRunning) { handleCompleteRef.current(); }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, isPaused, timeLeft]);
 
@@ -454,7 +450,7 @@ export default function FocusPage() {
       setFullscreen(true);
     } catch (err: any) {
       window.dispatchEvent(new CustomEvent("srn:toast", {
-        detail: { message: err?.message || "Failed to start session", type: "error" },
+        detail: { message: err?.message || "Failed to start session — check connection", type: "error" },
       }));
     } finally {
       setIsStarting(false);
@@ -471,9 +467,9 @@ export default function FocusPage() {
     setCurrentSession(null);
   };
   const handlePause  = () => { setIsPaused(true);  };
-  // Keep ref in sync with latest handleComplete (fixes stale closure in useEffect)
-  handleCompleteRef.current = handleComplete;
   const handleResume = () => { setIsPaused(false); };
+  // Keep ref in sync with latest handleComplete (fixes stale closure)
+  handleCompleteRef.current = handleComplete;
   const handleStop = () => {
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
     setTimeLeft(duration * 60); setCurrentSession(null);
@@ -645,9 +641,7 @@ export default function FocusPage() {
                   <button onClick={handleStart} disabled={isStarting}
                     className="cc-btn cc-btn-accent px-12 py-3.5 text-sm disabled:opacity-60"
                     style={{ minWidth: "160px", fontSize: "var(--text-md)" }}>
-                    <span style={{ position: "relative", zIndex: 3 }}>
-                      {isStarting ? "Starting…" : "▶ Start"}
-                    </span>
+                    <span style={{ position: "relative", zIndex: 3 }}>{isStarting ? "Starting…" : "▶ Start"}</span>
                   </button>
                 </div>
               ) : (
