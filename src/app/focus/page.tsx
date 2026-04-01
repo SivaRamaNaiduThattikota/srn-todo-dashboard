@@ -398,6 +398,7 @@ export default function FocusPage() {
   const [manualCustomDur, setManualCustomDur] = useState("");
   const [savingManual, setSavingManual]       = useState(false);
   const [isPaused, setIsPaused]               = useState(false);
+  const [isStarting, setIsStarting]           = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { fetchFocusSessions(30).then(setSessions).catch(() => {}); }, []);
@@ -430,17 +431,34 @@ export default function FocusPage() {
     return best ? `${Number(best[0]) % 12 || 12}${Number(best[0]) >= 12 ? "PM" : "AM"}` : "—";
   }, [sessions]);
 
+  // Store handleComplete in a ref so useEffect can call latest version without stale closure
+  const handleCompleteRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    } else if (timeLeft === 0 && isRunning) { handleComplete(); }
+    } else if (timeLeft === 0 && isRunning) {
+      handleCompleteRef.current();
+    }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, isPaused, timeLeft]);
 
   const handleStart = async () => {
-    const session = await startFocusSession(selectedTodo || null, duration);
-    setCurrentSession(session); setTimeLeft(duration * 60); setIsRunning(true);
-    setFullscreen(true);
+    if (isStarting) return;
+    setIsStarting(true);
+    try {
+      const session = await startFocusSession(selectedTodo || null, duration);
+      setCurrentSession(session);
+      setTimeLeft(duration * 60);
+      setIsRunning(true);
+      setFullscreen(true);
+    } catch (err: any) {
+      window.dispatchEvent(new CustomEvent("srn:toast", {
+        detail: { message: err?.message || "Failed to start session", type: "error" },
+      }));
+    } finally {
+      setIsStarting(false);
+    }
   };
   const handleComplete = async () => {
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
@@ -453,6 +471,8 @@ export default function FocusPage() {
     setCurrentSession(null);
   };
   const handlePause  = () => { setIsPaused(true);  };
+  // Keep ref in sync with latest handleComplete (fixes stale closure in useEffect)
+  handleCompleteRef.current = handleComplete;
   const handleResume = () => { setIsPaused(false); };
   const handleStop = () => {
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
@@ -622,8 +642,12 @@ export default function FocusPage() {
                     <option value="">Free focus (no task)</option>
                     {activeTodos.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
                   </select>
-                  <button onClick={handleStart} className="cc-btn cc-btn-accent px-12 py-3.5 text-sm" style={{ minWidth: "160px", fontSize: "var(--text-md)" }}>
-                    <span style={{ position: "relative", zIndex: 3 }}>▶ Start</span>
+                  <button onClick={handleStart} disabled={isStarting}
+                    className="cc-btn cc-btn-accent px-12 py-3.5 text-sm disabled:opacity-60"
+                    style={{ minWidth: "160px", fontSize: "var(--text-md)" }}>
+                    <span style={{ position: "relative", zIndex: 3 }}>
+                      {isStarting ? "Starting…" : "▶ Start"}
+                    </span>
                   </button>
                 </div>
               ) : (
