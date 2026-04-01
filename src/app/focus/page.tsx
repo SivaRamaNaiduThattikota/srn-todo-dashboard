@@ -9,18 +9,43 @@ import { format, isToday, subDays, eachDayOfInterval, isYesterday } from "date-f
 const DURATIONS = [15, 25, 45, 60, 90, 120];
 
 function SplitflapTile({ digit }: { digit: string }) {
-  const [current, setCurrent] = useState(digit);
-  const [next, setNext] = useState(digit);
-  const [flipping, setFlipping] = useState(false);
-  const prevRef = useRef(digit);
+  const [displayed, setDisplayed] = useState(digit); // what the static halves show
+  const [prev, setPrev]           = useState(digit); // the digit being flipped away
+  const [flipping, setFlipping]   = useState(false);
+  const pendingRef = useRef<string | null>(null);
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevDigit  = useRef(digit);
 
   useEffect(() => {
-    if (digit === prevRef.current) return;
-    setNext(digit);
+    if (digit === prevDigit.current) return;
+    prevDigit.current = digit;
+
+    if (flipping) {
+      // Already mid-flip — queue the new digit, apply after current flip ends
+      pendingRef.current = digit;
+      return;
+    }
+
+    // Start flip: keep old digit in the falling top flap, show new digit on static bottom
+    setPrev(displayed);      // top flap shows what was displayed
+    setDisplayed(digit);     // static bottom immediately shows new digit
     setFlipping(true);
-    const t = setTimeout(() => { setCurrent(digit); setFlipping(false); prevRef.current = digit; }, 360);
-    return () => clearTimeout(t);
-  }, [digit]);
+
+    timerRef.current = setTimeout(() => {
+      setFlipping(false);
+      // If another digit came in while we were flipping, kick off another flip
+      if (pendingRef.current !== null) {
+        const next = pendingRef.current;
+        pendingRef.current = null;
+        setPrev(digit);
+        setDisplayed(next);
+        setFlipping(true);
+        timerRef.current = setTimeout(() => setFlipping(false), 200);
+      }
+    }, 200);
+
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [digit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const W = "clamp(64px, 12vw, 120px)";
   const H = "clamp(86px, 16vw, 160px)";
@@ -33,24 +58,31 @@ function SplitflapTile({ digit }: { digit: string }) {
 
   return (
     <div style={{ width: W, height: H, position: "relative", borderRadius: "12px", overflow: "hidden", flexShrink: 0, boxShadow: "0 12px 40px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
+
+      {/* Static TOP half — always shows `displayed` (new digit) */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "#1d1d1d", overflow: "hidden" }}>
-        <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{current}</span>
+        <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{displayed}</span>
       </div>
+
+      {/* Static BOTTOM half — always shows `displayed` (new digit) */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: "#151515", overflow: "hidden" }}>
-        <span style={{ ...numStyle, color: "#9a9a9a", bottom: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{current}</span>
+        <span style={{ ...numStyle, color: "#9a9a9a", bottom: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{displayed}</span>
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "14px", background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)", zIndex: 5 }} />
       </div>
+
+      {/* Animated flap — TOP half falling away, showing OLD digit */}
       {flipping && (
-        <>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "#1d1d1d", overflow: "hidden", transformOrigin: "bottom center", zIndex: 20, animation: "sfTopOut 0.18s ease-in forwards" }}>
-            <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{current}</span>
-          </div>
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: "#151515", overflow: "hidden", transformOrigin: "top center", zIndex: 19, animation: "sfBotIn 0.18s ease-out 0.18s forwards", opacity: 0 }}>
-            <span style={{ ...numStyle, color: "#9a9a9a", bottom: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{next}</span>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "14px", background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)", zIndex: 5 }} />
-          </div>
-        </>
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: "50%",
+          background: "#1d1d1d", overflow: "hidden",
+          transformOrigin: "bottom center", zIndex: 20,
+          animation: "sfTopOut 0.18s ease-in forwards",
+        }}>
+          <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{prev}</span>
+        </div>
       )}
+
+      {/* Centre split line */}
       <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: "3px", background: "#000", transform: "translateY(-50%)", zIndex: 30 }} />
     </div>
   );
@@ -64,9 +96,14 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
   return (
     <>
       <style>{`
-        @keyframes sfTopOut { from { transform: perspective(500px) rotateX(0deg); opacity: 1; } to { transform: perspective(500px) rotateX(-90deg); opacity: 0; } }
-        @keyframes sfBotIn  { from { transform: perspective(500px) rotateX(90deg); opacity: 0; } to { transform: perspective(500px) rotateX(0deg); opacity: 1; } }
-        @keyframes bbcSlideIn { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes sfTopOut {
+          from { transform: perspective(600px) rotateX(0deg);    opacity: 1; }
+          to   { transform: perspective(600px) rotateX(-92deg);  opacity: 0.2; }
+        }
+        @keyframes bbcSlideIn {
+          from { transform: translateY(40px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
       `}</style>
       <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px,2vw,18px)" }}>
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
@@ -220,8 +257,8 @@ export default function FocusPage() {
   const [savingManual, setSavingManual]     = useState(false);
   const [isPaused, setIsPaused]             = useState(false);
   const [isStarting, setIsStarting]         = useState(false);
-  const intervalRef        = useRef<NodeJS.Timeout | null>(null);
-  const handleCompleteRef  = useRef<() => void>(() => {});
+  const intervalRef       = useRef<NodeJS.Timeout | null>(null);
+  const handleCompleteRef = useRef<() => void>(() => {});
 
   useEffect(() => { fetchFocusSessions(30).then(setSessions).catch(() => {}); }, []);
   const activeTodos = useMemo(() => todos.filter((t) => t.status !== "done"), [todos]);
@@ -253,7 +290,6 @@ export default function FocusPage() {
     return best ? `${Number(best[0]) % 12 || 12}${Number(best[0]) >= 12 ? "PM" : "AM"}` : "—";
   }, [sessions]);
 
-  // Timer — uses ref to avoid stale closure when timer hits 0
   useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => setTimeLeft((t) => t - 1), 1000);
