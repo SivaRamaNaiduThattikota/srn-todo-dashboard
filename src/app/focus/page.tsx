@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
 import { supabase, startFocusSession, completeFocusSession, fetchFocusSessions, type FocusSession } from "@/lib/supabase";
 import { playDoneSound } from "@/lib/sounds";
@@ -8,82 +8,104 @@ import { format, isToday, subDays, eachDayOfInterval, isYesterday } from "date-f
 
 const DURATIONS = [15, 25, 45, 60, 90, 120];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Pure-CSS splitflap — flip and number change happen at EXACTLY t=0
+// Layout: 4 layers stacked, all z-indexed, driven by CSS animation only.
+//
+//  Layer 1 (bottom, z=1): static bottom half — NEW digit, always visible
+//  Layer 2 (z=2):         static top half    — NEW digit, always visible
+//  Layer 3 (z=3):         flip flap          — OLD digit top half, rotates -90deg on trigger
+//
+// When digit changes: update all layers instantly (same React render),
+// restart the CSS animation by toggling a key prop.
+// ─────────────────────────────────────────────────────────────────────────────
 function SplitflapTile({ digit }: { digit: string }) {
-  const [displayed, setDisplayed] = useState(digit); // what the static halves show
-  const [prev, setPrev]           = useState(digit); // the digit being flipped away
-  const [flipping, setFlipping]   = useState(false);
-  const pendingRef = useRef<string | null>(null);
-  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevDigit  = useRef(digit);
+  const prevRef    = useRef(digit);
+  const [old, setOld]         = useState(digit);   // digit on the falling flap
+  const [current, setCurrent] = useState(digit);   // digit shown in static halves
+  const [animKey, setAnimKey] = useState(0);        // increment to retrigger CSS anim
 
   useEffect(() => {
-    if (digit === prevDigit.current) return;
-    prevDigit.current = digit;
+    if (digit === prevRef.current) return;
+    // 1. Capture the OLD digit for the falling flap BEFORE updating current
+    setOld(prevRef.current);
+    // 2. Immediately show the NEW digit in both static halves
+    setCurrent(digit);
+    // 3. Restart the CSS animation (same render batch — no delay)
+    setAnimKey(k => k + 1);
+    prevRef.current = digit;
+  }, [digit]);
 
-    if (flipping) {
-      // Already mid-flip — queue the new digit, apply after current flip ends
-      pendingRef.current = digit;
-      return;
-    }
-
-    // Start flip: keep old digit in the falling top flap, show new digit on static bottom
-    setPrev(displayed);      // top flap shows what was displayed
-    setDisplayed(digit);     // static bottom immediately shows new digit
-    setFlipping(true);
-
-    timerRef.current = setTimeout(() => {
-      setFlipping(false);
-      // If another digit came in while we were flipping, kick off another flip
-      if (pendingRef.current !== null) {
-        const next = pendingRef.current;
-        pendingRef.current = null;
-        setPrev(digit);
-        setDisplayed(next);
-        setFlipping(true);
-        timerRef.current = setTimeout(() => setFlipping(false), 200);
-      }
-    }, 200);
-
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [digit]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const W = "clamp(64px, 12vw, 120px)";
-  const H = "clamp(86px, 16vw, 160px)";
+  const W  = "clamp(64px, 12vw, 120px)";
+  const H  = "clamp(86px, 16vw, 160px)";
   const FS = "clamp(52px, 10vw, 100px)";
-  const numStyle: React.CSSProperties = {
-    fontSize: FS, fontWeight: 800, fontFamily: "'Helvetica Neue', Arial, sans-serif",
-    lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none",
-    position: "absolute", left: 0, right: 0, textAlign: "center",
+
+  const base: React.CSSProperties = {
+    position: "absolute", left: 0, right: 0,
+    fontSize: FS, fontWeight: 800,
+    fontFamily: "'Helvetica Neue', Arial, sans-serif",
+    lineHeight: 1, letterSpacing: "-0.04em",
+    userSelect: "none", textAlign: "center",
   };
 
   return (
-    <div style={{ width: W, height: H, position: "relative", borderRadius: "12px", overflow: "hidden", flexShrink: 0, boxShadow: "0 12px 40px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
+    <div style={{
+      width: W, height: H, position: "relative",
+      borderRadius: "12px", overflow: "hidden", flexShrink: 0,
+      boxShadow: "0 12px 40px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)",
+    }}>
 
-      {/* Static TOP half — always shows `displayed` (new digit) */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "#1d1d1d", overflow: "hidden" }}>
-        <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{displayed}</span>
+      {/* ── Layer 1: static BOTTOM half — shows NEW digit immediately ── */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
+        background: "#151515", overflow: "hidden", zIndex: 1,
+      }}>
+        <span style={{ ...base, color: "#9a9a9a", bottom: 0, height: H,
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {current}
+        </span>
+        {/* shadow line at top of bottom half */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "12px",
+          background: "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)", zIndex: 2 }} />
       </div>
 
-      {/* Static BOTTOM half — always shows `displayed` (new digit) */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: "#151515", overflow: "hidden" }}>
-        <span style={{ ...numStyle, color: "#9a9a9a", bottom: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{displayed}</span>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "14px", background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)", zIndex: 5 }} />
+      {/* ── Layer 2: static TOP half — shows NEW digit immediately ── */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: "50%",
+        background: "#1d1d1d", overflow: "hidden", zIndex: 2,
+      }}>
+        <span style={{ ...base, color: "#b4b4b4", top: 0, height: H,
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {current}
+        </span>
       </div>
 
-      {/* Animated flap — TOP half falling away, showing OLD digit */}
-      {flipping && (
-        <div style={{
+      {/* ── Layer 3: animated flap — shows OLD digit, rotates away ── */}
+      {/* key={animKey} forces DOM remount = CSS animation restarts from 0ms */}
+      <div
+        key={animKey}
+        style={{
           position: "absolute", top: 0, left: 0, right: 0, height: "50%",
           background: "#1d1d1d", overflow: "hidden",
-          transformOrigin: "bottom center", zIndex: 20,
-          animation: "sfTopOut 0.18s ease-in forwards",
-        }}>
-          <span style={{ ...numStyle, color: "#b4b4b4", top: 0, height: H, display: "flex", alignItems: "center", justifyContent: "center" }}>{prev}</span>
-        </div>
-      )}
+          transformOrigin: "bottom center", zIndex: 3,
+          animation: animKey > 0 ? "sfFlap 0.22s cubic-bezier(0.4,0,0.6,1) forwards" : "none",
+          backfaceVisibility: "hidden",
+        }}
+      >
+        <span style={{ ...base, color: "#b4b4b4", top: 0, height: H,
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {old}
+        </span>
+        {/* bottom shadow on falling flap */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "16px",
+          background: "linear-gradient(0deg, rgba(0,0,0,0.45) 0%, transparent 100%)", zIndex: 4 }} />
+      </div>
 
-      {/* Centre split line */}
-      <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: "3px", background: "#000", transform: "translateY(-50%)", zIndex: 30 }} />
+      {/* ── Centre split line ── */}
+      <div style={{
+        position: "absolute", top: "50%", left: 0, right: 0,
+        height: "2px", background: "#000", transform: "translateY(-50%)", zIndex: 10,
+      }} />
     </div>
   );
 }
@@ -93,12 +115,14 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
   const m1 = String(mins % 10);
   const s0 = String(Math.floor(secs / 10));
   const s1 = String(secs % 10);
+
   return (
     <>
       <style>{`
-        @keyframes sfTopOut {
-          from { transform: perspective(600px) rotateX(0deg);    opacity: 1; }
-          to   { transform: perspective(600px) rotateX(-92deg);  opacity: 0.2; }
+        /* Flap folds away: top half rotates -90deg around bottom edge */
+        @keyframes sfFlap {
+          0%   { transform: perspective(500px) rotateX(0deg);   opacity: 1; }
+          100% { transform: perspective(500px) rotateX(-90deg); opacity: 0; }
         }
         @keyframes bbcSlideIn {
           from { transform: translateY(40px); opacity: 0; }
@@ -107,14 +131,26 @@ function SplitflapClock({ mins, secs, isRunning }: { mins: number; secs: number;
       `}</style>
       <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px,2vw,18px)" }}>
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
-          <SplitflapTile digit={m0} /><SplitflapTile digit={m1} />
+          <SplitflapTile digit={m0} />
+          <SplitflapTile digit={m1} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "clamp(8px,2vw,16px)", alignItems: "center" }}>
-          <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%", background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)", boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none", transition: "background 0.3s, box-shadow 0.3s" }} />
-          <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%", background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)", boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none", transition: "background 0.3s, box-shadow 0.3s" }} />
+          <div style={{
+            width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%",
+            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)",
+            boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none",
+            transition: "background 0.3s, box-shadow 0.3s",
+          }} />
+          <div style={{
+            width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%",
+            background: isRunning ? "var(--accent)" : "rgba(255,255,255,0.22)",
+            boxShadow: isRunning ? "0 0 10px var(--accent-glow)" : "none",
+            transition: "background 0.3s, box-shadow 0.3s",
+          }} />
         </div>
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
-          <SplitflapTile digit={s0} /><SplitflapTile digit={s1} />
+          <SplitflapTile digit={s0} />
+          <SplitflapTile digit={s1} />
         </div>
       </div>
     </>
@@ -257,8 +293,12 @@ export default function FocusPage() {
   const [savingManual, setSavingManual]     = useState(false);
   const [isPaused, setIsPaused]             = useState(false);
   const [isStarting, setIsStarting]         = useState(false);
-  const intervalRef       = useRef<NodeJS.Timeout | null>(null);
-  const handleCompleteRef = useRef<() => void>(() => {});
+
+  const startedAtRef          = useRef<number>(0);
+  const elapsedBeforePauseRef = useRef<number>(0);
+  const totalMs               = useRef<number>(0);
+  const intervalRef           = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleCompleteRef     = useRef<() => void>(() => {});
 
   useEffect(() => { fetchFocusSessions(30).then(setSessions).catch(() => {}); }, []);
   const activeTodos = useMemo(() => todos.filter((t) => t.status !== "done"), [todos]);
@@ -290,14 +330,19 @@ export default function FocusPage() {
     return best ? `${Number(best[0]) % 12 || 12}${Number(best[0]) >= 12 ? "PM" : "AM"}` : "—";
   }, [sessions]);
 
-  useEffect(() => {
-    if (isRunning && !isPaused && timeLeft > 0) {
-      intervalRef.current = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      handleCompleteRef.current();
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, isPaused, timeLeft]);
+  const startTicking = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    startedAtRef.current = Date.now();
+    intervalRef.current = setInterval(() => {
+      const elapsed   = elapsedBeforePauseRef.current + (Date.now() - startedAtRef.current);
+      const remaining = Math.max(0, totalMs.current - elapsed);
+      setTimeLeft(Math.ceil(remaining / 1000));
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current!);
+        handleCompleteRef.current();
+      }
+    }, 250);
+  }, []);
 
   const handleStart = async () => {
     if (isStarting) return;
@@ -305,9 +350,12 @@ export default function FocusPage() {
     try {
       const session = await startFocusSession(selectedTodo || null, duration);
       setCurrentSession(session);
+      totalMs.current = duration * 60 * 1000;
+      elapsedBeforePauseRef.current = 0;
       setTimeLeft(duration * 60);
       setIsRunning(true);
       setFullscreen(true);
+      startTicking();
     } catch (err: any) {
       window.dispatchEvent(new CustomEvent("srn:toast", {
         detail: { message: err?.message || "Failed to start — check connection", type: "error" },
@@ -317,7 +365,8 @@ export default function FocusPage() {
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = useCallback(async () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
     if (currentSession) {
       await completeFocusSession(currentSession.id);
@@ -326,16 +375,28 @@ export default function FocusPage() {
       setSessions(await fetchFocusSessions(30));
     }
     setCurrentSession(null);
-  };
+  }, [currentSession, duration]);
 
-  const handlePause  = () => { setIsPaused(true); };
-  const handleResume = () => { setIsPaused(false); };
   handleCompleteRef.current = handleComplete;
 
-  const handleStop = () => {
+  const handlePause = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    elapsedBeforePauseRef.current += Date.now() - startedAtRef.current;
+    setIsPaused(true);
+  }, []);
+
+  const handleResume = useCallback(() => {
+    setIsPaused(false);
+    startTicking();
+  }, [startTicking]);
+
+  const handleStop = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
-    setTimeLeft(duration * 60); setCurrentSession(null);
-  };
+    elapsedBeforePauseRef.current = 0;
+    setTimeLeft(duration * 60);
+    setCurrentSession(null);
+  }, [duration]);
 
   const handleManualLog = async () => {
     if (savingManual) return;
