@@ -807,7 +807,7 @@ export default function FocusPage() {
                           <span className="text-xs font-mono truncate" style={{ color: "var(--text-secondary)" }}>{task ? task.title : "Free focus"}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                          <span className="text-xs font-mono font-medium" style={{ color: "var(--accent)" }}>{s.duration_minutes}m</span>
+                          <span className="text-xs font-mono font-medium" style={{ color: "var(--accent)" }}>{s.duration_minutes < 60 ? `${s.duration_minutes}m` : `${Math.floor(s.duration_minutes/60)}h${s.duration_minutes%60>0?` ${s.duration_minutes%60}m`:""}`}</span>
                           <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{dateLabel} {format(sd, "h:mma").toLowerCase()}</span>
                         </div>
                       </div>

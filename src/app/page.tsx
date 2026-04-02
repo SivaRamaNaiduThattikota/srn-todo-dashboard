@@ -897,7 +897,7 @@ export default function TasksPage() {
                       <span>Status: <span style={{ color: sc.color }}>{sc.label}</span></span>
                       <span>Category: <span style={{ color: "var(--text-secondary)" }}>{todo.category}</span></span>
                       <span>Agent: <span style={{ color: "var(--text-secondary)" }}>@{todo.assigned_agent}</span></span>
-                      {todo.estimated_mins && <span>Est: <span style={{ color: "var(--text-secondary)" }}>{todo.estimated_mins}m</span></span>}
+                      {todo.estimated_mins && <span>Est: <span style={{ color: "var(--text-secondary)" }}>{todo.estimated_mins < 60 ? `${todo.estimated_mins}m` : `${Math.floor(todo.estimated_mins/60)}h${todo.estimated_mins%60>0?` ${todo.estimated_mins%60}m`:""}`}</span></span>}
                       {todo.start_date && <span>Start: <span style={{ color: "var(--text-secondary)" }}>{todo.start_date.slice(0, 10)}</span></span>}
                       {todo.due_date && <span>Due: <span style={{ color: due?.color ?? "var(--text-secondary)" }}>{todo.due_date.slice(0, 10)}</span></span>}
                     </div>
