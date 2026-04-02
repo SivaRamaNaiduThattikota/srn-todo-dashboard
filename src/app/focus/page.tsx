@@ -752,12 +752,10 @@ export default function FocusPage() {
               <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Insights</h2>
               <div className="space-y-3">
                 {[
-                  { label: "Today",          value: `${todayMinutes}m`,                              color: "#5ecf95" },
-                  { label: "Yesterday",      value: `${yesterdayMinutes}m`,                          color: "var(--text-secondary)" },
-                  { label: "This week",      value: `${weekMinutes}m`,                               color: "#4da6ff" },
-                  { label: "Daily average",  value: `${avgMinutes}m`,                                color: "#f5a623" },
-                  { label: "Best time",      value: hourDistribution,                                color: "#b48eff" },
-                  { label: "Total sessions", value: `${sessions.filter((s) => s.completed).length}`, color: "var(--text-secondary)" },
+                  { label: "Today",          value: todayMinutes >= 60 ? `${Math.floor(todayMinutes/60)}h${todayMinutes%60>0?` ${todayMinutes%60}m`:""}` : `${todayMinutes}m`,         color: "#5ecf95" },
+                  { label: "Yesterday",      value: yesterdayMinutes >= 60 ? `${Math.floor(yesterdayMinutes/60)}h${yesterdayMinutes%60>0?` ${yesterdayMinutes%60}m`:""}` : `${yesterdayMinutes}m`, color: "var(--text-secondary)" },
+                  { label: "This week",      value: weekMinutes >= 60 ? `${Math.floor(weekMinutes/60)}h${weekMinutes%60>0?` ${weekMinutes%60}m`:""}` : `${weekMinutes}m`,             color: "#4da6ff" },
+                  { label: "Daily average",  value: avgMinutes >= 60 ? `${Math.floor(avgMinutes/60)}h${avgMinutes%60>0?` ${avgMinutes%60}m`:""}` : `${avgMinutes}m`,               color: "#f5a623" },
                 ].map((s) => (
                   <div key={s.label} className="flex items-center justify-between">
                     <span className="text-[11px] sm:text-xs font-mono" style={{ color: "var(--text-muted)" }}>{s.label}</span>
