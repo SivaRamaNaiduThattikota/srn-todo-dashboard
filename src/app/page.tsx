@@ -405,26 +405,6 @@ export default function TasksPage() {
   const [quickTitle, setQuickTitle]       = useState("");
   const [quickAdding, setQuickAdding]     = useState(false);
   const [showQuickAdd, setShowQuickAdd]   = useState(false);
-  const [showMoreMenu, setShowMoreMenu]   = useState(false);
-  const moreMenuRef    = React.useRef<HTMLDivElement>(null);
-  const moreMenuBtnRef = React.useRef<HTMLButtonElement>(null);
-  const [moreMenuPos, setMoreMenuPos] = useState<{ top: number; right: number } | null>(null);
-
-  useEffect(() => {
-    if (!showMoreMenu) { setMoreMenuPos(null); return; }
-    // Calculate position from button so fixed dropdown aligns correctly
-    if (moreMenuBtnRef.current) {
-      const r = moreMenuBtnRef.current.getBoundingClientRect();
-      setMoreMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
-    }
-    const handler = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showMoreMenu]);
   const quickInputRef = React.useRef<HTMLInputElement>(null);
 
 
@@ -531,54 +511,19 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* ⋯ overflow menu — Templates, CSV, JSON, Bulk */}
-            <div ref={moreMenuRef}>
-              <button
-                ref={moreMenuBtnRef}
-                onClick={() => setShowMoreMenu((v) => !v)}
-                className="cc-btn px-3 py-2 text-xs flex-shrink-0"
-                style={{ color: showMoreMenu ? "var(--accent)" : "var(--cc-text-muted)", border: showMoreMenu ? "0.5px solid var(--accent-dim)" : undefined }}>
-                <span style={{ position: "relative", zIndex: 3 }}>⋯</span>
-              </button>
-              {showMoreMenu && moreMenuPos && (
-                <div style={{
-                  position: "fixed",
-                  top: moreMenuPos.top + "px",
-                  right: moreMenuPos.right + "px",
-                  zIndex: 9999,
-                  background: "rgba(14,14,22,0.98)",
-                  backdropFilter: "blur(32px)",
-                  WebkitBackdropFilter: "blur(32px)",
-                  border: "0.5px solid var(--glass-border)",
-                  borderRadius: "16px",
-                  padding: "6px 0",
-                  minWidth: "170px",
-                  boxShadow: "0 8px 40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)",
-                }}>
-                  <button onClick={() => { setShowTemplates(!showTemplates); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono hover:bg-white/5"
-                    style={{ color: "var(--text-secondary)" }}>
-                    ⊞ Templates
-                  </button>
-                  <button onClick={() => { exportCSV(); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono hover:bg-white/5"
-                    style={{ color: "var(--text-secondary)" }}>
-                    ↓ Export CSV
-                  </button>
-                  <button onClick={() => { exportJSON(); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono hover:bg-white/5"
-                    style={{ color: "var(--text-secondary)" }}>
-                    ↓ Export JSON
-                  </button>
-                  <div style={{ height: "0.5px", background: "var(--glass-border-subtle)", margin: "4px 12px" }} />
-                  <button onClick={() => { setBulkMode(!bulkMode); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono hover:bg-white/5"
-                    style={{ color: bulkMode ? "var(--accent)" : "var(--text-secondary)" }}>
-                    ☑ Bulk {bulkMode ? "(on)" : "select"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
+            </button>
+            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
+            </button>
+            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
+              <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
+            </button>
+            <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
+              style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
+              <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
+            </button>
             <button
               onClick={() => { setShowQuickAdd((v) => !v); setTimeout(() => quickInputRef.current?.focus(), 50); }}
               className="cc-btn px-3 py-2 text-xs flex-shrink-0"
