@@ -405,7 +405,9 @@ export default function TasksPage() {
   const [quickTitle, setQuickTitle]       = useState("");
   const [quickAdding, setQuickAdding]     = useState(false);
   const [showQuickAdd, setShowQuickAdd]   = useState(false);
+  const [showMoreMenu, setShowMoreMenu]   = useState(false);
   const quickInputRef = React.useRef<HTMLInputElement>(null);
+
 
   useEffect(() => { fetchTemplates().then(setTemplates).catch(() => {}); }, []);
   useEffect(() => { fetchFocusSessions(90).then(setFocusSessions).catch(() => {}); }, []);
@@ -510,19 +512,41 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => setShowTemplates(!showTemplates)} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-              <span style={{ position: "relative", zIndex: 3 }}>⊞</span>
-            </button>
-            <button onClick={exportCSV} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-              <span style={{ position: "relative", zIndex: 3 }}>CSV</span>
-            </button>
-            <button onClick={exportJSON} className="cc-btn px-3 py-2 text-xs hidden sm:flex" style={{ color: "var(--cc-text-muted)" }}>
-              <span style={{ position: "relative", zIndex: 3 }}>JSON</span>
-            </button>
-            <button onClick={() => setBulkMode(!bulkMode)} className="cc-btn px-3 py-2 text-xs hidden sm:flex"
-              style={{ color: bulkMode ? "var(--accent)" : "var(--cc-text-muted)", border: bulkMode ? "0.5px solid var(--accent-dim)" : undefined }}>
-              <span style={{ position: "relative", zIndex: 3 }}>Bulk</span>
-            </button>
+            {/* ⋯ overflow menu — Templates, CSV, JSON, Bulk */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreMenu((v) => !v)}
+                className="cc-btn px-3 py-2 text-xs flex-shrink-0"
+                style={{ color: showMoreMenu ? "var(--accent)" : "var(--cc-text-muted)", border: showMoreMenu ? "0.5px solid var(--accent-dim)" : undefined }}>
+                <span style={{ position: "relative", zIndex: 3 }}>⋯</span>
+              </button>
+              {showMoreMenu && (
+                <div className="absolute right-0 top-full mt-1.5 rounded-[16px] py-1.5 z-50 min-w-[140px] animate-fade-in"
+                  style={{ background: "var(--glass-fill)", backdropFilter: "blur(32px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-lg), inset 0 1px 0 var(--specular-top)" }}>
+                  <button onClick={() => { setShowTemplates(!showTemplates); setShowMoreMenu(false); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    style={{ color: "var(--text-secondary)" }}>
+                    ⊞ Templates
+                  </button>
+                  <button onClick={() => { exportCSV(); setShowMoreMenu(false); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    style={{ color: "var(--text-secondary)" }}>
+                    ↓ Export CSV
+                  </button>
+                  <button onClick={() => { exportJSON(); setShowMoreMenu(false); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    style={{ color: "var(--text-secondary)" }}>
+                    ↓ Export JSON
+                  </button>
+                  <div style={{ height: "0.5px", background: "var(--glass-border-subtle)", margin: "4px 12px" }} />
+                  <button onClick={() => { setBulkMode(!bulkMode); setShowMoreMenu(false); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    style={{ color: bulkMode ? "var(--accent)" : "var(--text-secondary)" }}>
+                    ☑ Bulk {bulkMode ? "(on)" : "select"}
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => { setShowQuickAdd((v) => !v); setTimeout(() => quickInputRef.current?.focus(), 50); }}
               className="cc-btn px-3 py-2 text-xs flex-shrink-0"
