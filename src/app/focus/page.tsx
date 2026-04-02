@@ -227,7 +227,7 @@ function FullscreenTimer({
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
             <p style={{ fontSize: "clamp(11px,1.2vw,13px)", color: "rgba(255,255,255,0.30)", margin: 0 }}>
-              {format(now, "EEEE, MMMM d")} · Today {todayMinutes}min
+              {format(now, "EEEE, MMMM d")} · Today {todayMinutes >= 60 ? `${Math.floor(todayMinutes/60)}h${todayMinutes%60>0?` ${todayMinutes%60}m`:""}` : `${todayMinutes}m`}
               {isPaused && !isBreakReady && <span style={{ color: "#f5a623", marginLeft: "8px" }}>· ⏸ Paused</span>}
             </p>
             <SessionDots completed={sessionsDone % SESSIONS_BEFORE_LONG_BREAK} color={isBreak ? breakAcc : "var(--accent)"} />
@@ -549,7 +549,7 @@ export default function FocusPage() {
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)", letterSpacing: "-0.025em" }}>Focus timer</h1>
               <div className="flex items-center gap-3 mt-1">
-                <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Today: {todayMinutes}min ({todaySessions} sessions) · Week: {weekMinutes}min</p>
+                <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>Today: {todayMinutes >= 60 ? `${Math.floor(todayMinutes/60)}h${todayMinutes%60>0?` ${todayMinutes%60}m`:""}` : `${todayMinutes}m`} ({todaySessions} sessions) · Week: {weekMinutes >= 60 ? `${Math.floor(weekMinutes/60)}h${weekMinutes%60>0?` ${weekMinutes%60}m`:""}` : `${weekMinutes}m`}</p>
                 {sessionsDone > 0 && <SessionDots completed={sessionsDone % SESSIONS_BEFORE_LONG_BREAK} />}
               </div>
             </div>
