@@ -406,6 +406,17 @@ export default function TasksPage() {
   const [quickAdding, setQuickAdding]     = useState(false);
   const [showQuickAdd, setShowQuickAdd]   = useState(false);
   const [showMoreMenu, setShowMoreMenu]   = useState(false);
+  const moreMenuRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMoreMenu]);
   const quickInputRef = React.useRef<HTMLInputElement>(null);
 
 
@@ -513,7 +524,7 @@ export default function TasksPage() {
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* ⋯ overflow menu — Templates, CSV, JSON, Bulk */}
-            <div className="relative">
+            <div className="relative" ref={moreMenuRef}>
               <button
                 onClick={() => setShowMoreMenu((v) => !v)}
                 className="cc-btn px-3 py-2 text-xs flex-shrink-0"
@@ -521,26 +532,26 @@ export default function TasksPage() {
                 <span style={{ position: "relative", zIndex: 3 }}>⋯</span>
               </button>
               {showMoreMenu && (
-                <div className="absolute right-0 top-full mt-1.5 rounded-[16px] py-1.5 z-50 min-w-[140px] animate-fade-in"
-                  style={{ background: "var(--glass-fill)", backdropFilter: "blur(32px)", border: "0.5px solid var(--glass-border)", boxShadow: "var(--shadow-lg), inset 0 1px 0 var(--specular-top)" }}>
+                <div className="absolute right-0 bottom-full mb-1.5 rounded-[16px] py-1.5 z-50 min-w-[160px]"
+                  style={{ background: "rgba(18,18,28,0.96)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: "0.5px solid var(--glass-border)", boxShadow: "0 -8px 32px rgba(0,0,0,0.5), inset 0 1px 0 var(--specular-top)" }}>
                   <button onClick={() => { setShowTemplates(!showTemplates); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono"
                     style={{ color: "var(--text-secondary)" }}>
                     ⊞ Templates
                   </button>
                   <button onClick={() => { exportCSV(); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono"
                     style={{ color: "var(--text-secondary)" }}>
                     ↓ Export CSV
                   </button>
                   <button onClick={() => { exportJSON(); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono"
                     style={{ color: "var(--text-secondary)" }}>
                     ↓ Export JSON
                   </button>
                   <div style={{ height: "0.5px", background: "var(--glass-border-subtle)", margin: "4px 12px" }} />
                   <button onClick={() => { setBulkMode(!bulkMode); setShowMoreMenu(false); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-mono transition-all"
+                    className="w-full text-left px-4 py-2.5 text-xs font-mono"
                     style={{ color: bulkMode ? "var(--accent)" : "var(--text-secondary)" }}>
                     ☑ Bulk {bulkMode ? "(on)" : "select"}
                   </button>
