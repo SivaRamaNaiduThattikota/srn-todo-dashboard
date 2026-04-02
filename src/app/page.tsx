@@ -532,8 +532,8 @@ export default function TasksPage() {
                 <span style={{ position: "relative", zIndex: 3 }}>⋯</span>
               </button>
               {showMoreMenu && (
-                <div className="absolute right-0 bottom-full mb-1.5 rounded-[16px] py-1.5 z-50 min-w-[160px]"
-                  style={{ background: "rgba(18,18,28,0.96)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: "0.5px solid var(--glass-border)", boxShadow: "0 -8px 32px rgba(0,0,0,0.5), inset 0 1px 0 var(--specular-top)" }}>
+                <div className="absolute right-0 top-full mt-1.5 rounded-[16px] py-1.5 z-[999] min-w-[160px]"
+                  style={{ background: "rgba(18,18,28,0.96)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", border: "0.5px solid var(--glass-border)", boxShadow: "0 16px 48px rgba(0,0,0,0.7), inset 0 1px 0 var(--specular-top)" }}>
                   <button onClick={() => { setShowTemplates(!showTemplates); setShowMoreMenu(false); }}
                     className="w-full text-left px-4 py-2.5 text-xs font-mono"
                     style={{ color: "var(--text-secondary)" }}>
