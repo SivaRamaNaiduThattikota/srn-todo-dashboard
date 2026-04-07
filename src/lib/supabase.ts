@@ -168,6 +168,7 @@ export async function fetchDeletedNotes() {
 export async function startFocusSession(todoId: string | null, minutes: number = 25) { const { data, error } = await supabase.from("focus_sessions").insert({ todo_id: todoId, duration_minutes: minutes }).select().single(); if (error) throw error; return data as FocusSession; }
 export async function completeFocusSession(id: string) { await supabase.from("focus_sessions").update({ completed: true, ended_at: now() }).eq("id", id); }
 export async function fetchFocusSessions(days: number = 30) { const since = new Date(); since.setDate(since.getDate() - days); const { data, error } = await supabase.from("focus_sessions").select("*").gte("started_at", since.toISOString()).order("started_at", { ascending: false }); if (error) throw error; return data as FocusSession[]; }
+export async function fetchFocusSessionsByRange(from: string, to: string) { const { data, error } = await supabase.from("focus_sessions").select("*").gte("started_at", from + "T00:00:00.000Z").lte("started_at", to + "T23:59:59.999Z").eq("completed", true).order("started_at", { ascending: false }); if (error) throw error; return data as FocusSession[]; }
 
 // ── Weekly Reviews ─────────────────────────────────────────
 export async function fetchWeeklyReviews() { const { data, error } = await supabase.from("weekly_reviews").select("*").order("week_start", { ascending: false }).limit(12); if (error) throw error; return data as WeeklyReview[]; }

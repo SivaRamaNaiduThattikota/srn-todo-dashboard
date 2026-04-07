@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
-import { supabase, startFocusSession, completeFocusSession, fetchFocusSessions, type FocusSession } from "@/lib/supabase";
+import { supabase, startFocusSession, completeFocusSession, fetchFocusSessions, fetchFocusSessionsByRange, type FocusSession } from "@/lib/supabase";
 import { format, isToday, subDays, eachDayOfInterval, isYesterday } from "date-fns";
 
 const DURATIONS = [15, 25, 45, 60, 90, 120];
@@ -494,6 +494,56 @@ export default function FocusPage() {
 
   // Selected day for chart panel — default null (no panel shown until user clicks)
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  // Chart sliding window — 0 = today's 14-day window, +14 = slide one window back
+  const CHART_WINDOW = 14;
+  const CHART_STEP   = 7;
+  const [chartOffset, setChartOffset]   = useState(0);
+  const [chartSlideDir, setChartSlideDir] = useState<"left" | "right" | null>(null);
+  const chartSlideKey = useRef(0);
+  const [chartSessions, setChartSessions] = useState<FocusSession[]>([]);
+  const [chartLoading, setChartLoading]   = useState(false);
+
+  const chartWindowEnd   = useMemo(() => subDays(new Date(), chartOffset), [chartOffset]);
+  const chartWindowStart = useMemo(() => subDays(chartWindowEnd, CHART_WINDOW - 1), [chartWindowEnd]);
+  const chartWindowEndStr   = format(chartWindowEnd,   "yyyy-MM-dd");
+  const chartWindowStartStr = format(chartWindowStart, "yyyy-MM-dd");
+
+  // Fetch chart sessions whenever window changes
+  const fetchChartSessions = useCallback(async (from: string, to: string) => {
+    setChartLoading(true);
+    try {
+      const data = await fetchFocusSessionsByRange(from, to);
+      setChartSessions(data);
+    } finally { setChartLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    fetchChartSessions(chartWindowStartStr, chartWindowEndStr);
+  }, [chartWindowStartStr, chartWindowEndStr, fetchChartSessions]);
+
+  // Also refresh chart when a session completes (sessions state changes)
+  useEffect(() => {
+    if (chartOffset === 0) fetchChartSessions(chartWindowStartStr, chartWindowEndStr);
+  }, [sessions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const slideChart = (dir: "prev" | "next") => {
+    if (dir === "next" && chartOffset === 0) return;
+    chartSlideKey.current += 1;
+    setChartSlideDir(dir === "prev" ? "left" : "right");
+    setChartOffset((o) => dir === "prev" ? o + CHART_STEP : Math.max(0, o - CHART_STEP));
+    setSelectedDay(null); // close panel when window changes
+  };
+
+  const goToChartToday = () => {
+    if (chartOffset === 0) return;
+    chartSlideKey.current += 1;
+    setChartSlideDir("right");
+    setChartOffset(0);
+    setSelectedDay(null);
+  };
+
+  const isChartAtToday = chartOffset === 0;
   const hourDistribution = useMemo(() => {
     const hrs: Record<number, number> = {};
     sessions.filter((s) => s.completed).forEach((s) => { const h = new Date(s.started_at).getHours(); hrs[h] = (hrs[h] || 0) + s.duration_minutes; });
@@ -1039,118 +1089,141 @@ export default function FocusPage() {
             </div>
 
             <div className="liquid-glass rounded-[22px] p-4 sm:p-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
-              <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Last 14 days</h2>
-              <div className="flex items-end gap-1" style={{ height: "80px" }}>
-                {dailyStats.map((d) => {
-                  const isSelected = selectedDay === d.date;
-                  const isToday14  = d.date === format(new Date(), "yyyy-MM-dd");
-                  return (
-                    <div
-                      key={d.date}
-                      className="flex-1 flex flex-col items-center gap-1"
-                      style={{ cursor: d.minutes > 0 ? "pointer" : "default" }}
-                      onClick={() => {
-                        if (d.minutes === 0) return;
-                        // Same bar clicked again — collapse panel
-                        setSelectedDay(selectedDay === d.date ? null : d.date);
-                      }}
-                    >
-                      <div
-                        className="w-full rounded-t transition-all duration-300"
-                        style={{
-                          height: `${Math.max(2, (d.minutes / maxDayMinutes) * 64)}px`,
-                          background: d.minutes > 0
-                            ? isSelected
-                              ? `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+18%),1), var(--accent))`
-                              : `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+10%),0.9), var(--accent))`
-                            : "var(--glass-fill)",
-                          border: isSelected
-                            ? "1px solid var(--accent)"
-                            : "0.5px solid var(--glass-border)",
-                          opacity: isToday14 ? 1 : 0.65,
-                          boxShadow: isSelected
-                            ? "0 0 14px var(--accent-glow)"
-                            : d.minutes > 0 ? "0 0 8px var(--accent-glow)" : "none",
-                          transform: isSelected ? "scaleY(1.04)" : "scaleY(1)",
-                          transformOrigin: "bottom",
-                        }}
-                      />
-                      <span
-                        className="text-[8px] font-mono"
-                        style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", fontWeight: isSelected ? 700 : 400 }}
-                      >
-                        {d.day.charAt(0)}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* Chart header with prev/next */}
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Focus history</h2>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => slideChart("prev")} className="cc-btn px-2 py-1.5 text-[11px] font-mono" style={{ color: "var(--text-secondary)" }}>
+                    <span style={{ position: "relative", zIndex: 3 }}>‹ prev</span>
+                  </button>
+                  <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+                    {format(chartWindowStart, "MMM d")} – {format(chartWindowEnd, "MMM d")}
+                    {chartOffset > 0 && <span style={{ color: "var(--text-tertiary)", marginLeft: "4px" }}>({chartOffset}d ago)</span>}
+                  </span>
+                  <button onClick={() => slideChart("next")} disabled={isChartAtToday} className="cc-btn px-2 py-1.5 text-[11px] font-mono"
+                    style={{ color: isChartAtToday ? "var(--text-tertiary)" : "var(--text-secondary)", opacity: isChartAtToday ? 0.4 : 1 }}>
+                    <span style={{ position: "relative", zIndex: 3 }}>next ›</span>
+                  </button>
+                  {!isChartAtToday && (
+                    <button onClick={goToChartToday} className="cc-btn px-2 py-1.5 text-[11px] font-mono" style={{ color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
+                      <span style={{ position: "relative", zIndex: 3 }}>today</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Option C — selected day detail panel */}
-              {selectedDay && (() => {
-                const daySessions = sessions
-                  .filter((s) => s.completed && format(new Date(s.started_at), "yyyy-MM-dd") === selectedDay)
-                  .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
-                const dayTotal = daySessions.reduce((sum, s) => sum + s.duration_minutes, 0);
-                const dayDate  = new Date(selectedDay + "T12:00:00");
-                const isSelectedToday = selectedDay === format(new Date(), "yyyy-MM-dd");
-                const isSelectedYesterday = selectedDay === format(subDays(new Date(), 1), "yyyy-MM-dd");
-                const dateLabel = isSelectedToday ? "Today" : isSelectedYesterday ? "Yesterday" : format(dayDate, "EEE, MMM d");
-                const fmtMins = (m: number) => m >= 60 ? `${Math.floor(m/60)}h${m%60>0?` ${m%60}m`:""}` : `${m}m`;
+              {/* Bars */}
+              {(() => {
+                const chartDays = eachDayOfInterval({ start: chartWindowStart, end: chartWindowEnd });
+                const chartDailyStats = chartDays.map((day) => {
+                  const dayStr = format(day, "yyyy-MM-dd");
+                  const daySess = chartSessions.filter((s) => format(new Date(s.started_at), "yyyy-MM-dd") === dayStr);
+                  return { date: dayStr, day: format(day, "EEE"), minutes: daySess.reduce((sum, s) => sum + s.duration_minutes, 0), sessions: daySess.length };
+                });
+                const chartMaxMins = Math.max(...chartDailyStats.map((d) => d.minutes), 1);
                 return (
-                  <div
-                    className="animate-fade-in"
-                    style={{ marginTop: "12px", borderTop: "0.5px solid var(--glass-border-subtle)", paddingTop: "12px" }}
-                  >
-                    {/* Header */}
-                    <div className="flex items-baseline justify-between mb-2">
-                      <div>
-                        <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{dateLabel}</p>
-                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
-                          {daySessions.length} session{daySessions.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold font-mono" style={{ color: "var(--accent)" }}>
-                        {fmtMins(dayTotal)}
-                      </span>
-                    </div>
-
-                    {/* Session rows */}
-                    {daySessions.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {daySessions.map((s) => {
-                          const task = todos.find((t) => t.id === s.todo_id);
-                          const startTime = format(new Date(s.started_at), "h:mma").toLowerCase();
+                  <>
+                    <div
+                      key={chartSlideKey.current}
+                      className={chartSlideDir === "left" ? "slide-left" : chartSlideDir === "right" ? "slide-right" : ""}
+                      style={{ opacity: chartLoading ? 0.5 : 1, transition: "opacity 0.15s ease" }}
+                    >
+                      <style>{`
+                        @keyframes slideInLeft  { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
+                        @keyframes slideInRight { from { opacity: 0; transform: translateX( 24px); } to { opacity: 1; transform: translateX(0); } }
+                        .slide-left  { animation: slideInLeft  0.26s cubic-bezier(0.2,0.8,0.2,1) both; }
+                        .slide-right { animation: slideInRight 0.26s cubic-bezier(0.2,0.8,0.2,1) both; }
+                      `}</style>
+                      <div className="flex items-end gap-1" style={{ height: "80px" }}>
+                        {chartDailyStats.map((d) => {
+                          const isSelected = selectedDay === d.date;
+                          const isTodayBar = d.date === format(new Date(), "yyyy-MM-dd");
                           return (
                             <div
-                              key={s.id}
-                              className="flex items-center justify-between px-2.5 py-2 rounded-[10px]"
-                              style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border-subtle)" }}
+                              key={d.date}
+                              className="flex-1 flex flex-col items-center gap-1"
+                              style={{ cursor: d.minutes > 0 ? "pointer" : "default" }}
+                              onClick={() => {
+                                if (d.minutes === 0) return;
+                                setSelectedDay(selectedDay === d.date ? null : d.date);
+                              }}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span
-                                  className="flex-shrink-0 rounded-full"
-                                  style={{ width: "6px", height: "6px", background: task ? "var(--accent)" : "var(--text-muted)", opacity: task ? 1 : 0.5 }}
-                                />
-                                <span
-                                  className="text-[11px] font-mono truncate"
-                                  style={{ color: task ? "var(--text-secondary)" : "var(--text-muted)", fontStyle: task ? "normal" : "italic" }}
-                                >
-                                  {task ? task.title : "Free focus"}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{startTime}</span>
-                                <span className="text-[11px] font-mono font-medium" style={{ color: "var(--accent)" }}>{fmtMins(s.duration_minutes)}</span>
-                              </div>
+                              <div
+                                className="w-full rounded-t transition-all duration-300"
+                                style={{
+                                  height: `${Math.max(2, (d.minutes / chartMaxMins) * 64)}px`,
+                                  background: d.minutes > 0
+                                    ? isSelected
+                                      ? `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+18%),1), var(--accent))`
+                                      : `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+10%),0.9), var(--accent))`
+                                    : "var(--glass-fill)",
+                                  border: isSelected ? "1px solid var(--accent)" : "0.5px solid var(--glass-border)",
+                                  opacity: isTodayBar ? 1 : 0.65,
+                                  boxShadow: isSelected ? "0 0 14px var(--accent-glow)" : d.minutes > 0 ? "0 0 8px var(--accent-glow)" : "none",
+                                  transform: isSelected ? "scaleY(1.04)" : "scaleY(1)",
+                                  transformOrigin: "bottom",
+                                }}
+                              />
+                              <span className="text-[8px] font-mono" style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", fontWeight: isSelected ? 700 : 400 }}>
+                                {d.day.charAt(0)}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
-                    ) : (
-                      <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>No completed sessions</p>
-                    )}
-                  </div>
+                    </div>
+
+                    {/* Selected day detail panel */}
+                    {selectedDay && (() => {
+                      const daySessions = chartSessions
+                        .filter((s) => format(new Date(s.started_at), "yyyy-MM-dd") === selectedDay)
+                        .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+                      const dayTotal = daySessions.reduce((sum, s) => sum + s.duration_minutes, 0);
+                      const dayDate  = new Date(selectedDay + "T12:00:00");
+                      const isSelToday = selectedDay === format(new Date(), "yyyy-MM-dd");
+                      const isSelYest  = selectedDay === format(subDays(new Date(), 1), "yyyy-MM-dd");
+                      const dateLabel  = isSelToday ? "Today" : isSelYest ? "Yesterday" : format(dayDate, "EEE, MMM d");
+                      const fmtMins = (m: number) => m >= 60 ? `${Math.floor(m/60)}h${m%60>0?` ${m%60}m`:""}` : `${m}m`;
+                      return (
+                        <div className="animate-fade-in" style={{ marginTop: "12px", borderTop: "0.5px solid var(--glass-border-subtle)", paddingTop: "12px" }}>
+                          <div className="flex items-baseline justify-between mb-2">
+                            <div>
+                              <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{dateLabel}</p>
+                              <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                                {daySessions.length} session{daySessions.length !== 1 ? "s" : ""}
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold font-mono" style={{ color: "var(--accent)" }}>{fmtMins(dayTotal)}</span>
+                          </div>
+                          {daySessions.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {daySessions.map((s) => {
+                                const task = todos.find((t) => t.id === s.todo_id);
+                                const startTime = format(new Date(s.started_at), "h:mma").toLowerCase();
+                                return (
+                                  <div key={s.id} className="flex items-center justify-between px-2.5 py-2 rounded-[10px]"
+                                    style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border-subtle)" }}>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="flex-shrink-0 rounded-full" style={{ width: "6px", height: "6px", background: task ? "var(--accent)" : "var(--text-muted)", opacity: task ? 1 : 0.5 }} />
+                                      <span className="text-[11px] font-mono truncate" style={{ color: task ? "var(--text-secondary)" : "var(--text-muted)", fontStyle: task ? "normal" : "italic" }}>
+                                        {task ? task.title : "Free focus"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                      <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{startTime}</span>
+                                      <span className="text-[11px] font-mono font-medium" style={{ color: "var(--accent)" }}>{fmtMins(s.duration_minutes)}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>No completed sessions</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </>
                 );
               })()}
             </div>
