@@ -556,17 +556,20 @@ export default function TasksPage() {
 
         <div className="flex gap-2" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "4px" }}>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as TodoStatus | "")}
-            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
+            className="rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0"
+            style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-secondary)", height: "34px", boxShadow: "var(--shadow-sm)" }}>
             <option value="">All status</option>
             {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as TodoPriority | "")}
-            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
+            className="rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0"
+            style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-secondary)", height: "34px", boxShadow: "var(--shadow-sm)" }}>
             <option value="">All priority</option>
             {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
           <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as TodoCategory | "")}
-            className="glass rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0" style={{ color: "var(--text-secondary)", height: "34px" }}>
+            className="rounded-xl px-3 py-2 text-[11px] font-mono focus:outline-none cursor-pointer flex-shrink-0"
+            style={{ background: "var(--bg-input)", border: "0.5px solid var(--glass-border)", color: "var(--text-secondary)", height: "34px", boxShadow: "var(--shadow-sm)" }}>
             <option value="">All categories</option>
             {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
