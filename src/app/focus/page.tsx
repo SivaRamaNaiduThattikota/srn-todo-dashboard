@@ -183,7 +183,7 @@ function FullscreenTimer({
   mode, breakType, sessionsDone,
   shortBreakMins, longBreakMins,
   onClose, onComplete, onStop, onPause, onResume,
-  onStartBreak, onSkipBreak, onEndBreak,
+  onStartBreak, onSkipBreak, onEndBreak, onDoneForToday,
 }: {
   timeLeft: number; duration: number; isRunning: boolean; isPaused: boolean;
   taskName: string; todayMinutes: number;
@@ -191,7 +191,7 @@ function FullscreenTimer({
   shortBreakMins: number; longBreakMins: number;
   onClose: () => void; onComplete: () => void; onStop: () => void;
   onPause: () => void; onResume: () => void;
-  onStartBreak: () => void; onSkipBreak: () => void; onEndBreak: () => void;
+  onStartBreak: () => void; onSkipBreak: () => void; onEndBreak: () => void; onDoneForToday: () => void;
 }) {
   const hours = Math.floor(timeLeft / 3600);
   const mins  = Math.floor((timeLeft % 3600) / 60);
@@ -256,6 +256,7 @@ function FullscreenTimer({
               {breakType === "long" ? `🌿 Start ${longBreakMins}-min break` : `☕ Start ${shortBreakMins}-min break`}
             </button>
             <button onClick={onSkipBreak} style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.50)", border: "0.5px solid rgba(255,255,255,0.16)", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(24px,3vw,40px)", fontSize: "clamp(13px,1.4vw,15px)", cursor: "pointer", fontFamily: "inherit" }}>Skip break →</button>
+            <button onClick={onDoneForToday} style={{ background: "transparent", color: "rgba(255,255,255,0.28)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(24px,3vw,40px)", fontSize: "clamp(12px,1.3vw,14px)", cursor: "pointer", fontFamily: "inherit" }}>✕ Done for today</button>
           </div>
           <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.18)", margin: 0 }}>Adjust break durations in ⚙ Settings on the focus page</p>
         </div>
@@ -433,17 +434,33 @@ export default function FocusPage() {
 
   const handleResume = useCallback(() => { setIsPaused(false); startTicking(); }, [startTicking]);
 
-  const handleStop = useCallback(() => {
+  const handleStop = useCallback(async () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    // Delete the orphaned incomplete session from Supabase
+    if (currentSession) {
+      await supabase.from("focus_sessions").delete().eq("id", currentSession.id);
+    }
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
     setFullscreenMode("focus");
     elapsedBeforePauseRef.current = 0;
     setTimeLeft(duration * 60);
     setCurrentSession(null);
+  }, [duration, currentSession]);
+
+  // ── Done for today — reset break-ready state cleanly ─────────────────────
+  const handleDoneForToday = useCallback(() => {
+    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
+    setIsBreakRunning(false);
+    setFullscreenMode("focus");
+    setFullscreen(false);
+    setTimeLeft(duration * 60);
+    elapsedBeforePauseRef.current = 0;
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Great work today! Session saved. 🎯", type: "success" } }));
   }, [duration]);
 
   // ── Break timer ────────────────────────────────────────────────────────────
-  const breakType: "short" | "long" = (sessionsDone + 1) % SESSIONS_BEFORE_LONG_BREAK === 0 ? "long" : "short";
+  // Unified break type: what break is due RIGHT NOW (after last completed session)
+  const breakType: "short" | "long" = sessionsDone % SESSIONS_BEFORE_LONG_BREAK === 0 && sessionsDone > 0 ? "long" : "short";
   const currentBreakDuration = sessionsDone % SESSIONS_BEFORE_LONG_BREAK === 0 && sessionsDone > 0 ? longBreakMins : shortBreakMins;
 
   const startBreakTicking = useCallback(() => {
@@ -501,7 +518,8 @@ export default function FocusPage() {
 
   const displayTimeLeft    = fullscreenMode === "break-running" ? breakTimeLeft : timeLeft;
   const displayDuration    = fullscreenMode === "break-running" ? currentBreakDuration : duration;
-  const breakTypeForScreen: "short" | "long" = sessionsDone % SESSIONS_BEFORE_LONG_BREAK === 0 && sessionsDone > 0 ? "long" : "short";
+  // breakTypeForScreen is now the same as breakType — unified
+  const breakTypeForScreen = breakType;
   const mins = Math.floor(displayTimeLeft / 60);
   const secs = displayTimeLeft % 60;
   const selectedTask = todos.find((t) => t.id === selectedTodo);
@@ -543,7 +561,7 @@ export default function FocusPage() {
           onComplete={handleComplete} onStop={handleStop}
           onPause={handlePause} onResume={handleResume}
           onStartBreak={handleStartBreak} onSkipBreak={handleSkipBreak}
-          onEndBreak={handleEndBreakEarly}
+          onEndBreak={handleEndBreakEarly} onDoneForToday={handleDoneForToday}
         />
       )}
 
@@ -558,9 +576,9 @@ export default function FocusPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isRunning && (
-                <button onClick={() => setFullscreen(true)} className="cc-btn px-3 py-2 text-xs" style={{ color: "var(--accent)", border: "0.5px solid var(--accent-dim)" }}>
-                  <span style={{ position: "relative", zIndex: 3 }}>⛶ Focus mode</span>
+              {(isRunning || isBreakRunning || fullscreenMode === "break-ready") && (
+                <button onClick={() => setFullscreen(true)} className="cc-btn px-3 py-2 text-xs" style={{ color: isBreakRunning || fullscreenMode === "break-ready" ? "#5ecf95" : "var(--accent)", border: `0.5px solid ${isBreakRunning || fullscreenMode === "break-ready" ? "rgba(94,207,149,0.35)" : "var(--accent-dim)"}` }}>
+                  <span style={{ position: "relative", zIndex: 3 }}>⛶ {isBreakRunning ? "Break mode" : fullscreenMode === "break-ready" ? "Break ready" : "Focus mode"}</span>
                 </button>
               )}
               <button onClick={() => setShowSettings(!showSettings)} className="cc-btn px-3 py-2 text-xs" style={{ color: showSettings ? "var(--accent)" : "var(--cc-text)" }}>
@@ -689,7 +707,7 @@ export default function FocusPage() {
                 </div>
               </div>
 
-              {!isRunning && !isBreakRunning ? (
+              {!isRunning && !isBreakRunning && fullscreenMode !== "break-ready" ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 sm:flex gap-2 justify-center mx-auto" style={{ maxWidth: "360px" }}>
                     {DURATIONS.map((d) => (
@@ -710,6 +728,23 @@ export default function FocusPage() {
                       Session {sessionsDone + 1} · Next break: {breakType === "long" ? `Long (${longBreakMins}m)` : `Short (${shortBreakMins}m)`}
                     </p>
                   )}
+                </div>
+              ) : fullscreenMode === "break-ready" ? (
+                <div className="space-y-4">
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                    <p style={{ fontSize: "clamp(13px,1.5vw,16px)", color: breakType === "long" ? "#34d399" : "#5ecf95", margin: 0, fontWeight: 500 }}>
+                      {breakType === "long" ? "🌿 Long break ready!" : "☕ Short break ready!"}
+                    </p>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0 }}>Session {sessionsDone} complete — open fullscreen to choose</p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setFullscreen(true)} className="cc-btn px-6 py-2.5 text-xs" style={{ color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.35)" }}>
+                      <span style={{ position: "relative", zIndex: 3 }}>⛶ Open break screen</span>
+                    </button>
+                    <button onClick={handleDoneForToday} className="cc-btn px-5 py-2.5 text-xs" style={{ color: "var(--text-muted)", border: "0.5px solid var(--glass-border)" }}>
+                      <span style={{ position: "relative", zIndex: 3 }}>✕ Done for today</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
