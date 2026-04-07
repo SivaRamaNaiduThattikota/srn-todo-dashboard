@@ -491,6 +491,12 @@ export default function FocusPage() {
   const maxDayMinutes    = Math.max(...dailyStats.map((d) => d.minutes), 1);
   const activeDays       = dailyStats.slice(-7).filter((d) => d.minutes > 0).length;
   const avgMinutes       = activeDays > 0 ? Math.round(weekMinutes / activeDays) : 0;
+
+  // Selected day for chart panel — default to most recent day with sessions
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    return today;
+  });
   const hourDistribution = useMemo(() => {
     const hrs: Record<number, number> = {};
     sessions.filter((s) => s.completed).forEach((s) => { const h = new Date(s.started_at).getHours(); hrs[h] = (hrs[h] || 0) + s.duration_minutes; });
@@ -1038,13 +1044,115 @@ export default function FocusPage() {
             <div className="liquid-glass rounded-[22px] p-4 sm:p-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
               <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Last 14 days</h2>
               <div className="flex items-end gap-1" style={{ height: "80px" }}>
-                {dailyStats.map((d) => (
-                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full rounded-t transition-all duration-300" title={`${d.date}: ${d.minutes}min (${d.sessions} sessions)`} style={{ height: `${Math.max(2, (d.minutes / maxDayMinutes) * 64)}px`, background: d.minutes > 0 ? `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+10%),0.9), var(--accent))` : "var(--glass-fill)", border: "0.5px solid var(--glass-border)", opacity: d.date === format(new Date(), "yyyy-MM-dd") ? 1 : 0.65, boxShadow: d.minutes > 0 ? "0 0 8px var(--accent-glow)" : "none" }} />
-                    <span className="text-[8px] font-mono" style={{ color: "var(--text-muted)" }}>{d.day.charAt(0)}</span>
-                  </div>
-                ))}
+                {dailyStats.map((d) => {
+                  const isSelected = selectedDay === d.date;
+                  const isToday14  = d.date === format(new Date(), "yyyy-MM-dd");
+                  return (
+                    <div
+                      key={d.date}
+                      className="flex-1 flex flex-col items-center gap-1"
+                      style={{ cursor: d.minutes > 0 ? "pointer" : "default" }}
+                      onClick={() => d.minutes > 0 && setSelectedDay(d.date)}
+                      onMouseEnter={() => d.minutes > 0 && setSelectedDay(d.date)}
+                    >
+                      <div
+                        className="w-full rounded-t transition-all duration-300"
+                        style={{
+                          height: `${Math.max(2, (d.minutes / maxDayMinutes) * 64)}px`,
+                          background: d.minutes > 0
+                            ? isSelected
+                              ? `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+18%),1), var(--accent))`
+                              : `linear-gradient(180deg, hsla(var(--accent-h),var(--accent-s),calc(var(--accent-l)+10%),0.9), var(--accent))`
+                            : "var(--glass-fill)",
+                          border: isSelected
+                            ? "1px solid var(--accent)"
+                            : "0.5px solid var(--glass-border)",
+                          opacity: isToday14 ? 1 : 0.65,
+                          boxShadow: isSelected
+                            ? "0 0 14px var(--accent-glow)"
+                            : d.minutes > 0 ? "0 0 8px var(--accent-glow)" : "none",
+                          transform: isSelected ? "scaleY(1.04)" : "scaleY(1)",
+                          transformOrigin: "bottom",
+                        }}
+                      />
+                      <span
+                        className="text-[8px] font-mono"
+                        style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", fontWeight: isSelected ? 700 : 400 }}
+                      >
+                        {d.day.charAt(0)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Option C — selected day detail panel */}
+              {selectedDay && (() => {
+                const daySessions = sessions
+                  .filter((s) => s.completed && format(new Date(s.started_at), "yyyy-MM-dd") === selectedDay)
+                  .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+                const dayTotal = daySessions.reduce((sum, s) => sum + s.duration_minutes, 0);
+                const dayDate  = new Date(selectedDay + "T12:00:00");
+                const isSelectedToday = selectedDay === format(new Date(), "yyyy-MM-dd");
+                const isSelectedYesterday = selectedDay === format(subDays(new Date(), 1), "yyyy-MM-dd");
+                const dateLabel = isSelectedToday ? "Today" : isSelectedYesterday ? "Yesterday" : format(dayDate, "EEE, MMM d");
+                const fmtMins = (m: number) => m >= 60 ? `${Math.floor(m/60)}h${m%60>0?` ${m%60}m`:""}` : `${m}m`;
+                return (
+                  <div
+                    className="animate-fade-in"
+                    style={{ marginTop: "12px", borderTop: "0.5px solid var(--glass-border-subtle)", paddingTop: "12px" }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-baseline justify-between mb-2">
+                      <div>
+                        <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{dateLabel}</p>
+                        <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                          {daySessions.length} session{daySessions.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold font-mono" style={{ color: "var(--accent)" }}>
+                        {fmtMins(dayTotal)}
+                      </span>
+                    </div>
+
+                    {/* Session rows */}
+                    {daySessions.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {daySessions.map((s) => {
+                          const task = todos.find((t) => t.id === s.todo_id);
+                          const startTime = format(new Date(s.started_at), "h:mma").toLowerCase();
+                          return (
+                            <div
+                              key={s.id}
+                              className="flex items-center justify-between px-2.5 py-2 rounded-[10px]"
+                              style={{ background: "var(--glass-fill)", border: "0.5px solid var(--glass-border-subtle)" }}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="flex-shrink-0 rounded-full"
+                                  style={{ width: "6px", height: "6px", background: task ? "var(--accent)" : "var(--text-muted)", opacity: task ? 1 : 0.5 }}
+                                />
+                                <span
+                                  className="text-[11px] font-mono truncate"
+                                  style={{ color: task ? "var(--text-secondary)" : "var(--text-muted)", fontStyle: task ? "normal" : "italic" }}
+                                >
+                                  {task ? task.title : "Free focus"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                <span className="text-[9px] font-mono" style={{ color: "var(--text-muted)" }}>{startTime}</span>
+                                <span className="text-[11px] font-mono font-medium" style={{ color: "var(--accent)" }}>{fmtMins(s.duration_minutes)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>No completed sessions</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
