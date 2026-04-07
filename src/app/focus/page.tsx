@@ -17,30 +17,19 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-// Fix 3: Warm up AudioContext on first user gesture (called on Start press)
-// This unlocks audio on iOS/mobile which requires a user interaction
 export async function warmUpAudio() {
   const c = getAudioCtx();
   if (!c) return;
-  if (c.state === "suspended") {
-    try { await c.resume(); } catch {}
-  }
-  // Play a silent tone to fully unlock the context
-  const osc = c.createOscillator();
-  const gain = c.createGain();
+  if (c.state === "suspended") { try { await c.resume(); } catch {} }
+  const osc = c.createOscillator(); const gain = c.createGain();
   gain.gain.setValueAtTime(0.0001, c.currentTime);
   osc.connect(gain); gain.connect(c.destination);
   osc.start(c.currentTime); osc.stop(c.currentTime + 0.001);
 }
 
-// Fix 4: Always resume AudioContext before playing — guards against suspension
 async function resumeAndPlay(playFn: () => void) {
-  const c = getAudioCtx();
-  if (!c) return;
-  try {
-    if (c.state === "suspended") await c.resume();
-    playFn();
-  } catch {}
+  const c = getAudioCtx(); if (!c) return;
+  try { if (c.state === "suspended") await c.resume(); playFn(); } catch {}
 }
 
 function tone(freq: number, startSec: number, dur: number, vol = 0.15, type: OscillatorType = "sine") {
@@ -53,15 +42,11 @@ function tone(freq: number, startSec: number, dur: number, vol = 0.15, type: Osc
   osc.start(c.currentTime + startSec); osc.stop(c.currentTime + startSec + dur);
 }
 function playFocusDone() {
-  tone(523, 0,    0.18, 0.22);
-  tone(659, 0.20, 0.18, 0.22);
-  tone(784, 0.40, 0.30, 0.22);
-  tone(1047,0.72, 0.40, 0.18);
+  tone(523, 0, 0.18, 0.22); tone(659, 0.20, 0.18, 0.22);
+  tone(784, 0.40, 0.30, 0.22); tone(1047, 0.72, 0.40, 0.18);
 }
-function playBreakDone() {
-  tone(784, 0,    0.18, 0.20);
-  tone(523, 0.22, 0.28, 0.20);
-}
+function playBreakDone() { tone(784, 0, 0.18, 0.20); tone(523, 0.22, 0.28, 0.20); }
+function playCountdownBeep() { tone(880, 0, 0.08, 0.10); }
 
 // ── Notification + vibration ──────────────────────────────────────────────────
 async function requestNotificationPermission(): Promise<boolean> {
@@ -82,29 +67,15 @@ function vibrate(pattern: number[]) {
 // ── SplitflapTile ─────────────────────────────────────────────────────────────
 function SplitflapTile({ digit }: { digit: string }) {
   const prevRef = useRef(digit);
-  const [old, setOld]         = useState(digit);
+  const [old, setOld] = useState(digit);
   const [current, setCurrent] = useState(digit);
   const [animKey, setAnimKey] = useState(0);
-
   useEffect(() => {
     if (digit === prevRef.current) return;
-    setOld(prevRef.current);
-    setCurrent(digit);
-    setAnimKey(k => k + 1);
-    prevRef.current = digit;
+    setOld(prevRef.current); setCurrent(digit); setAnimKey(k => k + 1); prevRef.current = digit;
   }, [digit]);
-
-  const W = "clamp(64px, 12vw, 120px)";
-  const H = "clamp(86px, 16vw, 160px)";
-  const FS = "clamp(52px, 10vw, 100px)";
-  const base: React.CSSProperties = {
-    position: "absolute", left: 0, right: 0,
-    fontSize: FS, fontWeight: 800,
-    fontFamily: "'Helvetica Neue', Arial, sans-serif",
-    lineHeight: 1, letterSpacing: "-0.04em",
-    userSelect: "none", textAlign: "center",
-  };
-
+  const W = "clamp(64px, 12vw, 120px)"; const H = "clamp(86px, 16vw, 160px)"; const FS = "clamp(52px, 10vw, 100px)";
+  const base: React.CSSProperties = { position: "absolute", left: 0, right: 0, fontSize: FS, fontWeight: 800, fontFamily: "'Helvetica Neue', Arial, sans-serif", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none", textAlign: "center" };
   return (
     <div style={{ width: W, height: H, position: "relative", borderRadius: "12px", overflow: "hidden", flexShrink: 0, boxShadow: "0 12px 40px rgba(0,0,0,0.85), 0 2px 6px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: "#151515", overflow: "hidden", zIndex: 1 }}>
@@ -148,7 +119,6 @@ function SplitflapClock({ mins, secs, isRunning, accentColor }: { mins: number; 
   );
 }
 
-// ── Session dots ──────────────────────────────────────────────────────────────
 function SessionDots({ completed, total = 4, color = "#5ecf95" }: { completed: number; total?: number; color?: string }) {
   return (
     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -159,13 +129,12 @@ function SessionDots({ completed, total = 4, color = "#5ecf95" }: { completed: n
   );
 }
 
-// ── Compass ───────────────────────────────────────────────────────────────────
 const FOCUS_ZONES = [
-  { label: "Warming up", sub: "Just starting",  angle: -70 },
+  { label: "Warming up", sub: "Just starting", angle: -70 },
   { label: "Getting in", sub: "Finding rhythm", angle: -35 },
-  { label: "Deep work",  sub: "Peak focus",     angle:   0 },
-  { label: "Flow state", sub: "In the zone 🔥", angle:  35 },
-  { label: "Done",       sub: "Almost there!",  angle:  70 },
+  { label: "Deep work", sub: "Peak focus", angle: 0 },
+  { label: "Flow state", sub: "In the zone 🔥", angle: 35 },
+  { label: "Done", sub: "Almost there!", angle: 70 },
 ];
 function CompassWheel({ progress }: { progress: number }) {
   const needleAngle = -70 + progress * 140;
@@ -208,18 +177,20 @@ type FullscreenMode = "focus" | "break-ready" | "break-running";
 
 function FullscreenTimer({
   timeLeft, duration, isRunning, isPaused, taskName, todayMinutes,
-  mode, breakType, sessionsDone,
-  shortBreakMins, longBreakMins,
+  mode, breakType, sessionsDone, shortBreakMins, longBreakMins,
+  isPomodoroMode, autoCountdown, autoCountdownSecs,
   onClose, onComplete, onStop, onPause, onResume,
-  onStartBreak, onSkipBreak, onEndBreak, onDoneForToday,
+  onStartBreak, onSkipBreak, onEndBreak, onDoneForToday, onCancelAuto,
 }: {
   timeLeft: number; duration: number; isRunning: boolean; isPaused: boolean;
   taskName: string; todayMinutes: number;
   mode: FullscreenMode; breakType: "short" | "long"; sessionsDone: number;
   shortBreakMins: number; longBreakMins: number;
+  isPomodoroMode: boolean; autoCountdown: "break" | "session" | null; autoCountdownSecs: number;
   onClose: () => void; onComplete: () => void; onStop: () => void;
   onPause: () => void; onResume: () => void;
-  onStartBreak: () => void; onSkipBreak: () => void; onEndBreak: () => void; onDoneForToday: () => void;
+  onStartBreak: () => void; onSkipBreak: () => void; onEndBreak: () => void;
+  onDoneForToday: () => void; onCancelAuto: () => void;
 }) {
   const hours = Math.floor(timeLeft / 3600);
   const mins  = Math.floor((timeLeft % 3600) / 60);
@@ -235,8 +206,8 @@ function FullscreenTimer({
   const [mKey, setMKey] = useState(0); const [sKey, setSKey] = useState(0); const [hKey, setHKey] = useState(0);
   const pm = useRef(mins); const ps = useRef(secs); const ph = useRef(hours);
   useEffect(() => {
-    if (mins  !== pm.current) { setMKey(k => k + 1); pm.current = mins; }
-    if (secs  !== ps.current) { setSKey(k => k + 1); ps.current = secs; }
+    if (mins !== pm.current) { setMKey(k => k + 1); pm.current = mins; }
+    if (secs !== ps.current) { setSKey(k => k + 1); ps.current = secs; }
     if (hours !== ph.current) { setHKey(k => k + 1); ph.current = hours; }
   }, [mins, secs, hours]);
 
@@ -245,14 +216,27 @@ function FullscreenTimer({
   const minLabel = isBreak ? `${breakAcc}55` : (isPaused ? "rgba(245,166,35,0.35)" : "rgba(0,0,0,0.28)");
   const secText  = isBreak ? (isPaused ? `${breakAcc}60` : `${breakAcc}cc`) : (isPaused ? "rgba(245,166,35,0.5)" : "rgba(255,255,255,0.92)");
 
+  // Countdown ring progress (0–1)
+  const countdownMax = autoCountdown === "break" ? 5 : 3;
+  const ringProgress = autoCountdown ? (autoCountdownSecs / countdownMax) : 0;
+  const r = 26; const circ = 2 * Math.PI * r;
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: isBreak ? "#091810" : "#0a0a0a", display: "flex", flexDirection: "column", fontFamily: "-apple-system, 'Helvetica Neue', sans-serif", overflow: "hidden", transition: "background 0.6s ease" }}>
       {/* Header */}
       <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "clamp(14px,2vw,24px) clamp(20px,4vw,48px) clamp(12px,1.5vw,20px)", background: isBreak ? "#0f2318" : "#2c2c2c", transition: "background 0.6s" }}>
         <div>
-          <p style={{ fontSize: "clamp(14px,1.8vw,20px)", fontWeight: 500, color: isBreak ? breakAcc : "rgba(255,255,255,0.85)", margin: 0, letterSpacing: "-0.02em" }}>
-            {isBreakReady ? `Session ${sessionsDone} complete!` : isBreak ? `${breakType === "long" ? "Long" : "Short"} break` : taskName}
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <p style={{ fontSize: "clamp(14px,1.8vw,20px)", fontWeight: 500, color: isBreak ? breakAcc : "rgba(255,255,255,0.85)", margin: 0, letterSpacing: "-0.02em" }}>
+              {isBreakReady ? `Session ${sessionsDone} complete!` : isBreak ? `${breakType === "long" ? "Long" : "Short"} break` : taskName}
+            </p>
+            {/* Pomodoro mode badge */}
+            {isPomodoroMode && (
+              <span style={{ fontSize: "10px", fontFamily: "monospace", padding: "2px 8px", borderRadius: "100px", background: "rgba(94,207,149,0.15)", color: "#5ecf95", border: "0.5px solid rgba(94,207,149,0.30)", letterSpacing: "0.06em" }}>
+                🍅 AUTO
+              </span>
+            )}
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
             <p style={{ fontSize: "clamp(11px,1.2vw,13px)", color: "rgba(255,255,255,0.30)", margin: 0 }}>
               {format(now, "EEEE, MMMM d")} · Today {todayMinutes >= 60 ? `${Math.floor(todayMinutes/60)}h${todayMinutes%60>0?` ${todayMinutes%60}m`:""}` : `${todayMinutes}m`}
@@ -267,7 +251,7 @@ function FullscreenTimer({
 
       {/* Break-ready state */}
       {isBreakReady ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "32px", padding: "40px", background: isBreak ? "#091810" : "#0a0a0a" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "32px", padding: "40px", background: "#0a0a0a" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: "clamp(48px,8vw,80px)", marginBottom: "16px" }}>{breakType === "long" ? "🌿" : "☕"}</div>
             <p style={{ fontSize: "clamp(24px,3.5vw,36px)", fontWeight: 300, color: breakAcc, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
@@ -279,13 +263,40 @@ function FullscreenTimer({
                 : "Take a breather before the next session."}
             </p>
           </div>
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
-            <button onClick={onStartBreak} style={{ background: breakAcc, color: "#0a0a0a", border: "none", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(32px,5vw,56px)", fontSize: "clamp(14px,1.6vw,17px)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              {breakType === "long" ? `🌿 Start ${longBreakMins}-min break` : `☕ Start ${shortBreakMins}-min break`}
-            </button>
-            <button onClick={onSkipBreak} style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.50)", border: "0.5px solid rgba(255,255,255,0.16)", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(24px,3vw,40px)", fontSize: "clamp(13px,1.4vw,15px)", cursor: "pointer", fontFamily: "inherit" }}>Skip break →</button>
-            <button onClick={onDoneForToday} style={{ background: "transparent", color: "rgba(255,255,255,0.28)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(24px,3vw,40px)", fontSize: "clamp(12px,1.3vw,14px)", cursor: "pointer", fontFamily: "inherit" }}>✕ Done for today</button>
-          </div>
+
+          {/* Auto countdown ring — shown when Pomodoro mode is on */}
+          {autoCountdown === "break" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+              <div style={{ position: "relative", width: "72px", height: "72px" }}>
+                <svg width="72" height="72" style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+                  <circle cx="36" cy="36" r={r} fill="none" stroke={breakAcc} strokeWidth="3"
+                    strokeDasharray={circ} strokeDashoffset={circ * (1 - ringProgress)}
+                    style={{ transition: "stroke-dashoffset 0.9s linear" }} />
+                </svg>
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: "22px", fontWeight: 700, color: breakAcc, fontFamily: "monospace" }}>{autoCountdownSecs}</span>
+                </div>
+              </div>
+              <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.40)", margin: 0, fontFamily: "monospace" }}>
+                Break starting automatically…
+              </p>
+              <button onClick={onCancelAuto} style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.18)", borderRadius: "100px", padding: "8px 24px", fontSize: "12px", cursor: "pointer", fontFamily: "inherit" }}>
+                Cancel auto
+              </button>
+            </div>
+          )}
+
+          {/* Manual buttons — shown when not auto-counting */}
+          {!autoCountdown && (
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+              <button onClick={onStartBreak} style={{ background: breakAcc, color: "#0a0a0a", border: "none", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(32px,5vw,56px)", fontSize: "clamp(14px,1.6vw,17px)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                {breakType === "long" ? `🌿 Start ${longBreakMins}-min break` : `☕ Start ${shortBreakMins}-min break`}
+              </button>
+              <button onClick={onSkipBreak} style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.50)", border: "0.5px solid rgba(255,255,255,0.16)", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(24px,3vw,40px)", fontSize: "clamp(13px,1.4vw,15px)", cursor: "pointer", fontFamily: "inherit" }}>Skip break →</button>
+              <button onClick={onDoneForToday} style={{ background: "transparent", color: "rgba(255,255,255,0.28)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: "100px", padding: "clamp(12px,2vw,16px) clamp(24px,3vw,40px)", fontSize: "clamp(12px,1.3vw,14px)", cursor: "pointer", fontFamily: "inherit" }}>✕ Done for today</button>
+            </div>
+          )}
           <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.18)", margin: 0 }}>Adjust break durations in ⚙ Settings on the focus page</p>
         </div>
       ) : (
@@ -303,9 +314,35 @@ function FullscreenTimer({
           </div>
           <div style={{ height: "0.5px", background: "rgba(255,255,255,0.10)", flexShrink: 0 }} />
           {!isBreak && <CompassWheel progress={progress} />}
+
+          {/* Bottom action bar */}
           <div style={{ flexShrink: 0, display: "flex", gap: "10px", justifyContent: "center", alignItems: "center", padding: "clamp(8px,1.5vw,12px) clamp(20px,4vw,48px) clamp(14px,2vw,22px)", background: isBreak ? "#0f2318" : "#1a1a1a", transition: "background 0.6s" }}>
             {isBreak ? (
-              <button onClick={onEndBreak} style={{ background: breakAcc, color: "#0a0a0a", border: "none", borderRadius: "100px", padding: "clamp(10px,1.5vw,13px) clamp(28px,4vw,44px)", fontSize: "clamp(13px,1.4vw,15px)", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>✓ End break early</button>
+              <>
+                {/* Auto session countdown inside break screen */}
+                {autoCountdown === "session" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <div style={{ position: "relative", width: "48px", height: "48px" }}>
+                      <svg width="48" height="48" style={{ transform: "rotate(-90deg)" }}>
+                        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="2.5" />
+                        <circle cx="24" cy="24" r="20" fill="none" stroke={breakAcc} strokeWidth="2.5"
+                          strokeDasharray={2 * Math.PI * 20} strokeDashoffset={2 * Math.PI * 20 * (1 - autoCountdownSecs / 3)}
+                          style={{ transition: "stroke-dashoffset 0.9s linear" }} />
+                      </svg>
+                      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: "16px", fontWeight: 700, color: breakAcc, fontFamily: "monospace" }}>{autoCountdownSecs}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "13px", color: breakAcc, margin: "0 0 2px", fontFamily: "monospace" }}>Next session starting…</p>
+                      <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.30)", margin: 0, fontFamily: "monospace" }}>Session {sessionsDone + 1} about to begin</p>
+                    </div>
+                    <button onClick={onCancelAuto} style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)", border: "0.5px solid rgba(255,255,255,0.18)", borderRadius: "100px", padding: "8px 18px", fontSize: "12px", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={onEndBreak} style={{ background: breakAcc, color: "#0a0a0a", border: "none", borderRadius: "100px", padding: "clamp(10px,1.5vw,13px) clamp(28px,4vw,44px)", fontSize: "clamp(13px,1.4vw,15px)", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>✓ End break early</button>
+                )}
+              </>
             ) : isRunning ? (
               <>
                 {isPaused ? (
@@ -351,6 +388,36 @@ export default function FocusPage() {
   const [isBreakRunning, setIsBreakRunning] = useState(false);
   const [showSettings, setShowSettings]     = useState(false);
 
+  // Pomodoro auto-mode — persisted to localStorage
+  const [isPomodoroMode, setIsPomodoroMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("srn-pomodoro-mode") === "true";
+  });
+  // autoCountdown: "break" = waiting to start break, "session" = waiting to start next session
+  const [autoCountdown, setAutoCountdown]       = useState<"break" | "session" | null>(null);
+  const [autoCountdownSecs, setAutoCountdownSecs] = useState(0);
+  const autoCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const togglePomodoroMode = useCallback(() => {
+    setIsPomodoroMode(prev => {
+      const next = !prev;
+      localStorage.setItem("srn-pomodoro-mode", String(next));
+      return next;
+    });
+  }, []);
+
+  // Clear auto countdown
+  const clearAutoCountdown = useCallback(() => {
+    if (autoCountdownRef.current) { clearInterval(autoCountdownRef.current); autoCountdownRef.current = null; }
+    setAutoCountdown(null);
+    setAutoCountdownSecs(0);
+  }, []);
+
+  const handleCancelAuto = useCallback(() => {
+    clearAutoCountdown();
+    window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Auto-cycle cancelled", type: "success" } }));
+  }, [clearAutoCountdown]);
+
   // Manual log
   const [showManual, setShowManual]           = useState(false);
   const [manualDate, setManualDate]           = useState(format(new Date(), "yyyy-MM-dd"));
@@ -371,45 +438,31 @@ export default function FocusPage() {
   const breakTotalMs          = useRef<number>(0);
   const breakIntervalRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const handleBreakDoneRef    = useRef<() => void>(() => {});
+  // Refs for auto-start closures
+  const isPomodoroModeRef     = useRef(isPomodoroMode);
+  const durationRef           = useRef(duration);
+  const selectedTodoRef       = useRef(selectedTodo);
+  useEffect(() => { isPomodoroModeRef.current = isPomodoroMode; }, [isPomodoroMode]);
+  useEffect(() => { durationRef.current = duration; }, [duration]);
+  useEffect(() => { selectedTodoRef.current = selectedTodo; }, [selectedTodo]);
 
-  // Fix 1 & 2: visibilitychange handler
-  // Fix 1 — Resume AudioContext when page becomes visible (screen unlock / tab switch back)
-  // Fix 2 — Catch-up: if timer completed while screen was off/tab was throttled, fire completion now
+  // visibilitychange handler (Fixes 1 & 2)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-
-      // Fix 1: Resume suspended AudioContext
       const ctx = getAudioCtx();
-      if (ctx && ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
-
-      // Fix 2: Catch-up for focus timer
+      if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
       if (isRunning && !isPaused && totalMs.current > 0) {
         const elapsed = elapsedBeforePauseRef.current + (Date.now() - startedAtRef.current);
-        if (elapsed >= totalMs.current) {
-          // Timer should have already completed — fire it now
-          handleCompleteRef.current();
-          return;
-        }
-        // Timer still running but display may be stale — force a tick
-        const remaining = Math.max(0, totalMs.current - elapsed);
-        setTimeLeft(Math.ceil(remaining / 1000));
+        if (elapsed >= totalMs.current) { handleCompleteRef.current(); return; }
+        setTimeLeft(Math.ceil((totalMs.current - elapsed) / 1000));
       }
-
-      // Fix 2: Catch-up for break timer
       if (isBreakRunning && breakTotalMs.current > 0) {
         const elapsed = Date.now() - breakStartedAtRef.current;
-        if (elapsed >= breakTotalMs.current) {
-          handleBreakDoneRef.current();
-          return;
-        }
-        const remaining = Math.max(0, breakTotalMs.current - elapsed);
-        setBreakTimeLeft(Math.ceil(remaining / 1000));
+        if (elapsed >= breakTotalMs.current) { handleBreakDoneRef.current(); return; }
+        setBreakTimeLeft(Math.ceil((breakTotalMs.current - elapsed) / 1000));
       }
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [isRunning, isPaused, isBreakRunning]);
@@ -425,7 +478,7 @@ export default function FocusPage() {
   const dailyStats = useMemo(() => {
     const days = eachDayOfInterval({ start: subDays(new Date(), 13), end: new Date() });
     return days.map((day) => {
-      const dayStr      = format(day, "yyyy-MM-dd");
+      const dayStr = format(day, "yyyy-MM-dd");
       const daySessions = sessions.filter((s) => s.completed && format(new Date(s.started_at), "yyyy-MM-dd") === dayStr);
       return { date: dayStr, day: format(day, "EEE"), minutes: daySessions.reduce((sum, s) => sum + s.duration_minutes, 0), sessions: daySessions.length };
     });
@@ -457,25 +510,64 @@ export default function FocusPage() {
     }, 250);
   }, []);
 
+  // Internal start — used by both manual Start button and auto-cycle
+  const startSession = useCallback(async () => {
+    await warmUpAudio();
+    const session = await startFocusSession(selectedTodoRef.current || null, durationRef.current);
+    setCurrentSession(session);
+    totalMs.current = durationRef.current * 60 * 1000;
+    elapsedBeforePauseRef.current = 0;
+    setTimeLeft(durationRef.current * 60);
+    setIsRunning(true);
+    setFullscreenMode("focus");
+    setFullscreen(true);
+    startTicking();
+  }, [startTicking]);
+
   const handleStart = async () => {
     if (isStarting) return;
     setIsStarting(true);
-    // Fix 3: Warm up AudioContext on this user gesture before the session starts
-    await warmUpAudio();
-    try {
-      const session = await startFocusSession(selectedTodo || null, duration);
-      setCurrentSession(session);
-      totalMs.current = duration * 60 * 1000;
-      elapsedBeforePauseRef.current = 0;
-      setTimeLeft(duration * 60);
-      setIsRunning(true);
-      setFullscreenMode("focus");
-      setFullscreen(true);
-      startTicking();
-    } catch (err: any) {
-      window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: err?.message || "Failed to start — check connection", type: "error" } }));
-    } finally { setIsStarting(false); }
+    try { await startSession(); }
+    catch (err: any) { window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: err?.message || "Failed to start — check connection", type: "error" } })); }
+    finally { setIsStarting(false); }
   };
+
+  // ── Auto countdown helpers ─────────────────────────────────────────────────
+  const startBreakCountdown = useCallback((onFire: () => void) => {
+    clearAutoCountdown();
+    setAutoCountdown("break");
+    setAutoCountdownSecs(5);
+    let secs = 5;
+    autoCountdownRef.current = setInterval(() => {
+      secs -= 1;
+      resumeAndPlay(playCountdownBeep);
+      setAutoCountdownSecs(secs);
+      if (secs <= 0) {
+        if (autoCountdownRef.current) clearInterval(autoCountdownRef.current);
+        autoCountdownRef.current = null;
+        setAutoCountdown(null);
+        onFire();
+      }
+    }, 1000);
+  }, [clearAutoCountdown]);
+
+  const startSessionCountdown = useCallback((onFire: () => void) => {
+    clearAutoCountdown();
+    setAutoCountdown("session");
+    setAutoCountdownSecs(3);
+    let secs = 3;
+    autoCountdownRef.current = setInterval(() => {
+      secs -= 1;
+      resumeAndPlay(playCountdownBeep);
+      setAutoCountdownSecs(secs);
+      if (secs <= 0) {
+        if (autoCountdownRef.current) clearInterval(autoCountdownRef.current);
+        autoCountdownRef.current = null;
+        setAutoCountdown(null);
+        onFire();
+      }
+    }, 1000);
+  }, [clearAutoCountdown]);
 
   const handleComplete = useCallback(async () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -487,7 +579,6 @@ export default function FocusPage() {
     setCurrentSession(null);
     const newDone = sessionsDone + 1;
     setSessionsDone(newDone);
-    // Fix 4: Resume AudioContext before playing (guards against background suspension)
     resumeAndPlay(playFocusDone);
     vibrate([300, 100, 300, 100, 500]);
     const bType = newDone % SESSIONS_BEFORE_LONG_BREAK === 0 ? "long" : "short";
@@ -495,7 +586,15 @@ export default function FocusPage() {
     sendNotification("Focus session complete! 🎯", bType === "long" ? `Long break (${longBreakMins}m) ready!` : `Short break (${shortBreakMins}m) ready!`);
     setBreakTimeLeft(bMins * 60);
     setFullscreenMode("break-ready");
-  }, [currentSession, sessionsDone, shortBreakMins, longBreakMins]);
+
+    // Pomodoro mode: auto-start break after 5s countdown
+    if (isPomodoroModeRef.current) {
+      startBreakCountdown(() => {
+        // fire handleStartBreakRef to auto-start break
+        handleStartBreakRef.current();
+      });
+    }
+  }, [currentSession, sessionsDone, shortBreakMins, longBreakMins, startBreakCountdown]);
 
   handleCompleteRef.current = handleComplete;
 
@@ -508,20 +607,18 @@ export default function FocusPage() {
   const handleResume = useCallback(() => { setIsPaused(false); startTicking(); }, [startTicking]);
 
   const handleStop = useCallback(async () => {
+    clearAutoCountdown();
     if (intervalRef.current) clearInterval(intervalRef.current);
-    // Delete the orphaned incomplete session from Supabase
-    if (currentSession) {
-      await supabase.from("focus_sessions").delete().eq("id", currentSession.id);
-    }
+    if (currentSession) await supabase.from("focus_sessions").delete().eq("id", currentSession.id);
     setIsRunning(false); setIsPaused(false); setFullscreen(false);
     setFullscreenMode("focus");
     elapsedBeforePauseRef.current = 0;
     setTimeLeft(duration * 60);
     setCurrentSession(null);
-  }, [duration, currentSession]);
+  }, [duration, currentSession, clearAutoCountdown]);
 
-  // ── Done for today — reset break-ready state cleanly ─────────────────────
   const handleDoneForToday = useCallback(() => {
+    clearAutoCountdown();
     if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
     setIsBreakRunning(false);
     setFullscreenMode("focus");
@@ -529,10 +626,9 @@ export default function FocusPage() {
     setTimeLeft(duration * 60);
     elapsedBeforePauseRef.current = 0;
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Great work today! Session saved. 🎯", type: "success" } }));
-  }, [duration]);
+  }, [duration, clearAutoCountdown]);
 
   // ── Break timer ────────────────────────────────────────────────────────────
-  // Unified break type: what break is due RIGHT NOW (after last completed session)
   const breakType: "short" | "long" = sessionsDone % SESSIONS_BEFORE_LONG_BREAK === 0 && sessionsDone > 0 ? "long" : "short";
   const currentBreakDuration = sessionsDone % SESSIONS_BEFORE_LONG_BREAK === 0 && sessionsDone > 0 ? longBreakMins : shortBreakMins;
 
@@ -547,40 +643,63 @@ export default function FocusPage() {
     }, 250);
   }, []);
 
+  // Ref so handleComplete closure can call it
+  const handleStartBreakRef = useRef<() => void>(() => {});
+
   const handleStartBreak = useCallback(() => {
+    clearAutoCountdown();
     const bMins = sessionsDone % SESSIONS_BEFORE_LONG_BREAK === 0 && sessionsDone > 0 ? longBreakMins : shortBreakMins;
     breakTotalMs.current = bMins * 60 * 1000;
     setBreakTimeLeft(bMins * 60);
     setIsBreakRunning(true);
     setFullscreenMode("break-running");
     startBreakTicking();
-  }, [sessionsDone, shortBreakMins, longBreakMins, startBreakTicking]);
+  }, [sessionsDone, shortBreakMins, longBreakMins, startBreakTicking, clearAutoCountdown]);
+
+  handleStartBreakRef.current = handleStartBreak;
 
   const handleBreakDone = useCallback(() => {
     if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
     setIsBreakRunning(false);
     setFullscreenMode("focus");
-    // Fix 4: Resume AudioContext before playing
     resumeAndPlay(playBreakDone);
     vibrate([500, 100, 200]);
     sendNotification("Break over! 💪", "Ready to focus again?");
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Break complete — ready to go! 💪", type: "success" } }));
     setTimeLeft(duration * 60);
     elapsedBeforePauseRef.current = 0;
-  }, [duration]);
+
+    // Pomodoro mode: auto-start next session after 3s countdown
+    if (isPomodoroModeRef.current) {
+      startSessionCountdown(async () => {
+        try { await startSession(); }
+        catch (err: any) { window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Auto-start failed — tap Start manually", type: "error" } })); }
+      });
+    }
+  }, [duration, startSessionCountdown, startSession]);
 
   handleBreakDoneRef.current = handleBreakDone;
 
   const handleSkipBreak = useCallback(() => {
+    clearAutoCountdown();
     if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
     setIsBreakRunning(false);
     setFullscreenMode("focus");
     setTimeLeft(duration * 60);
     elapsedBeforePauseRef.current = 0;
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Break skipped!", type: "success" } }));
-  }, [duration]);
+
+    // Pomodoro mode: auto-start next session after 3s countdown
+    if (isPomodoroModeRef.current) {
+      startSessionCountdown(async () => {
+        try { await startSession(); }
+        catch (err: any) { window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Auto-start failed — tap Start manually", type: "error" } })); }
+      });
+    }
+  }, [duration, clearAutoCountdown, startSessionCountdown, startSession]);
 
   const handleEndBreakEarly = useCallback(() => {
+    clearAutoCountdown();
     if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
     setIsBreakRunning(false);
     setFullscreenMode("focus");
@@ -588,11 +707,18 @@ export default function FocusPage() {
     setTimeLeft(duration * 60);
     elapsedBeforePauseRef.current = 0;
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Break ended — let's focus!", type: "success" } }));
-  }, [duration]);
 
-  const displayTimeLeft    = fullscreenMode === "break-running" ? breakTimeLeft : timeLeft;
-  const displayDuration    = fullscreenMode === "break-running" ? currentBreakDuration : duration;
-  // breakTypeForScreen is now the same as breakType — unified
+    // Pomodoro mode: auto-start next session after 3s countdown
+    if (isPomodoroModeRef.current) {
+      startSessionCountdown(async () => {
+        try { await startSession(); }
+        catch (err: any) { window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Auto-start failed — tap Start manually", type: "error" } })); }
+      });
+    }
+  }, [duration, clearAutoCountdown, startSessionCountdown, startSession]);
+
+  const displayTimeLeft  = fullscreenMode === "break-running" ? breakTimeLeft : timeLeft;
+  const displayDuration  = fullscreenMode === "break-running" ? currentBreakDuration : duration;
   const breakTypeForScreen = breakType;
   const mins = Math.floor(displayTimeLeft / 60);
   const secs = displayTimeLeft % 60;
@@ -627,15 +753,14 @@ export default function FocusPage() {
           mode={fullscreenMode} breakType={breakTypeForScreen}
           sessionsDone={sessionsDone}
           shortBreakMins={shortBreakMins} longBreakMins={longBreakMins}
-          onClose={() => {
-            // Just collapse fullscreen — timer keeps running in background
-            // User can re-enter fullscreen via the "⛶ Focus mode" button
-            setFullscreen(false);
-          }}
+          isPomodoroMode={isPomodoroMode}
+          autoCountdown={autoCountdown} autoCountdownSecs={autoCountdownSecs}
+          onClose={() => setFullscreen(false)}
           onComplete={handleComplete} onStop={handleStop}
           onPause={handlePause} onResume={handleResume}
           onStartBreak={handleStartBreak} onSkipBreak={handleSkipBreak}
           onEndBreak={handleEndBreakEarly} onDoneForToday={handleDoneForToday}
+          onCancelAuto={handleCancelAuto}
         />
       )}
 
@@ -697,6 +822,37 @@ export default function FocusPage() {
                 </div>
               </div>
             </div>
+
+            {/* Pomodoro auto-mode toggle */}
+            <div className="mt-4 pt-4 flex items-center justify-between" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
+              <div>
+                <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>🍅 Auto Pomodoro mode</p>
+                <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  {isPomodoroMode
+                    ? "ON — breaks auto-start (5s delay), next session auto-starts after break (3s delay)"
+                    : "OFF — you manually start each session and break"}
+                </p>
+              </div>
+              <button
+                onClick={togglePomodoroMode}
+                className="flex-shrink-0"
+                style={{
+                  width: "48px", height: "26px", borderRadius: "100px", border: "none", cursor: "pointer",
+                  background: isPomodoroMode ? "var(--accent)" : "var(--bg-input)",
+                  position: "relative", transition: "background 0.22s ease",
+                  boxShadow: isPomodoroMode ? "0 0 12px var(--accent-glow)" : "inset 0 1px 3px rgba(0,0,0,0.2)",
+                }}
+              >
+                <div style={{
+                  position: "absolute", top: "3px",
+                  left: isPomodoroMode ? "25px" : "3px",
+                  width: "20px", height: "20px", borderRadius: "50%",
+                  background: "#fff", transition: "left 0.22s cubic-bezier(0.34,1.4,0.64,1)",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                }} />
+              </button>
+            </div>
+
             <div className="mt-4 pt-4 flex items-center justify-between" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
               <div>
                 <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Browser notifications</p>
@@ -794,6 +950,38 @@ export default function FocusPage() {
                     <option value="">Free focus (no task)</option>
                     {activeTodos.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
                   </select>
+
+                  {/* Pomodoro mode toggle on main timer */}
+                  <div className="flex items-center justify-center gap-3">
+                    <button onClick={togglePomodoroMode} style={{
+                      display: "flex", alignItems: "center", gap: "8px",
+                      background: isPomodoroMode ? "var(--accent-muted)" : "var(--glass-fill)",
+                      border: `0.5px solid ${isPomodoroMode ? "var(--accent-dim)" : "var(--glass-border)"}`,
+                      borderRadius: "100px", padding: "7px 14px", cursor: "pointer", fontFamily: "inherit",
+                      transition: "all 0.2s ease",
+                    }}>
+                      <span style={{ fontSize: "13px" }}>🍅</span>
+                      <span style={{ fontSize: "11px", fontFamily: "monospace", color: isPomodoroMode ? "var(--accent)" : "var(--text-muted)", fontWeight: isPomodoroMode ? 600 : 400 }}>
+                        Auto Pomodoro {isPomodoroMode ? "ON" : "OFF"}
+                      </span>
+                      <div style={{
+                        width: "28px", height: "16px", borderRadius: "100px",
+                        background: isPomodoroMode ? "var(--accent)" : "var(--bg-input)",
+                        position: "relative", flexShrink: 0,
+                        boxShadow: isPomodoroMode ? "0 0 8px var(--accent-glow)" : "inset 0 1px 2px rgba(0,0,0,0.15)",
+                        transition: "background 0.22s ease",
+                      }}>
+                        <div style={{
+                          position: "absolute", top: "2px",
+                          left: isPomodoroMode ? "14px" : "2px",
+                          width: "12px", height: "12px", borderRadius: "50%",
+                          background: "#fff", transition: "left 0.22s cubic-bezier(0.34,1.4,0.64,1)",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                        }} />
+                      </div>
+                    </button>
+                  </div>
+
                   <button onClick={handleStart} disabled={isStarting} className="cc-btn cc-btn-accent px-12 py-3.5 text-sm disabled:opacity-60" style={{ minWidth: "160px", fontSize: "var(--text-md)" }}>
                     <span style={{ position: "relative", zIndex: 3 }}>{isStarting ? "Starting…" : "▶ Start"}</span>
                   </button>
@@ -865,10 +1053,10 @@ export default function FocusPage() {
               <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Insights</h2>
               <div className="space-y-3">
                 {[
-                  { label: "Today",          value: todayMinutes >= 60 ? `${Math.floor(todayMinutes/60)}h${todayMinutes%60>0?` ${todayMinutes%60}m`:""}` : `${todayMinutes}m`,         color: "#5ecf95" },
-                  { label: "Yesterday",      value: yesterdayMinutes >= 60 ? `${Math.floor(yesterdayMinutes/60)}h${yesterdayMinutes%60>0?` ${yesterdayMinutes%60}m`:""}` : `${yesterdayMinutes}m`, color: "var(--text-secondary)" },
-                  { label: "This week",      value: weekMinutes >= 60 ? `${Math.floor(weekMinutes/60)}h${weekMinutes%60>0?` ${weekMinutes%60}m`:""}` : `${weekMinutes}m`,             color: "#4da6ff" },
-                  { label: "Daily average",  value: avgMinutes >= 60 ? `${Math.floor(avgMinutes/60)}h${avgMinutes%60>0?` ${avgMinutes%60}m`:""}` : `${avgMinutes}m`,               color: "#f5a623" },
+                  { label: "Today", value: todayMinutes >= 60 ? `${Math.floor(todayMinutes/60)}h${todayMinutes%60>0?` ${todayMinutes%60}m`:""}` : `${todayMinutes}m`, color: "#5ecf95" },
+                  { label: "Yesterday", value: yesterdayMinutes >= 60 ? `${Math.floor(yesterdayMinutes/60)}h${yesterdayMinutes%60>0?` ${yesterdayMinutes%60}m`:""}` : `${yesterdayMinutes}m`, color: "var(--text-secondary)" },
+                  { label: "This week", value: weekMinutes >= 60 ? `${Math.floor(weekMinutes/60)}h${weekMinutes%60>0?` ${weekMinutes%60}m`:""}` : `${weekMinutes}m`, color: "#4da6ff" },
+                  { label: "Daily average", value: avgMinutes >= 60 ? `${Math.floor(avgMinutes/60)}h${avgMinutes%60>0?` ${avgMinutes%60}m`:""}` : `${avgMinutes}m`, color: "#f5a623" },
                 ].map((s) => (
                   <div key={s.label} className="flex items-center justify-between">
                     <span className="text-[11px] sm:text-xs font-mono" style={{ color: "var(--text-muted)" }}>{s.label}</span>
@@ -883,15 +1071,22 @@ export default function FocusPage() {
               <div className="space-y-2.5">
                 {[
                   { label: "Short break", value: `${shortBreakMins}m`, color: "#5ecf95" },
-                  { label: "Long break",  value: `${longBreakMins}m`,  color: "#4da6ff" },
-                  { label: "Cycle",       value: `${SESSIONS_BEFORE_LONG_BREAK} sessions`, color: "var(--text-secondary)" },
-                  { label: "This run",    value: `${sessionsDone} done`, color: sessionsDone > 0 ? "var(--accent)" : "var(--text-muted)" },
+                  { label: "Long break", value: `${longBreakMins}m`, color: "#4da6ff" },
+                  { label: "Cycle", value: `${SESSIONS_BEFORE_LONG_BREAK} sessions`, color: "var(--text-secondary)" },
+                  { label: "This run", value: `${sessionsDone} done`, color: sessionsDone > 0 ? "var(--accent)" : "var(--text-muted)" },
                 ].map((s) => (
                   <div key={s.label} className="flex items-center justify-between">
                     <span className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{s.label}</span>
                     <span className="text-xs font-semibold font-mono" style={{ color: s.color }}>{s.value}</span>
                   </div>
                 ))}
+                {/* Auto mode status */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>Auto mode</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: isPomodoroMode ? "var(--accent-muted)" : "var(--glass-fill)", color: isPomodoroMode ? "var(--accent)" : "var(--text-muted)", border: `0.5px solid ${isPomodoroMode ? "var(--accent-dim)" : "var(--glass-border)"}` }}>
+                    {isPomodoroMode ? "🍅 ON" : "OFF"}
+                  </span>
+                </div>
                 {sessionsDone > 0 && (
                   <div className="pt-2" style={{ borderTop: "0.5px solid var(--glass-border-subtle)" }}>
                     <SessionDots completed={sessionsDone % SESSIONS_BEFORE_LONG_BREAK} />
