@@ -206,6 +206,7 @@ export async function fetchDeletedDecisions() {
 
 // ── Analytics ──────────────────────────────────────────────
 export async function fetchActivityLog(days: number = 30) { const since = new Date(); since.setDate(since.getDate() - days); const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", since.toISOString()).order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
+export async function fetchActivityLogByRange(from: string, to: string) { const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", from + "T00:00:00.000Z").lte("created_at", to + "T23:59:59.999Z").order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
 
 // ── Learning Progress ─────────────────────────────────────
 export async function fetchLearningProgress(): Promise<LearningProgress[]> {
