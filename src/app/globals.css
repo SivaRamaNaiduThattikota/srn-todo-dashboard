@@ -838,3 +838,14 @@ button, a, input, select, textarea {
 }
 
 /* v11.2 — light mode rewrite: dark-tint borders, cleaner bg, visible inputs, proper shadows */
+
+/* Fix: .glass backdrop-filter bleeds body noise texture in light mode causing chevron artifact */
+[data-mode="light"] .glass {
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+}
+[data-mode="light"] .glass::before,
+[data-mode="light"] .glass::after {
+  display: none;
+}
