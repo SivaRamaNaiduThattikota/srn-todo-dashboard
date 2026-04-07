@@ -108,8 +108,8 @@ function SplitflapClock({ mins, secs, isRunning, accentColor }: { mins: number; 
           <SplitflapTile digit={String(mins % 10)} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "clamp(8px,2vw,16px)", alignItems: "center" }}>
-          <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%", background: isRunning ? ac : "rgba(255,255,255,0.22)", boxShadow: isRunning ? `0 0 10px ${ac}` : "none", transition: "background 0.3s, box-shadow 0.3s" }} />
-          <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%", background: isRunning ? ac : "rgba(255,255,255,0.22)", boxShadow: isRunning ? `0 0 10px ${ac}` : "none", transition: "background 0.3s, box-shadow 0.3s" }} />
+          <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%", background: isRunning ? ac : "var(--text-muted)", boxShadow: isRunning ? `0 0 10px ${ac}` : "none", transition: "background 0.3s, box-shadow 0.3s", opacity: isRunning ? 1 : 0.5 }} />
+          <div style={{ width: "clamp(6px,1.2vw,9px)", height: "clamp(6px,1.2vw,9px)", borderRadius: "50%", background: isRunning ? ac : "var(--text-muted)", boxShadow: isRunning ? `0 0 10px ${ac}` : "none", transition: "background 0.3s, box-shadow 0.3s", opacity: isRunning ? 1 : 0.5 }} />
         </div>
         <div style={{ display: "flex", gap: "clamp(4px,1vw,8px)" }}>
           <SplitflapTile digit={String(Math.floor(secs / 10))} />
@@ -125,7 +125,7 @@ function SessionDots({ completed, total = 4, color = "#5ecf95" }: { completed: n
   return (
     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
       {Array.from({ length: total }).map((_, i) => (
-        <div key={i} style={{ width: i < completed ? "10px" : "8px", height: i < completed ? "10px" : "8px", borderRadius: "50%", background: i < completed ? color : "rgba(255,255,255,0.18)", boxShadow: i < completed ? `0 0 8px ${color}` : "none", transition: "all 0.3s ease" }} />
+        <div key={i} style={{ width: i < completed ? "10px" : "8px", height: i < completed ? "10px" : "8px", borderRadius: "50%", background: i < completed ? color : "var(--text-muted)", opacity: i < completed ? 1 : 0.3, boxShadow: i < completed ? `0 0 8px ${color}` : "none", transition: "all 0.3s ease" }} />
       ))}
     </div>
   );
