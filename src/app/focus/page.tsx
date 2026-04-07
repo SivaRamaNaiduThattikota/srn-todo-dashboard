@@ -10,11 +10,39 @@ const SESSIONS_BEFORE_LONG_BREAK = 4;
 
 // ── Audio helpers ─────────────────────────────────────────────────────────────
 let audioCtx: AudioContext | null = null;
+
 function getAudioCtx() {
   if (typeof window === "undefined") return null;
   if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   return audioCtx;
 }
+
+// Fix 3: Warm up AudioContext on first user gesture (called on Start press)
+// This unlocks audio on iOS/mobile which requires a user interaction
+export async function warmUpAudio() {
+  const c = getAudioCtx();
+  if (!c) return;
+  if (c.state === "suspended") {
+    try { await c.resume(); } catch {}
+  }
+  // Play a silent tone to fully unlock the context
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.0001, c.currentTime);
+  osc.connect(gain); gain.connect(c.destination);
+  osc.start(c.currentTime); osc.stop(c.currentTime + 0.001);
+}
+
+// Fix 4: Always resume AudioContext before playing — guards against suspension
+async function resumeAndPlay(playFn: () => void) {
+  const c = getAudioCtx();
+  if (!c) return;
+  try {
+    if (c.state === "suspended") await c.resume();
+    playFn();
+  } catch {}
+}
+
 function tone(freq: number, startSec: number, dur: number, vol = 0.15, type: OscillatorType = "sine") {
   const c = getAudioCtx(); if (!c) return;
   const osc = c.createOscillator(); const gain = c.createGain();
@@ -344,6 +372,48 @@ export default function FocusPage() {
   const breakIntervalRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const handleBreakDoneRef    = useRef<() => void>(() => {});
 
+  // Fix 1 & 2: visibilitychange handler
+  // Fix 1 — Resume AudioContext when page becomes visible (screen unlock / tab switch back)
+  // Fix 2 — Catch-up: if timer completed while screen was off/tab was throttled, fire completion now
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+
+      // Fix 1: Resume suspended AudioContext
+      const ctx = getAudioCtx();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      // Fix 2: Catch-up for focus timer
+      if (isRunning && !isPaused && totalMs.current > 0) {
+        const elapsed = elapsedBeforePauseRef.current + (Date.now() - startedAtRef.current);
+        if (elapsed >= totalMs.current) {
+          // Timer should have already completed — fire it now
+          handleCompleteRef.current();
+          return;
+        }
+        // Timer still running but display may be stale — force a tick
+        const remaining = Math.max(0, totalMs.current - elapsed);
+        setTimeLeft(Math.ceil(remaining / 1000));
+      }
+
+      // Fix 2: Catch-up for break timer
+      if (isBreakRunning && breakTotalMs.current > 0) {
+        const elapsed = Date.now() - breakStartedAtRef.current;
+        if (elapsed >= breakTotalMs.current) {
+          handleBreakDoneRef.current();
+          return;
+        }
+        const remaining = Math.max(0, breakTotalMs.current - elapsed);
+        setBreakTimeLeft(Math.ceil(remaining / 1000));
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isRunning, isPaused, isBreakRunning]);
+
   useEffect(() => {
     fetchFocusSessions(30).then(setSessions).catch(() => {});
     if (typeof Notification !== "undefined") setNotifPermission(Notification.permission);
@@ -390,6 +460,8 @@ export default function FocusPage() {
   const handleStart = async () => {
     if (isStarting) return;
     setIsStarting(true);
+    // Fix 3: Warm up AudioContext on this user gesture before the session starts
+    await warmUpAudio();
     try {
       const session = await startFocusSession(selectedTodo || null, duration);
       setCurrentSession(session);
@@ -415,7 +487,8 @@ export default function FocusPage() {
     setCurrentSession(null);
     const newDone = sessionsDone + 1;
     setSessionsDone(newDone);
-    playFocusDone();
+    // Fix 4: Resume AudioContext before playing (guards against background suspension)
+    resumeAndPlay(playFocusDone);
     vibrate([300, 100, 300, 100, 500]);
     const bType = newDone % SESSIONS_BEFORE_LONG_BREAK === 0 ? "long" : "short";
     const bMins = bType === "long" ? longBreakMins : shortBreakMins;
@@ -487,7 +560,8 @@ export default function FocusPage() {
     if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
     setIsBreakRunning(false);
     setFullscreenMode("focus");
-    playBreakDone();
+    // Fix 4: Resume AudioContext before playing
+    resumeAndPlay(playBreakDone);
     vibrate([500, 100, 200]);
     sendNotification("Break over! 💪", "Ready to focus again?");
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Break complete — ready to go! 💪", type: "success" } }));
@@ -510,7 +584,7 @@ export default function FocusPage() {
     if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
     setIsBreakRunning(false);
     setFullscreenMode("focus");
-    playBreakDone();
+    resumeAndPlay(playBreakDone);
     setTimeLeft(duration * 60);
     elapsedBeforePauseRef.current = 0;
     window.dispatchEvent(new CustomEvent("srn:toast", { detail: { message: "Break ended — let's focus!", type: "success" } }));
