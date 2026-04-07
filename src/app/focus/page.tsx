@@ -536,23 +536,8 @@ export default function FocusPage() {
           sessionsDone={sessionsDone}
           shortBreakMins={shortBreakMins} longBreakMins={longBreakMins}
           onClose={() => {
-            // If a session is actively running (not paused, not break-ready), confirm before discarding
-            const isActivelyRunning = isRunning && !isPaused && fullscreenMode === "focus";
-            if (isActivelyRunning) {
-              const confirmed = window.confirm("Exit focus mode? Your current session will be stopped and not saved.");
-              if (!confirmed) return;
-            }
-            // Always allow exit — stop any running timer and clean up
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
-            setIsRunning(false);
-            setIsPaused(false);
-            setIsBreakRunning(false);
-            setFullscreenMode("focus");
-            setCurrentSession(null);
-            elapsedBeforePauseRef.current = 0;
-            setTimeLeft(duration * 60);
-            setBreakTimeLeft(shortBreakMins * 60);
+            // Just collapse fullscreen — timer keeps running in background
+            // User can re-enter fullscreen via the "⛶ Focus mode" button
             setFullscreen(false);
           }}
           onComplete={handleComplete} onStop={handleStop}
