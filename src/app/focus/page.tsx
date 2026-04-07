@@ -492,11 +492,8 @@ export default function FocusPage() {
   const activeDays       = dailyStats.slice(-7).filter((d) => d.minutes > 0).length;
   const avgMinutes       = activeDays > 0 ? Math.round(weekMinutes / activeDays) : 0;
 
-  // Selected day for chart panel — default to most recent day with sessions
-  const [selectedDay, setSelectedDay] = useState<string | null>(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
-    return today;
-  });
+  // Selected day for chart panel — default null (no panel shown until user clicks)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const hourDistribution = useMemo(() => {
     const hrs: Record<number, number> = {};
     sessions.filter((s) => s.completed).forEach((s) => { const h = new Date(s.started_at).getHours(); hrs[h] = (hrs[h] || 0) + s.duration_minutes; });
@@ -1052,8 +1049,11 @@ export default function FocusPage() {
                       key={d.date}
                       className="flex-1 flex flex-col items-center gap-1"
                       style={{ cursor: d.minutes > 0 ? "pointer" : "default" }}
-                      onClick={() => d.minutes > 0 && setSelectedDay(d.date)}
-                      onMouseEnter={() => d.minutes > 0 && setSelectedDay(d.date)}
+                      onClick={() => {
+                        if (d.minutes === 0) return;
+                        // Same bar clicked again — collapse panel
+                        setSelectedDay(selectedDay === d.date ? null : d.date);
+                      }}
                     >
                       <div
                         className="w-full rounded-t transition-all duration-300"
