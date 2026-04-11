@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSidebar } from "@/components/ClientLayout";
+import { fetchNotifReadIds } from "@/lib/supabase";
 
 const ICON = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -37,12 +38,14 @@ const PRIMARY_NAV = [
 ];
 
 const MORE_NAV = [
-  { href: "/board",     label: "Board",     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.5"/><rect x="10" y="3" width="5" height="12" rx="1.5"/><rect x="17" y="3" width="5" height="15" rx="1.5"/></svg> },
+  { href: "/board",         label: "Board",         icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.5"/><rect x="10" y="3" width="5" height="12" rx="1.5"/><rect x="17" y="3" width="5" height="15" rx="1.5"/></svg> },
+  { href: "/notebooks",     label: "Notebooks",     icon: ICON("M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z") },
   { href: "/analytics", label: "Analytics", icon: ICON("M3 21V3M3 21h18M7 16l4-8 4 4 5-9") },
   { href: "/assistant", label: "AI",        icon: ICON("M12 2a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4zM6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2") },
   { href: "/review",    label: "Review",    icon: ICON("M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z") },
   { href: "/decisions", label: "Decisions", icon: ICON("M16 3h5v5M8 3H3v5M12 22V8M21 3l-9 9M3 3l9 9") },
-  { href: "/briefing",  label: "Briefing",  icon: ICON("M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4") },
+  { href: "/briefing",       label: "Briefing",      icon: ICON("M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4") },
+  { href: "/notifications",   label: "Notifications", icon: ICON("M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0") },
   { href: "/calendar",  label: "Calendar",  icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
 ];
 
@@ -53,8 +56,8 @@ const SETTINGS_ICON = (
   </svg>
 );
 
-function NavLink({ href, label, icon, pathname, showLabel }: {
-  href: string; label: string; icon: React.ReactNode; pathname: string; showLabel: boolean;
+function NavLink({ href, label, icon, pathname, showLabel, badge }: {
+  href: string; label: string; icon: React.ReactNode; pathname: string; showLabel: boolean; badge?: number;
 }) {
   const isActive = pathname === href;
   return (
@@ -74,12 +77,26 @@ function NavLink({ href, label, icon, pathname, showLabel }: {
       }}>
       {isActive && <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: "2.5px", borderRadius: "0 3px 3px 0", background: "var(--accent)", boxShadow: "0 0 8px var(--accent-glow)" }} />}
       {isActive && <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: "0.5px", background: "linear-gradient(90deg,transparent,var(--specular-top),transparent)", pointerEvents: "none" }} />}
-      <span style={{ flexShrink: 0, color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex" }}>{icon}</span>
+      <span style={{ flexShrink: 0, color: isActive ? "var(--accent)" : "var(--cc-text)", display: "flex", position: "relative" }}>
+        {icon}
+        {/* Badge dot/count — shown when not expanded (icon-only mode) */}
+        {!showLabel && badge && badge > 0 && (
+          <span style={{ position: "absolute", top: "-3px", right: "-3px", minWidth: "14px", height: "14px", borderRadius: "99px", background: "var(--accent)", color: "var(--bg-primary)", fontSize: "9px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px", lineHeight: 1 }}>
+            {badge > 9 ? "9+" : badge}
+          </span>
+        )}
+      </span>
       {showLabel && (
-        <span style={{ fontSize: "13.5px", fontWeight: 500, color: isActive ? "var(--text-primary)" : "var(--cc-text)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <span style={{ fontSize: "13.5px", fontWeight: 500, color: isActive ? "var(--text-primary)" : "var(--cc-text)", fontFamily: "-apple-system, SF Pro Display, sans-serif", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
           {label}
         </span>
       )}
+      {/* Badge count — shown in expanded label mode */}
+      {showLabel && badge && badge > 0 ? (
+        <span style={{ marginLeft: "auto", minWidth: "18px", height: "18px", borderRadius: "99px", background: "var(--accent)", color: "var(--bg-primary)", fontSize: "10px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -99,6 +116,19 @@ export function Sidebar() {
 
   const showLabels = isLg && !collapsed;
   const [moreOpen, setMoreOpen] = useState(false);
+  const [notifUnread, setNotifUnread] = useState(0);
+
+  // Load initial unread count from Supabase on mount
+  useEffect(() => {
+    fetchNotifReadIds().then(() => {
+      // Count is managed by notifications page via CustomEvent
+      // Just listen for broadcasts
+    }).catch(() => {});
+    const handler = (e: Event) => { setNotifUnread((e as CustomEvent).detail?.count ?? 0); };
+    window.addEventListener("srn:notif-read", handler);
+    return () => window.removeEventListener("srn:notif-read", handler);
+  }, []);
+
   useEffect(() => {
     if (MORE_NAV.some((i) => i.href === pathname)) setMoreOpen(true);
   }, [pathname]);
@@ -151,7 +181,8 @@ export function Sidebar() {
           )}
 
           {moreOpen && MORE_NAV.map((item) => (
-            <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels} />
+            <NavLink key={item.href} {...item} pathname={pathname} showLabel={showLabels}
+              badge={item.href === "/notifications" ? notifUnread : undefined} />
           ))}
 
           <div style={{ height: "8px" }} />

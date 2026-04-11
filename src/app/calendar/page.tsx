@@ -8,6 +8,7 @@ import {
   startOfMonth, endOfMonth, eachDayOfInterval, format,
   isSameDay, isSameMonth, addMonths, subMonths, isToday, isBefore,
 } from "date-fns";
+import CalendarWeekStrip from "@/components/CalendarWeekStrip";
 
 const PRIORITY_COLOR: Record<string, string> = {
   critical: "#ff6b6b",
@@ -16,10 +17,13 @@ const PRIORITY_COLOR: Record<string, string> = {
   low:      "#8e8e93",
 };
 
+const EVENT_COLORS = ["#ec4899", "#3b82f6", "#7c6ffd", "#10b981", "#f59e0b", "#f87171", "#a78bfa"];
+
 export default function CalendarPage() {
   const { todos, loading } = useRealtimeTodos();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [prefillDate, setPrefillDate]   = useState<string | null>(null);
+  const [selectedDay, setSelectedDay]   = useState<string | null>(null);
 
   // Drag state
   const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
@@ -49,7 +53,8 @@ export default function CalendarPage() {
 
   const handleDayClick = (day: Date) => {
     if (!isSameMonth(day, currentMonth)) return;
-    if (draggingTodo || touchDragging) return; // don't open modal while dragging
+    if (draggingTodo || touchDragging) return;
+    setSelectedDay(format(day, "yyyy-MM-dd"));
     setPrefillDate(format(day, "yyyy-MM-dd"));
   };
 
@@ -158,6 +163,12 @@ export default function CalendarPage() {
           </button>
         </div>
       )}
+
+      {/* Week strip — v12.1 */}
+      <CalendarWeekStrip
+        selectedDate={currentMonth}
+        onSelectDate={(d) => setCurrentMonth(d)}
+      />
 
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-5 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
@@ -279,6 +290,75 @@ export default function CalendarPage() {
       {prefillDate && (
         <AddTodoModal prefillDueDate={prefillDate} onAdd={handleAdd} onClose={() => setPrefillDate(null)} />
       )}
+
+      {/* Day timeline view — v12.2 */}
+      {selectedDay && (() => {
+        const dayTasks = todosWithDueDate
+          .filter((t) => t.due_date === selectedDay)
+          .sort((a, b) => {
+            // Sort by start_date if available, else by estimated_mins
+            if (a.start_date && b.start_date) return a.start_date.localeCompare(b.start_date);
+            if (a.start_date) return -1;
+            if (b.start_date) return 1;
+            return (a.estimated_mins ?? 0) - (b.estimated_mins ?? 0);
+          });
+        return (
+          <div className="mt-6 animate-fade-in-up liquid-glass rounded-[22px] p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" }}>
+                  {format(new Date(selectedDay + "T12:00:00"), "EEEE, MMM d")}
+                </div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                  {dayTasks.length} task{dayTasks.length !== 1 ? "s" : ""} scheduled
+                </div>
+              </div>
+              <button onClick={() => setSelectedDay(null)}
+                style={{ fontSize: "18px", color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", lineHeight: 1 }}>×</button>
+            </div>
+
+            {dayTasks.length === 0 ? (
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", fontFamily: "monospace" }}>No tasks scheduled. Click a day to add one.</p>
+            ) : (
+              <div className="space-y-3">
+                {dayTasks.map((t, i) => {
+                  const color = EVENT_COLORS[i % EVENT_COLORS.length];
+                  const estMins = t.estimated_mins;
+                  return (
+                    <div key={t.id}>
+                      {/* Break tag between events */}
+                      {i > 0 && i % 2 === 0 && (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(245,158,11,0.12)", border: "0.5px solid rgba(245,158,11,0.28)", borderRadius: "99px", padding: "4px 14px", fontSize: "12px", color: "#fcd34d", margin: "4px 0 8px" }}>
+                          ☕ Break &nbsp;·&nbsp; {estMins ? `~${estMins}m` : "buffer time"}
+                        </div>
+                      )}
+                      {/* Event card */}
+                      <div style={{ borderRadius: "14px", padding: "14px 14px 14px 22px", background: `${color}12`, border: `0.5px solid ${color}28`, position: "relative" }}>
+                        <div style={{ position: "absolute", left: "10px", top: "10px", bottom: "10px", width: "3px", borderRadius: "99px", background: color }} />
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>{t.title}</div>
+                          <span style={{ fontSize: "10px", fontFamily: "monospace", padding: "2px 8px", borderRadius: "99px", background: `${PRIORITY_COLOR[t.priority]}20`, color: PRIORITY_COLOR[t.priority] }}>{t.priority}</span>
+                        </div>
+                        {/* Time row: start_date as start time + estimated_mins as duration */}
+                        <div style={{ fontSize: "12px", color, fontFamily: "monospace", marginBottom: t.description ? "4px" : 0 }}>
+                          {t.start_date
+                            ? `${format(new Date(t.start_date), "h:mm a")}${estMins ? ` – ${format(new Date(new Date(t.start_date).getTime() + estMins * 60000), "h:mm a")}` : ""}`
+                            : estMins ? `~${estMins >= 60 ? `${Math.floor(estMins/60)}h ${estMins%60>0?estMins%60+"m":""}`.trim() : estMins+"m"}` : "No duration set"
+                          }
+                          {t.status === "done" && " ✓ Done"}
+                        </div>
+                        {t.description && (
+                          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>{t.description.slice(0, 80)}{t.description.length > 80 ? "…" : ""}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

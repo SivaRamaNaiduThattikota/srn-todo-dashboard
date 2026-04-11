@@ -1,10 +1,13 @@
 "use client";
 
+
 import { useRealtimeTodos } from "@/lib/useRealtimeTodos";
-import { fetchHabits, fetchHabitLogs, toggleHabitDay, fetchFocusSessions, updateTodo, fetchLearningStats, type DailyHabit, type HabitLog, type FocusSession, type TodoStatus } from "@/lib/supabase";
+import { fetchHabits, fetchHabitLogs, toggleHabitDay, fetchFocusSessions, updateTodo, fetchLearningStats, fetchWeeklyTaskCounts, fetchDailyTaskCounts, fetchMonthlyTaskCounts, fetchPeriodTotals, type DailyHabit, type HabitLog, type FocusSession, type TodoStatus } from "@/lib/supabase";
 import { useState, useEffect, useMemo } from "react";
 import { isToday, isPast, format } from "date-fns";
 import Link from "next/link";
+import ActionCards from "@/components/ActionCards";
+import ProductivityGoalCard from "@/components/ProductivityGoalCard";
 
 export default function TodayPage() {
   const { todos } = useRealtimeTodos();
@@ -12,6 +15,10 @@ export default function TodayPage() {
   const [logs, setLogs]           = useState<HabitLog[]>([]);
   const [sessions, setSessions]   = useState<FocusSession[]>([]);
   const [learnStats, setLearnStats] = useState<{ totalTopics: number; doneTopics: number; totalWeeks: number; doneWeeks: number } | null>(null);
+  const [weeklyBars,   setWeeklyBars]   = useState<{ label: string; count: number; color: string }[]>([]);
+  const [dailyBars,    setDailyBars]    = useState<{ label: string; count: number; color: string }[]>([]);
+  const [monthlyBars,  setMonthlyBars]  = useState<{ label: string; count: number; color: string }[]>([]);
+  const [periodTotals, setPeriodTotals] = useState<{ daily: number; weekly: number; monthly: number }>({ daily: 0, weekly: 0, monthly: 0 });
   const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
@@ -19,6 +26,10 @@ export default function TodayPage() {
     fetchHabitLogs(7).then(setLogs).catch(() => {});
     fetchFocusSessions(30).then(setSessions).catch(() => {});
     fetchLearningStats().then(setLearnStats).catch(() => {});
+    fetchWeeklyTaskCounts().then(setWeeklyBars).catch(() => {});
+    fetchDailyTaskCounts().then(setDailyBars).catch(() => {});
+    fetchMonthlyTaskCounts().then(setMonthlyBars).catch(() => {});
+    fetchPeriodTotals().then(setPeriodTotals).catch(() => {});
   }, []);
 
   const todayLogs        = useMemo(() => logs.filter((l) => l.completed_date === today), [logs, today]);
@@ -79,7 +90,6 @@ export default function TodayPage() {
   const scoreLabel = dailyScore >= 90 ? "Excellent" : dailyScore >= 70 ? "Good day" : dailyScore >= 40 ? "Decent" : "Keep going";
 
   const learnPct = learnStats && learnStats.totalTopics > 0 ? Math.round((learnStats.doneTopics / learnStats.totalTopics) * 100) : null;
-  const weeksPct = learnStats && learnStats.totalWeeks  > 0 ? Math.round((learnStats.doneWeeks  / learnStats.totalWeeks)  * 100) : null;
 
   const QUICK_ACTIONS = [
     { href: "/focus",     label: "Start focus",   icon: "⏱", color: "#4da6ff" },
@@ -128,8 +138,9 @@ export default function TodayPage() {
             </p>
           </div>
 
-          {/* Daily Score Widget */}
-          <div className="flex-shrink-0 flex flex-col items-center px-4 py-2.5 rounded-[18px]"
+          {/* Daily Score Widget — links to Analytics */}
+          <Link href="/analytics" style={{ textDecoration: "none" }}
+            className="flex-shrink-0 flex flex-col items-center px-4 py-2.5 rounded-[18px] hover-lift"
             style={{ background: "var(--glass-fill)", backdropFilter: "blur(20px)",
               border: `0.5px solid ${scoreColor}40`,
               boxShadow: `0 4px 16px ${scoreColor}18, inset 0 1px 0 rgba(255,255,255,0.15)` }}>
@@ -145,7 +156,7 @@ export default function TodayPage() {
               <div className="h-full rounded-full transition-all duration-1000"
                 style={{ width: `${dailyScore}%`, background: scoreColor }} />
             </div>
-          </div>
+          </Link>
         </div>
       </header>
 
@@ -273,15 +284,13 @@ export default function TodayPage() {
         {/* ── RIGHT COLUMN ── */}
         <div className="space-y-4">
 
-          {/* Today's stats */}
+          {/* Today's stats — compact pill row */}
           <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
-            <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-              Today&apos;s stats
-            </h2>
+            <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Today&apos;s stats</h2>
             <div className="space-y-3">
               {[
                 { label: "Tasks completed", value: todayDone.length, color: "#5ecf95" },
-                { label: "Focus time",      value: `${todayFocusMinutes}m`, color: "#4da6ff" },
+                { label: "Focus time",      value: todayFocusMinutes >= 60 ? `${Math.floor(todayFocusMinutes/60)}h${todayFocusMinutes%60>0?` ${todayFocusMinutes%60}m`:""}` : `${todayFocusMinutes}m`, color: "#4da6ff" },
                 { label: "Habits done",     value: `${habitsCompleted}/${habitsTotal}`,
                   color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "#f5a623" },
                 { label: "Streak",          value: `${currentStreak}d`,
@@ -297,69 +306,35 @@ export default function TodayPage() {
             </div>
           </div>
 
-          {/* ML Roadmap progress */}
+          {/* Action cards — quick navigation */}
+          <ActionCards />
+
+          {/* ML Roadmap inline progress */}
           {learnStats && (
-            <Link href="/learning" className="block liquid-glass rounded-[22px] p-5 animate-fade-in-up no-underline hover-lift"
-              style={{ animationDelay: "70ms" }}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-                  ML Roadmap
-                </h2>
-                <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>→ open</span>
+            <div className="animate-fade-in-up" style={{ animationDelay: "110ms", background: "var(--glass-fill)", border: "0.5px solid var(--glass-border)", borderRadius: "16px", padding: "14px 18px", display: "flex", alignItems: "center", gap: "14px" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>ML Roadmap</div>
+                <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{learnStats.doneTopics}/{learnStats.totalTopics} topics</div>
               </div>
-              <div className="space-y-2.5">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-mono" style={{ color: "var(--text-secondary)" }}>Topics</span>
-                    <span className="text-[10px] font-mono font-medium" style={{ color: "var(--accent)" }}>
-                      {learnStats.doneTopics}/{learnStats.totalTopics}
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${learnPct ?? 0}%`,
-                        background: `linear-gradient(90deg, var(--accent), hsl(var(--accent-h),var(--accent-s),calc(var(--accent-l)+14%)))` }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-mono" style={{ color: "var(--text-secondary)" }}>Weeks done</span>
-                    <span className="text-[10px] font-mono font-medium" style={{ color: "#5ecf95" }}>
-                      {learnStats.doneWeeks}/{learnStats.totalWeeks}
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${weeksPct ?? 0}%`, background: "#5ecf95" }} />
-                  </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ height: "6px", background: "var(--bg-input)", borderRadius: "99px", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${learnPct ?? 0}%`, borderRadius: "99px", background: `linear-gradient(90deg, var(--accent), var(--accent-light))`, transition: "width 0.8s ease" }} />
                 </div>
               </div>
-            </Link>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--accent)", fontFamily: "JetBrains Mono, monospace", flexShrink: 0 }}>{learnPct ?? 0}%</div>
+            </div>
           )}
 
-          {/* Quick actions */}
-          <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-            <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-              Quick actions
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              {QUICK_ACTIONS.map((item) => (
-                <Link key={item.href} href={item.href}
-                  className="cc-tile flex flex-col items-start p-3 rounded-[18px] no-underline"
-                  style={{ minHeight: "68px" }}>
-                  <span className="text-xl mb-1.5" style={{ position: "relative", zIndex: 3,
-                    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}>
-                    {item.icon}
-                  </span>
-                  <span className="text-[11px] font-medium leading-tight"
-                    style={{ color: "var(--text-primary)", position: "relative", zIndex: 3,
-                      fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.01em" }}>
-                    {item.label}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
+          {/* Productivity goal card */}
+          <ProductivityGoalCard
+            weeklyDone={todayDone.length}
+            weeklyTotal={todos.filter((t) => !t.deleted_at).length}
+            focusMinutes={todayFocusMinutes}
+            dailyBars={dailyBars}
+            weeklyBars={weeklyBars}
+            monthlyBars={monthlyBars}
+            periodTotals={periodTotals}
+          />
 
         </div>
       </div>

@@ -208,6 +208,86 @@ export async function fetchDeletedDecisions() {
 export async function fetchActivityLog(days: number = 30) { const since = new Date(); since.setDate(since.getDate() - days); const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", since.toISOString()).order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
 export async function fetchActivityLogByRange(from: string, to: string) { const { data, error } = await supabase.from("activity_log").select("*").gte("created_at", from + "T00:00:00.000Z").lte("created_at", to + "T23:59:59.999Z").order("created_at", { ascending: false }); if (error) throw error; return data as ActivityLog[]; }
 
+// ── Weekly task counts (last 7 days) — for ProductivityGoalCard ──
+// ── Task count helpers shared by Weekly / Daily / Monthly ────────────
+const BAR_COLORS = ["#ec4899","#3b82f6","#f59e0b","#7c6ffd","#10b981","#f87171","#a78bfa"];
+const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+async function fetchCompletedByRange(fromStr: string, toStr: string): Promise<{ created_at: string }[]> {
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("created_at")
+    .eq("action", "completed")
+    .gte("created_at", fromStr + "T00:00:00.000Z")
+    .lte("created_at", toStr   + "T23:59:59.999Z");
+  if (error) throw error;
+  return data as { created_at: string }[];
+}
+
+// Weekly — last 7 days, one bar per day
+export async function fetchWeeklyTaskCounts(): Promise<{ label: string; count: number; color: string }[]> {
+  const today = new Date();
+  const from  = new Date(today); from.setDate(today.getDate() - 6);
+  const data  = await fetchCompletedByRange(from.toISOString().slice(0,10), today.toISOString().slice(0,10));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(from); d.setDate(from.getDate() + i);
+    const dateStr = d.toISOString().slice(0,10);
+    const count = data.filter(r => r.created_at.startsWith(dateStr)).length;
+    return { label: DAY_LABELS[d.getDay()], count, color: BAR_COLORS[i] };
+  });
+}
+export async function fetchDailyTaskCounts(): Promise<{ label: string; count: number; color: string }[]> {
+  const todayStr = new Date().toISOString().slice(0,10);
+  const data = await fetchCompletedByRange(todayStr, todayStr);
+  const BLOCKS = ["12am","4am","8am","12pm","4pm","8pm"];
+  return BLOCKS.map((label, i) => {
+    const hourStart = i * 4;
+    const hourEnd   = hourStart + 4;
+    const count = data.filter(r => {
+      const h = new Date(r.created_at).getHours();
+      return h >= hourStart && h < hourEnd;
+    }).length;
+    return { label, count, color: BAR_COLORS[i] };
+  });
+}
+
+// Monthly — current calendar month, grouped by week (Week 1–5)
+export async function fetchMonthlyTaskCounts(): Promise<{ label: string; count: number; color: string }[]> {
+  const now   = new Date();
+  const fromStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const toStr   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0,10);
+  const data = await fetchCompletedByRange(fromStr, toStr);
+  // Group by ISO week number within the month (week 1 = days 1–7, etc.)
+  const weeks: { label: string; count: number; color: string }[] = [];
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const numWeeks = Math.ceil(daysInMonth / 7);
+  for (let w = 0; w < numWeeks; w++) {
+    const dayStart = w * 7 + 1;
+    const dayEnd   = Math.min(dayStart + 6, daysInMonth);
+    const count = data.filter(r => {
+      const day = new Date(r.created_at).getDate();
+      return day >= dayStart && day <= dayEnd;
+    }).length;
+    weeks.push({ label: `Wk${w + 1}`, count, color: BAR_COLORS[w % BAR_COLORS.length] });
+  }
+  return weeks;
+}
+
+// Total completed tasks for each period (for accurate % in ProductivityGoalCard)
+export async function fetchPeriodTotals(): Promise<{ daily: number; weekly: number; monthly: number }> {
+  const now      = new Date();
+  const todayStr = now.toISOString().slice(0,10);
+  const weekFrom = new Date(now); weekFrom.setDate(now.getDate() - 6);
+  const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const monthTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0,10);
+  const [daily, weekly, monthly] = await Promise.all([
+    fetchCompletedByRange(todayStr, todayStr),
+    fetchCompletedByRange(weekFrom.toISOString().slice(0,10), todayStr),
+    fetchCompletedByRange(monthFrom, monthTo),
+  ]);
+  return { daily: daily.length, weekly: weekly.length, monthly: monthly.length };
+}
+
 // ── Learning Progress ─────────────────────────────────────
 export async function fetchLearningProgress(): Promise<LearningProgress[]> {
   const { data, error } = await supabase.from("learning_progress").select("*").order("phase_id", { ascending: true });
@@ -263,4 +343,28 @@ export async function fetchLearningStats(): Promise<{ totalTopics: number; doneT
   const totalWeeks  = phases.reduce((s, p) => s + p.weeks.length, 0);
   const doneWeeks   = weekProgress.filter((r) => r.is_done).length;
   return { totalTopics, doneTopics, totalWeeks, doneWeeks };
+}
+
+// ── Notification read state (stored in interview_prep table as key-value) ──
+const NOTIF_READ_KEY = "srn_notif_read_ids_v1";
+
+export async function fetchNotifReadIds(): Promise<Set<string>> {
+  try {
+    const { data } = await supabase
+      .from("interview_prep")
+      .select("data")
+      .eq("key", NOTIF_READ_KEY)
+      .maybeSingle();
+    if (data?.data?.ids) return new Set(data.data.ids as string[]);
+  } catch {}
+  return new Set();
+}
+
+export async function saveNotifReadIds(ids: Set<string>): Promise<void> {
+  try {
+    await supabase.from("interview_prep").upsert(
+      { key: NOTIF_READ_KEY, data: { ids: [...ids] }, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+  } catch {}
 }

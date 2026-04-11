@@ -722,9 +722,16 @@ export default function InterviewPrepPage() {
           <div className="space-y-3">
             {WEEKLY_PLAN.map((w, i) => {
               const colors = ["#f87171","#f87171","#fb923c","#fbbf24","#a78bfa","#5ecf95"];
+              // Determine if this is the current active week (assume plan started 12 weeks from now, check which week we'd be on)
+              // Simple heuristic: mark week based on how many study checklist items are done
+              const topicsCheckedCount = checkedTopics.size;
+              const totalTopicsCount   = DOMAINS.reduce((s,d) => s + d.topics.length, 0);
+              const progressPct        = totalTopicsCount > 0 ? topicsCheckedCount / totalTopicsCount : 0;
+              const currentWeekIndex   = Math.min(Math.floor(progressPct * WEEKLY_PLAN.length), WEEKLY_PLAN.length - 1);
+              const isCurrentWeek      = i === currentWeekIndex;
               return (
                 <div key={i} className="liquid-glass rounded-[20px] p-4 animate-fade-in-up"
-                  style={{ animationDelay: `${i * 40}ms`, boxShadow: "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
+                  style={{ animationDelay: `${i * 40}ms`, boxShadow: isCurrentWeek ? `var(--shadow-md), 0 0 0 1.5px ${colors[i]}60, inset 0 1px 0 var(--specular-top)` : "var(--shadow-md), inset 0 1px 0 var(--specular-top)" }}>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 rounded-[10px] px-3 py-2 text-center"
                       style={{ background: `${colors[i]}15`, border: `0.5px solid ${colors[i]}35`, minWidth: "56px" }}>
@@ -732,7 +739,14 @@ export default function InterviewPrepPage() {
                       <div className="text-sm font-bold font-mono" style={{ color: colors[i] }}>{w.weeks}</div>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{w.focus}</p>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{w.focus}</p>
+                        {isCurrentWeek && (
+                          <span style={{ fontSize: "9px", fontFamily: "monospace", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", letterSpacing: "0.08em", background: `${colors[i]}20`, color: colors[i], border: `0.5px solid ${colors[i]}45` }}>
+                            CURRENT
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs font-mono" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>{w.detail}</p>
                     </div>
                   </div>

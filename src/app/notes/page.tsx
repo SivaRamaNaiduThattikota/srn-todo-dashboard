@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchNotes, addNote, updateNote, deleteNote, type Note } from "@/lib/supabase";
 import { RecycleBinModal } from "@/components/RecycleBinModal";
+import NoteCard from "@/components/NoteCard";
 
 const PRESET_TAGS = ["python","sql","ml","deep-learning","llm","nlp","interview","system-design","dsa","cloud","mlops","stats","project","concept"];
 
@@ -114,7 +115,7 @@ export default function NotesPage() {
       <header className="mb-5 animate-fade-in-up">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Knowledge base</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Daily Notes</h1>
             <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-muted)" }}>{notes.length} notes · {filtered.length !== notes.length ? `${filtered.length} shown` : "all"}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -158,6 +159,33 @@ export default function NotesPage() {
           {search && <span className="text-[9px] font-mono flex-shrink-0 px-2 py-0.5 rounded-lg" style={{ background: filtered.length > 0 ? "var(--accent-muted)" : "rgba(248,65,65,0.12)", color: filtered.length > 0 ? "var(--accent)" : "#f87171" }}>{filtered.length}/{notes.length}</span>}
           {search && <button onClick={() => setSearch("")} className="w-6 h-6 flex items-center justify-center rounded-lg flex-shrink-0" style={{ color: "var(--cc-text-muted)", background: "var(--glass-fill)" }}>×</button>}
         </div>
+      </div>
+
+      {/* Browse icons row — v12.3 (real filters) */}
+      <div className="flex gap-3 mb-5 animate-fade-in-up" style={{ animationDelay: "10ms" }}>
+        {[
+          { icon: "⭐", label: "Shortcuts", color: "rgba(124,111,253,0.14)", action: () => { setFilterTag(""); setSearch("📌"); setTimeout(() => setSearch(""), 0); setNotes(prev => [...prev].sort((a,b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0))); } },
+          { icon: "🏷", label: "Tags",      color: "rgba(59,130,246,0.14)",  action: () => searchInputRef.current?.focus() },
+          { icon: "🕐", label: "Recent",   color: "rgba(245,158,11,0.14)",  action: () => { setFilterTag(""); setSearch(""); const since = new Date(); since.setHours(since.getHours()-24); setNotes(prev => prev.filter(n => new Date(n.updated_at) >= since || prev.indexOf(n) < 999).sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())); } },
+          { icon: "📌", label: "Pinned",   color: "rgba(236,72,153,0.14)",  action: () => { setFilterTag(""); setSearch(""); setNotes(prev => [...prev].filter(n => n.is_pinned).concat(prev.filter(n => !n.is_pinned))); reload(); } },
+        ].map((item) => (
+          <button key={item.label} onClick={item.action}
+            className="flex flex-col items-center gap-1.5 flex-1"
+            style={{ background: "transparent", border: "none", cursor: "pointer" }}>
+            <div style={{ width: "52px", height: "52px", borderRadius: "16px", background: item.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", transition: "transform 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
+              {item.icon}
+            </div>
+            <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Section label row */}
+      <div className="flex items-center justify-between mb-3" style={{ animationDelay: "18ms" }}>
+        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Notes</span>
+        <button onClick={() => { setSearch(""); setFilterTag(""); }} style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}>See All</button>
       </div>
 
       {/* Tag filters */}
@@ -229,37 +257,42 @@ export default function NotesPage() {
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((note, i) => {
-            const { words, mins } = readStats(note.content || "");
             const isPendingDelete = undoState?.note.id === note.id;
+            // Tint logic: purple for ml/interview/stats, teal for sql/dsa/python, amber for project/mlops/cloud
+            const tint = note.tags?.some(t => ["ml","deep-learning","llm","nlp","stats","interview"].includes(t))
+              ? "purple"
+              : note.tags?.some(t => ["sql","dsa","python","system-design"].includes(t))
+              ? "teal"
+              : note.tags?.some(t => ["project","mlops","cloud"].includes(t))
+              ? "amber"
+              : "none";
+            // Pick 1-2 meaningful tags to show as chips
+            const chipTags = (note.tags || []).slice(0, 2).map(t => ({
+              label: t,
+              variant: (["interview","system-design"].includes(t) ? "priority"
+                : ["sql","python","dsa"].includes(t) ? "productive"
+                : ["ml","deep-learning","llm"].includes(t) ? "ml"
+                : "default") as "priority" | "productive" | "ml" | "default",
+            }));
             return (
-              <div key={note.id}
-                className="liquid-glass rounded-[20px] p-4 hover-lift animate-fade-in-up cursor-pointer group relative overflow-hidden"
-                style={{ animationDelay: `${i * 25}ms`, borderColor: note.is_pinned ? "hsla(var(--accent-h),var(--accent-s),var(--accent-l),0.28)" : "var(--glass-border)", opacity: isPendingDelete ? 0.4 : 1, transition: "opacity 0.3s ease" }}
-                onClick={() => handleEdit(note)}>
-                {note.is_pinned && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, var(--accent) 0%, transparent 100%)" }} />}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-xs font-semibold leading-snug line-clamp-2 flex-1" style={{ color: "var(--text-primary)" }}>{note.title}</h3>
-                  <div className="flex gap-1 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); handlePin(note); }} className="w-7 h-7 flex items-center justify-center rounded-lg transition-all" style={{ color: note.is_pinned ? "var(--accent)" : "var(--cc-text-muted)", background: note.is_pinned ? "var(--accent-muted)" : "var(--glass-fill)" }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill={note.is_pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); startDeleteCountdown(note); }} className="w-7 h-7 flex items-center justify-center rounded-lg transition-all" style={{ color: "#f87171", background: "rgba(248,65,65,0.08)" }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-                    </button>
-                  </div>
-                </div>
-                <p className="text-[10px] sm:text-[11px] font-mono mb-2.5" style={{ color: "var(--text-secondary)", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  <HighlightText text={note.content || "Empty note"} query={search} maxLen={140} />
-                </p>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex gap-1 flex-wrap">
-                    {note.tags?.slice(0, 3).map((t) => <span key={t} className="text-[8px] font-mono px-1.5 py-0.5 rounded-lg" style={{ background: filterTag === t ? "var(--accent-muted)" : "var(--bg-input)", color: filterTag === t ? "var(--accent)" : "var(--text-muted)" }}>{t}</span>)}
-                    {(note.tags?.length || 0) > 3 && <span className="text-[8px] font-mono" style={{ color: "var(--text-muted)" }}>+{(note.tags?.length || 0) - 3}</span>}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {note.content && <span className="text-[8px] font-mono" style={{ color: "var(--text-muted)" }}>{mins}m read</span>}
-                    <span className="text-[8px] font-mono" style={{ color: "var(--text-muted)" }}>{new Date(note.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
-                  </div>
+              <div key={note.id} style={{ opacity: isPendingDelete ? 0.4 : 1, transition: "opacity 0.3s ease", animationDelay: `${i * 25}ms` }} className="animate-fade-in-up">
+                <NoteCard
+                  emoji={note.is_pinned ? "📌" : "📝"}
+                  title={note.title}
+                  snippet={note.content || "Empty note"}
+                  date={new Date(note.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                  tags={chipTags}
+                  tint={tint}
+                  onClick={() => handleEdit(note)}
+                />
+                {/* Pin + Delete actions below card */}
+                <div className="flex gap-1 justify-end mt-[-6px] mb-1 px-1">
+                  <button onClick={(e) => { e.stopPropagation(); handlePin(note); }} className="w-7 h-7 flex items-center justify-center rounded-lg transition-all" style={{ color: note.is_pinned ? "var(--accent)" : "var(--cc-text-muted)", background: note.is_pinned ? "var(--accent-muted)" : "var(--glass-fill)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill={note.is_pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); startDeleteCountdown(note); }} className="w-7 h-7 flex items-center justify-center rounded-lg transition-all" style={{ color: "#f87171", background: "rgba(248,65,65,0.08)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  </button>
                 </div>
               </div>
             );
