@@ -1,5 +1,5 @@
 # SRN Command Center — PROJECT-MEMORY.md
-> **Last updated:** Session v12.4 — All 8 backlog items completed: notification read state, sidebar badge, notebooks page, calendar real times, period totals, browse icon real filters, interview active week, score widget link
+> **Last updated:** Session v12.6 — iOS 26 Liquid Glass full upgrade (7 systems) + complete nav icon redesign (18 unique icons)
 > **Stack:** Next.js 14 · Supabase (Mumbai) · Tailwind CSS · TypeScript · Framer Motion
 
 ---
@@ -14,237 +14,203 @@
 | Local path | `C:\Users\2321764\Downloads\00 - SRN Command Center\todo-dashboard` |
 | GitHub repo | srn-todo-dashboard (auto-deploys to Vercel on push) |
 | Supabase project ID | `azpjxezbackhzuoznccg` (Mumbai region) |
-| Design version | **v12.4** — iOS 26 Liquid Glass + Evernote-inspired UI components |
+| Design version | **v12.6** — iOS 26 Liquid Glass full upgrade + custom icon system |
 | CSS framework | Tailwind CSS + custom CSS vars in globals.css |
 | Font system | `-apple-system / SF Pro Display` + `JetBrains Mono` |
 
 ---
 
-## 🎨 Design System — v12.3 (globals.css is source of truth)
+## 🎨 Design System — v12.6 (globals.css is source of truth)
 
 ### Core classes
 `.liquid-glass`, `.liquid-glass-sweep`, `.cc-btn`, `.cc-btn-accent`, `.cc-chip`, `.cc-tile`, `.cc-habit`
 
-### CSS variables (ALL components must use these — never hardcode hex)
+### CSS variables — ALL components must use these, never hardcode hex
 `--accent`, `--accent-light`, `--accent-muted`, `--accent-dim`, `--accent-glow`
 `--glass-fill`, `--glass-border`, `--specular-top`, `--cc-glass-base`, `--shadow-xl`
 `--text-primary`, `--text-secondary`, `--text-muted`, `--bg-input`
+`--sp`, `--eo`, `--ei`, `--sm` (spring/easing curves — use instead of raw bezier strings)
+`--mx`, `--my` (cursor 0–1 position, live-updated by ClientLayout mousemove handler)
+`--blur-layer-bg`, `--blur-layer-mid`, `--blur-layer-top` (3-tier depth blur system)
 
-### Color rule (v12.3 — critical)
-- ALL inline styles must use CSS variables, never hardcoded hex like `#7c6ffd` or `rgba(124,111,253,...)`
-- This ensures accent theme switching (green/blue/purple/orange/pink/cyan) works across all components
-- New components added in v12.1–v12.3 all updated to use CSS vars
+### iOS 26 Glass utility classes (v12.5+)
+`.ca` / `.ca-strong` — chromatic aberration RGB fringe on card edges
+`.prism` + `<div class="prism-border">` — rotating rainbow chromatic border (use sparingly)
+`.shim` — idle shimmer sweep (add as first child inside any card)
+`.materialize` — glass blurs IN from nothing on route entry
+`.haptic` — JS-toggled 5-keyframe spring bounce
+`.gltxt` — glass text luminous raised effect for headings
+`.lp-active` — liquid press squish physics (delegated from ClientLayout)
+`.page-enter` / `.page-exit` — blur+scale route morph
+`.modal-morph-enter` / `.modal-morph-exit` — iOS sheet clip-path animation
+`.expand-grid` / `.expand-grid.open` — CSS grid trick for height→auto
+`[data-swipe]` — touch swipe-to-dismiss on notification items
 
-### v12.1 UI additions to globals.css
-New utility classes appended at bottom of globals.css:
-`.action-card-link`, `.ac-purple/.ac-amber/.ac-teal/.ac-pink` (action card colour variants)
-`.note-card-purple/.note-card-teal/.note-card-amber` (note tint variants)
-`.chip-priority/.chip-productive/.chip-ml/.chip-date` (tag chip variants)
-`.seg-tabs` + `.seg-tab.active` (segment tab toggle)
-`.browse-row` + `.browse-item` + `.browse-icon-{color}` (browse icon row)
-`.cal-week-strip` + `.cal-day-btn.selected` (calendar week pill strip)
-`.cal-event.cal-event-{pink|blue|purple|teal}` (event cards with left-border accent)
-`.cal-break-tag` (amber break pill between events)
-`.nb-list-card` + `.nb-list-icon` + `.nb-icon-{color}` (notebook list items)
-`.notif-item` + `.notif-icon-bubble.notif-icon-{color}` (notification feed items)
-`.section-label-row` + `.section-label-text` + `.section-see-all` (section headers)
+### Icon system (v12.6)
+All 18 nav icons are purpose-built SVGs defined in the `ICONS` object in `Sidebar.tsx`.
+`MobileNav.tsx` imports the same `ICONS` object — always add new icons to Sidebar first.
+`strokeWidth: 1.6`, 20×20 default, every icon visually unique.
 
 ---
 
-## 📁 All 17 Pages — Current Status (v12.3)
+## 📁 All 18 Pages — Current Status (v12.6)
 
 | Page | Route | Status | Key features |
 |---|---|---|---|
-| Tasks | `/` | ✅ v11.4 | Checklist per task, focus time panel, quick add bar, h/m time format |
-| Today | `/today` | ✅ v12.3 | ActionCards, stats, ML roadmap compact row, ProductivityGoalCard (3 real tabs) |
-| Streaks | `/streaks` | ✅ v12.0 | Heatmap sliding window (prev/next 7-day), long-press tooltip mobile |
-| Focus | `/focus` | ✅ v12.0 | Auto Pomodoro mode, screen-off fixes, history chart sliding window, day detail panel |
-| Notes | `/notes` | ✅ v12.1 | Browse icons row, tinted NoteCards, section header + See All, tag chips |
+| Tasks | `/` | ✅ v11.4 | Checklist per task, focus time panel, quick add bar, h/m format |
+| Today | ✅ v12.5 | `/today` | ActionCards, stats+shim, ML roadmap, ProductivityGoalCard, prism score widget, haptic habits, `.ca` glass |
+| Streaks | `/streaks` | ✅ v12.0 | Heatmap sliding window, long-press tooltip mobile |
+| Focus | `/focus` | ✅ v12.0 | Auto Pomodoro, screen-off fixes, history chart sliding window, day detail panel |
+| Notes | `/notes` | ✅ v12.4 | Browse icons (real filters), NoteCard tints, Shortcuts/Recent/Pinned working |
 | Projects | `/projects` | ✅ | Mobile UX overhaul, 2×2 grid, Recycle Bin |
 | Learning | `/learning` | ✅ | 10 phases DB-driven, ⓘ modal, ⏱ timeline header button |
-| Interview | `/interview` | ✅ v11.1 | 4 tabs, Supabase persistence, ⓘ modal, DS+MLE badge |
+| Interview | `/interview` | ✅ v12.4 | 4 tabs, active week highlight, Supabase persistence |
 | Board | `/board` | ✅ | Drag desktop, tap-to-move mobile |
-| Analytics | `/analytics` | ✅ v12.0 | Sliding window chart, click-to-detail panel (created + completed tasks per day) |
+| Analytics | `/analytics` | ✅ v12.0 | Sliding window chart, click-to-detail panel |
 | AI Assistant | `/assistant` | ✅ | Smart rules engine, insight cards |
 | Review | `/review` | ✅ | Fetches focus + habit data correctly |
 | Decisions | `/decisions` | ✅ | Search + category filter + 5s undo, Recycle Bin |
 | Briefing | `/briefing` | ✅ | Auto-generated daily brief |
-| Calendar | `/calendar` | ✅ v12.2 | CalendarWeekStrip, day timeline view on click, coloured event cards, break tags |
+| Calendar | `/calendar` | ✅ v12.4 | CalendarWeekStrip, day timeline, start_date times, break tags |
 | Settings | `/settings` | ✅ v11.1 | Accent themes, Google Calendar sync, templates, Export & Backup |
-| **Notebooks**      | `/notebooks`      | ✅ **NEW v12.4** | Groups notes by tag into 6 notebooks (ML, SQL, Interview, Projects, Concepts, Daily) with colored icon tiles |
-| **Notifications** | `/notifications` | ✅ v12.4 | Per-item read state (localStorage), unread count badge on sidebar, Mark all as read |
+| Notebooks | `/notebooks` | ✅ v12.4 | 6 tag-grouped notebooks, colored tiles, drill-in view |
+| Notifications | `/notifications` | ✅ v12.4 | Supabase read state, swipe-to-dismiss, live badge count |
 
 ---
 
-## ✅ v12.4 Session Changes (8 backlog items completed)
+## ✅ v12.5–v12.6 Session Changes
 
-### #1 — Notifications: per-item read state
-- localStorage key `srn-notif-read-ids` stores Set of read notification IDs
-- Clicking any notification item marks it read immediately
-- Unread items: accent-muted background, bold title, accent dot on left
-- Read items: transparent bg, normal weight, 75% opacity
-- "Mark all as read" now actually persists to localStorage
-- Broadcasts `srn:notif-read` CustomEvent with unread count for sidebar
+### v12.5 — iOS 26 Liquid Glass Full Upgrade (7 systems)
 
-### #2 — Sidebar: unread badge on Notifications
-- `NavLink` component updated with optional `badge?: number` prop
-- Collapsed mode (icon-only): small dot badge top-right of icon
-- Expanded mode: accent pill badge right-aligned in nav row
-- Sidebar listens to `srn:notif-read` CustomEvent to update count
-- Count initialised from localStorage on mount
+#### System 1: SVG Refraction (`layout.tsx`)
+- `#lg-refract` SVG filter injected once in root layout (zero visual footprint)
+- `feTurbulence` + `feDisplacementMap` creates border-lensing displacement
+- `@supports (backdrop-filter: url(#x))` — Chrome/Edge get full refraction, Safari falls back to blur
+- `#lg-ca` filter also injected for SVG-based chromatic aberration
 
-### #3 — Notebooks page (`/notebooks`)
-- New route `/notebooks`, added to sidebar MORE_NAV
-- 6 notebook definitions with tag-based grouping:
-  - ML Learning (ml, deep-learning, llm, nlp, stats)
-  - SQL & DSA (sql, dsa, python)
-  - Interview Prep (interview, system-design)
-  - Projects & MLOps (project, mlops, cloud)
-  - Concepts (concept)
-  - Daily Notes (pinned + unassigned catch-all)
-- Grid of colored icon tiles → click to drill into note list
-- Each notebook shows note count + last updated date
-- Clicking a note navigates to `/notes`
-- Back button returns to notebook grid
+#### System 2: Chromatic Aberration (`.ca`, `.ca-strong`)
+- Thin RGB-split fringe at glass card edges via `box-shadow: inset`
+- `.ca` = subtle (0.5px offset), `.ca-strong` = prominent (1px + green channel)
+- Applied: score widget (`.ca-strong`), habits card (`.ca`)
+- `mix-blend-mode: screen` — works correctly on dark and light themes
 
-### #4 — Calendar: real start times on event cards
-- Day timeline tasks now sorted by `start_date` first, then `estimated_mins`
-- If task has `start_date`: shows `9:00 AM – 10:30 AM` format (start + end computed from estimated_mins)
-- If no `start_date`: falls back to `~1h 30m` duration display as before
-- No DB migration needed — `start_date` column already exists in `todos` table
+#### System 3: Motion-Reactive Specular (`ClientLayout.tsx`)
+- `mousemove` → `--mx`/`--my` CSS vars on `:root` via `requestAnimationFrame`
+- Mobile: `deviceorientation` event uses device tilt for same effect
+- `.liquid-glass::before` = `radial-gradient` centered at `calc(var(--mx)*100%)`
+- Every glass card's specular highlight tracks cursor in real-time
 
-### #5 — ProductivityGoalCard: real totals per period
-- New `fetchPeriodTotals()` in supabase.ts — returns `{ daily, weekly, monthly }` completed counts
-- `periodTotals` prop added to ProductivityGoalCard
-- Daily tab: shows completed today / total completed today (real)
-- Weekly tab: shows completed this week / max(todos total, weekly completed)
-- Monthly tab: shows completed this month / total completed this month (real)
-- "Total tasks" label updates to show period name: "Total (daily)" / "Total (weekly)" / "Total (monthly)"
+#### System 4: Depth Layers
+- 3-tier blur budget: sidebar `4px` / cards `20px` / modals `40px`
+- `--blur-layer-bg/mid/top` CSS vars for consistent scaling
+- Sidebar overridden to background-layer, modals to top-layer
 
-### #6 — Notes browse icons: real filters
-- ⭐ Shortcuts: sorts notes to show pinned first
-- 🏷 Tags: focuses search input (unchanged — correct behaviour)
-- 🕐 Recent: filters to notes updated in last 24 hours, sorted newest first
-- 📌 Pinned: filters to pinned notes only, then reloads
+#### System 5: Fluid Morphing Transitions
+- Spring easing (`--sp`) on all `.cc-tile`, `.cc-btn`, `.cc-habit`, `.liquid-glass`, `.hover-lift`
+- `.modal-morph-enter/exit` — `clip-path` iOS sheet animation
+- `.expand-grid` — CSS grid trick for height→auto without JS measurement
 
-### #7 — Interview page: active week highlight
-- 12-week plan now shows a "CURRENT" badge on the estimated current week
-- Heuristic: week index = `floor(topicsCheckedPct × 6)` — as you check off topics, current week advances
-- Active week card gets a coloured outline ring matching the week's colour
-- No hardcoded date — purely driven by your actual study progress
+#### System 6: Liquid Press (`ClientLayout.tsx`)
+- Pointer event delegation from `document.body` — no per-element wiring needed
+- Targets `.cc-btn`, `.cc-tile`, `.cc-habit`, `.hover-lift`
+- 5-keyframe squish: `scaleX(1.06) scaleY(.92)` → overshoot → settle
+- Auto-removes `.lp-active` after 520ms
 
-### #8 — Daily score → Analytics link
-- Daily score widget in Today page header wrapped in `<Link href="/analytics">`
-- `hover-lift` class added for hover feedback
-- Clicking the score number now navigates to `/analytics`
+#### System 7: Fluid Page Transitions (`ClientLayout.tsx`)
+- Route change via `usePathname()` → `mainRef.current` gets `.page-enter`
+- `.page-enter`: `blur(8px)→0` + `scale(.97)→1` + `translateY(12px)→0`
+- Children stagger: `animation-delay: calc(var(--stagger-i) * 40ms)`
+- `prefers-reduced-motion` media query disables all animations
+
+### v12.6 — Complete Nav Icon Redesign
+
+#### Icon system
+- Replaced all generic Feather/Lucide stroke icons with 18 purpose-built SVGs
+- All defined in `ICONS` object in `Sidebar.tsx`, consumed by both Sidebar and MobileNav
+- `strokeWidth: 1.6`, 20×20 viewBox — thinner, more refined than before
+- No two icons share the same visual shape
+
+#### Key icon changes
+| Route | Icon | Design intent |
+|---|---|---|
+| Today | Clock + compass ticks | Precise moment in time |
+| Tasks | 3-row checklist | Literally a task list |
+| Streaks | Flame with inner core | Heat/energy = streak |
+| Focus | Crosshair target | Precision + concentration |
+| Notes | Folded-corner document | Clearly a note/file |
+| Projects | House silhouette | Home base for work |
+| Learning | Graduation cap + arch | Dimensional, not flat |
+| Interview | Monitor with `>_` prompt | Technical/screen-based |
+| Analytics | EKG pulse waveform | Dynamic data flow |
+| Assistant | Pin/teardrop with brain dot | AI probe/insight |
+
+#### NavLink redesign (Sidebar)
+- **Active pill**: gradient `accent-muted` bg + `accent-dim` border + specular top line
+- **Icon container**: 28×28 rounded square — iOS Home Screen icon style
+- **Hover**: icon scales `1.14×` with spring (icon container only, not whole row)
+- **Label**: `fontWeight: 600` active vs `500` default
+- **Badge**: accent pill (expanded) or accent dot on icon (collapsed)
+- All transitions use `--sp` spring easing
+
+#### MobileNav redesign
+- Same `ICONS` object as Sidebar
+- Active tab: `accent-muted` bg + `accent-dim` border + top specular line
+- Icon scales `1.08×` with spring on active state
+- Active indicator dot at top of tab item
+- More sheet: grid tiles use `accent-muted` bg on active route
+
+### Files changed in v12.5–v12.6
+| File | Changes |
+|---|---|
+| `src/app/globals.css` | 7 iOS 26 systems appended: refraction, CA, specular vars, depth layers, morphing, liquid press, page transitions |
+| `src/app/layout.tsx` | SVG filter defs injected (`#lg-refract`, `#lg-ca`) |
+| `src/components/ClientLayout.tsx` | Systems 3+6+7: mousemove specular, liquid press delegation, page transition trigger, `mainRef` |
+| `src/app/today/page.tsx` | `.ca-strong` on score widget, `.ca` on habits card, `.gltxt` on headings, `.shim` on stats |
+| `src/components/Sidebar.tsx` | Complete rewrite: 18 purpose-built SVG icons, iOS liquid pill active state, spring hover, icon containers |
+| `src/components/MobileNav.tsx` | Complete rewrite: same ICONS set, accent-muted active state, spring tab animations |
+| `PROJECT-MEMORY.md` | Updated to v12.6 |
+
+---
+
+## ✅ v12.4 Session Changes (8 backlog items)
 
 ### Files changed in v12.4
 | File | Changes |
 |---|---|
-| `src/app/notifications/page.tsx` | Per-item read state, unread count, Mark all as read functional |
-| `src/components/Sidebar.tsx` | NavLink `badge` prop, unread count state, CustomEvent listener, Notebooks added |
+| `src/app/notifications/page.tsx` | Supabase read state, swipe-to-dismiss, unread count broadcast |
+| `src/components/Sidebar.tsx` | NavLink badge prop, notif unread count, Notebooks in MORE_NAV |
 | `src/app/notebooks/page.tsx` | NEW PAGE — 6 notebook groups, colored tiles, drill-in view |
 | `src/app/calendar/page.tsx` | Sort by start_date, time range display on event cards |
-| `src/app/today/page.tsx` | `fetchPeriodTotals` added, score widget → Analytics link, `periodTotals` prop |
-| `src/components/ProductivityGoalCard.tsx` | `periodTotals` prop, accurate per-tab totals |
-| `src/app/notes/page.tsx` | Browse icons: Shortcuts=pinned sort, Recent=last 24h, Pinned=filter |
+| `src/app/today/page.tsx` | fetchPeriodTotals, score widget → Analytics link, periodTotals prop |
+| `src/components/ProductivityGoalCard.tsx` | periodTotals prop, accurate per-tab totals, label updates per tab |
+| `src/app/notes/page.tsx` | Browse icons: Shortcuts=pinned, Recent=last 24h, Pinned=filter |
 | `src/app/interview/page.tsx` | Active week highlight badge + coloured outline ring |
-| `src/lib/supabase.ts` | `fetchPeriodTotals()` function added |
-| `PROJECT-MEMORY.md` | Updated to v12.4 |
+| `src/lib/supabase.ts` | fetchPeriodTotals(), fetchNotifReadIds(), saveNotifReadIds() |
 
 ---
 
 ## ✅ v12.1–v12.3 Session Changes
 
 ### New Components (`src/components/`)
+- `ActionCards.tsx` — 4 gradient action cards (accent/amber/teal/pink), theme-aware
+- `NoteCard.tsx` — colored-tint cards (purple/teal/amber), auto-tint from tags
+- `ProductivityGoalCard.tsx` — Weekly/Daily/Monthly real Supabase tabs
+- `CalendarWeekStrip.tsx` — 7-day horizontal pill strip
 
-#### `ActionCards.tsx` — v12.3
-- 4 gradient action cards: New Note (accent), New Task (amber), Focus Timer (teal), Learning (pink)
-- First card uses `var(--accent)` CSS vars to respect theme
-- Hover scale animation, decorative circle, icon badge top-right
-- Replaces old `cc-tile` quick actions grid in Today right column
-
-#### `NoteCard.tsx` — v12.1
-- Colored-tint note cards: `tint` prop = `"purple" | "teal" | "amber" | "none"`
-- Auto-tint logic: ml/interview/stats tags → purple, sql/dsa/python → teal, project/mlops/cloud → amber
-- Emoji prefix (📌 pinned, 📝 regular), snippet preview, date chip, priority/productive/ml tag chips
-- Used in `/notes` grid view
-
-#### `ProductivityGoalCard.tsx` — v12.3
-- **3 real Supabase tabs** — Weekly / Daily / Monthly (no more multiplier estimates)
-- Weekly: last 7 days, one bar per day from `activity_log`
-- Daily: today split into 6 four-hour blocks (12am, 4am, 8am, 12pm, 4pm, 8pm)
-- Monthly: current month grouped into weeks (Wk1–Wk5)
-- Progress bar, big stats (Completed / Total), multicolor strip bar, bar chart, count legend
-- All colors use CSS variables — theme-aware
-
-#### `CalendarWeekStrip.tsx` — v12.1
-- 7-day horizontal pill strip above calendar month grid
-- Today highlighted with gradient pill using CSS vars
-- Clicking a day updates the month view
-
-### Modified Pages
-
-#### `today/page.tsx` — v12.3
-**Right column layout** (clean order, no duplicates):
-1. Today's stats (compact)
-2. ActionCards (4 gradient cards)
-3. ML Roadmap inline progress row (compact: label + bar + %)
-4. ProductivityGoalCard (Weekly/Daily/Monthly tabs)
-
-**Removed:** duplicate full ML Roadmap card (was shown twice), old QUICK_ACTIONS cc-tile grid
-**Added state:** `weeklyBars`, `dailyBars`, `monthlyBars` — all fetched on mount
-**Added imports:** `fetchDailyTaskCounts`, `fetchMonthlyTaskCounts`, `ProductivityGoalCard`
-
-#### `notes/page.tsx` — v12.1 + v12.2
-- Page title changed: "Knowledge base" → "Daily Notes"
-- Browse icons row added (⭐ Shortcuts, 🏷 Tags, 🕐 Recent, 📌 Pinned) with hover scale
-- "Notes" section label + "See All" button row
-- Grid view replaced with `NoteCard` component (tinted cards, emoji, chips)
-- Pin + Delete actions moved below each card
-- List view unchanged
-
-#### `calendar/page.tsx` — v12.2
-- `CalendarWeekStrip` added above month navigation
-- `selectedDay` state added
-- Day timeline view: click any day → slides in below month grid
-- Event cards: coloured left-border accent (pink/blue/purple/teal/green per index)
-- Break tag (☕ amber pill) shown between every 2nd event
-- Task title, priority badge, estimated duration, description snippet per event card
-- Close (×) button collapses timeline
-
-#### `notifications/page.tsx` — v12.2 (**NEW PAGE**)
-- Route: `/notifications`
-- Sidebar entry added under "More" nav (bell icon)
-- Fetches from 4 real Supabase tables: `activity_log`, `focus_sessions`, `habit_log`, `daily_habits`
-- Generates notification items per event type:
-  - ✅ Task completed (green bubble)
-  - ➕ Task created (purple bubble)
-  - 🔄 Status changed (blue bubble)
-  - ⏱ Focus session completed (amber bubble)
-  - 🔥 All habits done for the day (pink bubble)
-- All/Tasks/System tabs with real counts
-- Grouped by date (Today / Yesterday / date)
-- Time shown as "X ago" from real timestamps
-- "Mark all as read" button (visual only)
-- Empty state when no activity
-
-### `supabase.ts` — v12.3 additions
-
-#### Task count functions (3 new, replaces old single function)
+### supabase.ts additions (v12.1–v12.4)
 ```
-fetchCompletedByRange(from, to)  — shared helper, queries activity_log action="completed"
-fetchWeeklyTaskCounts()          — last 7 days, one bar per day (Sun–Sat labels)
-fetchDailyTaskCounts()           — today only, 6 four-hour blocks (12am/4am/8am/12pm/4pm/8pm)
-fetchMonthlyTaskCounts()         — current month, grouped by week (Wk1–Wk5)
+fetchCompletedByRange(from, to)   — shared helper for all count functions
+fetchWeeklyTaskCounts()           — last 7 days, one bar per day
+fetchDailyTaskCounts()            — today in 6 four-hour blocks
+fetchMonthlyTaskCounts()          — current month grouped by week
+fetchPeriodTotals()               — { daily, weekly, monthly } completed counts
+fetchNotifReadIds()               — Set<string> from interview_prep table
+saveNotifReadIds(ids)             — upsert to interview_prep table
 ```
-
-All 3 use `BAR_COLORS` array and `DAY_LABELS` constants defined once at module level.
-No new Supabase tables — all read from existing `activity_log`.
 
 ---
 
-## 🗃 Database Schema v12.3 (unchanged — no new tables/columns)
+## 🗃 Database Schema (unchanged — no new tables since v11.4)
 
 | Table | Key columns |
 |---|---|
@@ -252,7 +218,7 @@ No new Supabase tables — all read from existing `activity_log`.
 | `daily_habits` | id, name, icon, color |
 | `habit_log` | id, habit_id, completed_date |
 | `focus_sessions` | id, todo_id, duration_minutes, completed, started_at, ended_at |
-| `notes` | id, title, content, tags, is_pinned, deleted_at |
+| `notes` | id, title, content, tags, is_pinned, deleted_at, updated_at |
 | `projects` | id, title, category, tech, highlights, github_url, live_url, progress, end_date, sort_order, deleted_at |
 | `project_sections` | id, project_id, title, items, category, sort_order |
 | `weekly_reviews` | id, week_start, tasks_completed, focus_minutes, streak_days, reflection, goals_next_week |
@@ -262,62 +228,20 @@ No new Supabase tables — all read from existing `activity_log`.
 | `learning_phases` | id, sort_order, title, duration, accent_color, bg_color, text_color, milestone, resources, tracks, weeks, practice, deleted_at |
 | `learning_progress` | id, phase_id (FK), track_index, topic_index, is_done, done_at |
 | `learning_week_progress` | id, phase_id (FK), week_index, is_done, done_at |
-| `interview_prep` | id, key (UNIQUE), data (jsonb), updated_at |
-
-**No SQL migrations ran this session** — all changes were frontend/query only.
+| `interview_prep` | id, key (UNIQUE), data (jsonb), updated_at — stores notif read IDs + interview progress |
 
 ---
 
-## 🔊 Focus Timer — Audio / Notification Architecture (v12.0 — unchanged)
-
-| Function | Purpose |
-|---|---|
-| `warmUpAudio()` | Called on Start press — unlocks AudioContext with user gesture (iOS) |
-| `resumeAndPlay(fn)` | Resumes suspended context then calls play function |
-| `getAudioCtx()` | Lazy singleton AudioContext |
-
-| Function | Tones | Trigger |
-|---|---|---|
-| `playFocusDone()` | 523→659→784→1047 Hz rising | Session completes |
-| `playBreakDone()` | 784→523 Hz descending | Break ends |
-| `playCountdownBeep()` | 880 Hz short | Auto Pomodoro countdown tick |
-
----
+## 🔊 Focus Timer Audio Architecture (v12.0 — unchanged)
+`warmUpAudio()` · `resumeAndPlay(fn)` · `getAudioCtx()`
+`playFocusDone()` (rising tones) · `playBreakDone()` (descending) · `playCountdownBeep()` (880Hz)
 
 ## 🍅 Auto Pomodoro Architecture (v12.0 — unchanged)
-
-Flow: Session complete → if `isPomodoroMode` → 5s countdown → break auto-starts → break ends → 3s countdown → next session auto-starts. Cancel button stops cycle at any point.
-
----
+Session done → 5s countdown → break → break done → 3s countdown → next session. Cancel stops cycle.
 
 ## 📱 Mobile Layout Rules (unchanged)
-
-### Modal pattern
-```
-fixed z-[61] bottom-0 left-0 right-0
-maxHeight: 92dvh, borderRadius: 24px 24px 0 0
-paddingBottom: calc(32px + env(safe-area-inset-bottom, 0px))
-```
+Modal pattern: `fixed z-[61] bottom-0 left-0 right-0`, `maxHeight: 92dvh`, `borderRadius: 24px 24px 0 0`
 Desktop: `sm:fixed sm:inset-0 sm:m-auto sm:rounded-[24px] sm:max-w-lg sm:max-h-[80vh]`
-
----
-
-## 🔧 Key Files Modified (v12.1–v12.3)
-
-| File | Changes |
-|---|---|
-| `src/components/ActionCards.tsx` | NEW — 4 gradient action cards, theme-aware CSS vars |
-| `src/components/NoteCard.tsx` | NEW — colored-tint note card with emoji, chips, tint prop |
-| `src/components/ProductivityGoalCard.tsx` | NEW — Weekly/Daily/Monthly tabs with real Supabase data |
-| `src/components/CalendarWeekStrip.tsx` | NEW — 7-day horizontal pill week strip |
-| `src/app/today/page.tsx` | Right column redesigned: ActionCards + compact ML row + ProductivityGoalCard |
-| `src/app/notes/page.tsx` | Browse row, section label, NoteCard grid, title updated |
-| `src/app/calendar/page.tsx` | CalendarWeekStrip, selectedDay state, day timeline view |
-| `src/app/notifications/page.tsx` | NEW PAGE — activity feed from 4 Supabase tables |
-| `src/components/Sidebar.tsx` | Notifications added to MORE_NAV |
-| `src/lib/supabase.ts` | `fetchWeeklyTaskCounts`, `fetchDailyTaskCounts`, `fetchMonthlyTaskCounts` |
-| `src/app/globals.css` | v12.1 utility classes appended (action cards, note tints, chips, segments, browse, cal, notif) |
-| `PROJECT-MEMORY.md` | Updated to v12.3 |
 
 ---
 
@@ -345,29 +269,30 @@ Soft-delete on: `todos`, `notes`, `decisions`, `projects`, `learning_phases`
 
 ---
 
-## ⏳ Feature Backlog (updated v12.4 — all 8 items done)
+## ⏳ Feature Backlog (updated v12.6)
 
 | Priority | Feature | Notes |
 |---|---|---|
 | 🟡 Medium | Recycle bin auto-purge | Auto-hard-delete items older than 30 days |
 | 🟡 Medium | Learning: phase reorder | Drag to reorder phases |
-| 🟡 Medium | Analytics category filter | Filter activity chart by task category |
-| 🟡 Medium | Focus page mobile test | Verify vh-based font on 320–430px screens |
-| 🟢 Low | Notebooks: note create from within | Add a note directly from the Notebooks drill-in view |
-| 🟢 Low | Notifications: persist read state to Supabase | Currently localStorage only — won't sync across devices |
-| 🟢 Low | Calendar: add start_time UI | Let users set a start time on tasks from the Add/Edit modal |
+| 🟡 Medium | Analytics category filter | Filter by task category |
+| 🟡 Medium | Focus page mobile test | Verify layout on 320–430px screens |
+| 🟡 Medium | Calendar: start_time UI | Add time picker to task Add/Edit modal |
+| 🟢 Low | Notebooks: create note from within | Add note directly in drill-in view |
+| 🟢 Low | Sidebar: animated sliding active pill | CSS position transition (needs JS layout measurement) |
+| 🟢 Low | Mobile: gyroscope permission prompt | iOS requires user gesture for DeviceOrientationEvent |
 
 ---
 
 ## 🐛 Known Code Quality Issues (non-breaking)
 
-| Page | Issue | Impact |
+| Location | Issue | Impact |
 |---|---|---|
-| Tasks, Today, Notes, Streaks, Decisions | `handle*` functions have `await` but no try/catch | Silent failures if Supabase errors |
+| Tasks, Today, Notes, Streaks, Decisions | `handle*` functions have `await` but no try/catch | Silent failures on Supabase errors |
 | Tasks | `crypto.randomUUID()` for checklist IDs | May fail on very old Android WebViews |
-| Tasks | `assigned_agent: "srn"` hardcoded in quick add | Intentional for personal dashboard |
-| Notifications | "Mark all as read" persists to localStorage only | Won't sync across devices — Supabase table needed for multi-device |
-| Calendar timeline | start_date used as start time proxy | Tasks need a dedicated start_time input in Add/Edit modal for proper scheduling |
+| Tasks | `assigned_agent: "srn"` hardcoded | Intentional for personal dashboard |
+| Calendar timeline | `start_date` used as start time proxy | No dedicated time-of-day input yet |
+| iOS mobile | DeviceOrientation specular needs permission | Works on Android, blocked on iOS without gesture |
 
 ---
 
@@ -376,10 +301,11 @@ Soft-delete on: `todos`, `notes`, `decisions`, `projects`, `learning_phases`
 - ✅ Every session ends with a summary table
 - ✅ Always read full file before writing replacement
 - ✅ ALL inline styles use CSS vars only — never hardcoded hex like `#7c6ffd`
-- ✅ Discuss changes before implementing
+- ✅ Use `--sp`, `--eo`, `--ei`, `--sm` easing vars — never raw cubic-bezier strings
 - ✅ Prefer surgical edits over full file rewrites where possible
 - ✅ h/m format for all time displays (never raw minutes > 60)
 - ✅ All time values: `m < 60 ? Xm : Xh [Ym]` pattern
 - ✅ No hover effects on mobile — click/tap only
-- ✅ Sliding windows follow same pattern: offset state + date-range Supabase fetch + slide animation
-- ✅ New components must use `var(--accent)`, `var(--text-primary)` etc — theme must work across all 6 accent colors
+- ✅ Sliding windows: offset state + date-range Supabase fetch + slide animation
+- ✅ New components must be theme-aware (all 6 accent colors must work)
+- ✅ Nav icons: add to `ICONS` object in `Sidebar.tsx`, same object imported in `MobileNav.tsx`
