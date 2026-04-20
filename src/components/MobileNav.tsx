@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── Shared icon factory (same as Sidebar) ────────────────────────────────────
 const IC = (paths: React.ReactNode, size = 22) => (
@@ -200,6 +200,64 @@ function TabItem({ href, label, iconKey, isActive }: {
 export function MobileNav() {
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
+
+  // ── Scroll-reactive nav: hide on scroll down, show on scroll up ──
+  useEffect(() => {
+    // Find the scrollable main element
+    const getScroller = () =>
+      document.querySelector<HTMLElement>("main") ||
+      document.documentElement;
+
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const scroller = getScroller();
+        const currentY = scroller.scrollTop || window.scrollY;
+        const delta = currentY - lastScrollY.current;
+
+        if (delta > 6 && currentY > 80) {
+          // Scrolling DOWN — hide nav
+          setNavHidden(true);
+        } else if (delta < -4) {
+          // Scrolling UP — always show nav
+          setNavHidden(false);
+        }
+        // Also show nav when near bottom of page
+        const nearBottom =
+          scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40;
+        if (nearBottom) setNavHidden(false);
+
+        lastScrollY.current = currentY;
+        ticking.current = false;
+      });
+    };
+
+    const main = document.querySelector<HTMLElement>("main");
+    if (main) {
+      main.addEventListener("scroll", onScroll, { passive: true });
+    } else {
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }
+    return () => {
+      main?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  // Always show nav on route change
+  useEffect(() => {
+    setNavHidden(false);
+    lastScrollY.current = 0;
+  }, [pathname]);
+
+  // Always show nav when sheet is open
+  useEffect(() => {
+    if (sheetOpen) setNavHidden(false);
+  }, [sheetOpen]);
 
   useEffect(() => { setSheetOpen(false); }, [pathname]);
   useEffect(() => {
@@ -212,7 +270,7 @@ export function MobileNav() {
   return (
     <>
       {/* Bottom bar */}
-      <nav className="mobile-bottom-nav" style={{
+      <nav className={`mobile-bottom-nav ${navHidden ? "nav-hidden" : "nav-visible"}`} style={{
         background: "var(--cc-glass-base)",
         borderTop: "0.5px solid var(--cc-tile-border)",
         backdropFilter: "blur(48px) saturate(2.2)",

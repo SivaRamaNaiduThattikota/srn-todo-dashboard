@@ -19,9 +19,8 @@ export function KeyboardShortcuts() {
           break;
         case "/":
           e.preventDefault();
-          // Focus search input
-          const search = document.querySelector<HTMLInputElement>('[placeholder*="Search"]');
-          search?.focus();
+          // Open command palette instead of focusing a search box
+          window.dispatchEvent(new CustomEvent("srn:open-cmd"));
           break;
         case "b":
           router.push("/board");

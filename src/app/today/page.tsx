@@ -21,6 +21,8 @@ export default function TodayPage() {
   const [periodTotals, setPeriodTotals] = useState<{ daily: number; weekly: number; monthly: number }>({ daily: 0, weekly: 0, monthly: 0 });
   const today = format(new Date(), "yyyy-MM-dd");
 
+  const [statsExpanded, setStatsExpanded] = useState(false);
+
   useEffect(() => {
     fetchHabits().then(setHabits).catch(() => {});
     fetchHabitLogs(7).then(setLogs).catch(() => {});
@@ -99,6 +101,15 @@ export default function TodayPage() {
     { href: "/analytics", label: "Analytics",     icon: "📊", color: "#b48eff" },
     { href: "/streaks",   label: "Streaks",       icon: "⚡", color: "#5ecf95" },
   ];
+
+  // Time-of-day context for empty states
+  const timeCtx = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const taskEmptyContent = {
+    morning:   { icon: "🌅", title: "Morning clear!",         sub: "Perfect time to plan your day. Add your first task." },
+    afternoon: { icon: "☀️", title: "Afternoon free!",        sub: "Nothing due yet — great time to get ahead." },
+    evening:   { icon: "🌙", title: "Evening wrap ✨",         sub: "Clear slate tonight. Rest up or get a head start." },
+    night:     { icon: "⭐", title: "All quiet",              sub: "No tasks right now. Good time to plan tomorrow." },
+  }[timeCtx];
 
   const TaskRow = ({ t, overdue = false }: { t: (typeof todos)[0]; overdue?: boolean }) => (
     <div className="flex items-center justify-between px-3.5 py-2.5 rounded-[14px]"
@@ -187,9 +198,14 @@ export default function TodayPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {habits.length === 0 ? (
-                <p className="text-xs font-mono col-span-4" style={{ color: "var(--text-muted)" }}>
-                  No habits set up. <Link href="/streaks" style={{ color: "var(--accent)" }}>Add habits →</Link>
-                </p>
+                <div className="empty-state col-span-4">
+                  <div className="empty-state-icon">🌱</div>
+                  <div className="empty-state-title">Start your streak today</div>
+                  <div className="empty-state-sub">Add your first habit and build a daily routine that sticks.</div>
+                  <Link href="/streaks" className="empty-state-cta">
+                    Add first habit →
+                  </Link>
+                </div>
               ) : habits.map((h) => {
                 const done = todayLogs.some((l) => l.habit_id === h.id);
                 return (
@@ -248,12 +264,22 @@ export default function TodayPage() {
               )}
             </div>
             {todayTasks.length === 0 && overdueTasks.length === 0 ? (
-              <p className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
-                No tasks due today.
-                <Link href="/" className="ml-1" style={{ color: "var(--accent)" }}>Add one →</Link>
-              </p>
+              <div className="empty-state">
+                <div className="empty-state-icon">{taskEmptyContent!.icon}</div>
+                <div className="empty-state-title">{taskEmptyContent!.title}</div>
+                <div className="empty-state-sub">{taskEmptyContent!.sub}</div>
+                <Link href="/" className="empty-state-cta">Plan tasks →</Link>
+              </div>
             ) : (
               <div className="space-y-2">
+                {overdueTasks.length > 0 && (
+                  <div className="overdue-empathy">
+                    <div className="overdue-empathy-icon">💭</div>
+                    <div className="overdue-empathy-text">
+                      <span className="overdue-empathy-count">{overdueTasks.length} task{overdueTasks.length > 1 ? "s" : ""}</span> carried over from before. No rush — just pick one and start.
+                    </div>
+                  </div>
+                )}
                 {overdueTasks.map((t) => <TaskRow key={t.id} t={t} overdue />)}
                 {todayTasks.map((t) => <TaskRow key={t.id} t={t} />)}
               </div>
@@ -292,20 +318,17 @@ export default function TodayPage() {
         {/* ── RIGHT COLUMN ── */}
         <div className="space-y-4">
 
-          {/* Today's stats — compact pill row */}
-          <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
+          {/* Today's stats — progressive disclosure: top 3 always, streak+due on expand */}
+          <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up ambient-tint" style={{ animationDelay: "40ms" }}>
             <div className="shim" style={{ borderRadius: "22px" }} />
             <h2 className="text-sm font-medium mb-4 gltxt" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Today&apos;s stats</h2>
+            {/* Top 3 — always visible */}
             <div className="space-y-3">
               {[
                 { label: "Tasks completed", value: todayDone.length, color: "#5ecf95" },
                 { label: "Focus time",      value: todayFocusMinutes >= 60 ? `${Math.floor(todayFocusMinutes/60)}h${todayFocusMinutes%60>0?` ${todayFocusMinutes%60}m`:""}` : `${todayFocusMinutes}m`, color: "#4da6ff" },
                 { label: "Habits done",     value: `${habitsCompleted}/${habitsTotal}`,
                   color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "#f5a623" },
-                { label: "Streak",          value: `${currentStreak}d`,
-                  color: currentStreak >= 7 ? "#f5a623" : currentStreak > 0 ? "var(--accent)" : "var(--text-muted)" },
-                { label: "Due today",       value: todayTasks.length + overdueTasks.length,
-                  color: overdueTasks.length > 0 ? "#ff6b6b" : todayTasks.length > 0 ? "#f5a623" : "#5ecf95" },
               ].map((s) => (
                 <div key={s.label} className="flex items-center justify-between">
                   <span className="text-[11px] font-mono" style={{ color: "var(--text-secondary)" }}>{s.label}</span>
@@ -313,6 +336,29 @@ export default function TodayPage() {
                 </div>
               ))}
             </div>
+            {/* Bottom 2 — expand-grid reveal */}
+            <div className={`expand-grid ${statsExpanded ? "open" : ""}`}>
+              <div className="space-y-3 pt-3">
+                {[
+                  { label: "Streak", value: `${currentStreak}d`,
+                    color: currentStreak >= 7 ? "#f5a623" : currentStreak > 0 ? "var(--accent)" : "var(--text-muted)" },
+                  { label: "Due today", value: todayTasks.length + overdueTasks.length,
+                    color: overdueTasks.length > 0 ? "#ff6b6b" : todayTasks.length > 0 ? "#f5a623" : "#5ecf95" },
+                ].map((s) => (
+                  <div key={s.label} className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono" style={{ color: "var(--text-secondary)" }}>{s.label}</span>
+                    <span className="text-[13px] font-semibold font-mono" style={{ color: s.color }}>{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Show more / less */}
+            <button className="stats-more-btn w-full justify-center" onClick={() => setStatsExpanded(v => !v)}>
+              <svg className={`stats-more-chevron ${statsExpanded ? "open" : ""}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+              {statsExpanded ? "Less" : "More"}
+            </button>
           </div>
 
           {/* Action cards — quick navigation */}

@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorker";
 import { PageTransition } from "@/components/PageTransition";
+import { CommandPalette } from "@/components/CommandPalette";
 import { usePathname } from "next/navigation";
 
 export const SidebarContext = createContext<{
@@ -21,10 +22,29 @@ export function useSidebar() { return useContext(SidebarContext); }
 export function ClientLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isLg, setIsLg] = useState(true);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const pathname = usePathname();
   const rafRef = useRef<number | null>(null);
   const mxRef  = useRef(0.5);
   const myRef  = useRef(0.0);
+
+  // ── ⌘K / Ctrl+K: open command palette ─────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    // Also listen for programmatic open from KeyboardShortcuts
+    const openHandler = () => setCmdOpen(true);
+    window.addEventListener("srn:open-cmd", openHandler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      window.removeEventListener("srn:open-cmd", openHandler);
+    };
+  }, []);
 
   // ── System 3: Motion-reactive specular ──────────────────────────────
   // Tracks cursor position and updates --mx / --my CSS vars on :root.
@@ -82,6 +102,24 @@ export function ClientLayout({ children }: { children: ReactNode }) {
     };
     document.body.addEventListener("pointerdown", onDown, { passive: true });
     return () => document.body.removeEventListener("pointerdown", onDown);
+  }, []);
+
+  // ── System 4 extension: Ambient tinting ───────────────────────────
+  // Reads accent hue and writes --ambient-tint CSS var.
+  // Cards with .ambient-tint class pick up a very faint hue overlay.
+  // Re-runs whenever data-theme attribute changes.
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTint = () => {
+      const h = getComputedStyle(root).getPropertyValue("--accent-h").trim() || "160";
+      const s = getComputedStyle(root).getPropertyValue("--accent-s").trim() || "65%";
+      const l = getComputedStyle(root).getPropertyValue("--accent-l").trim() || "62%";
+      root.style.setProperty("--ambient-tint", `hsla(${h}, ${s}, ${l}, 0.08)`);
+    };
+    updateTint();
+    const obs = new MutationObserver(updateTint);
+    obs.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
   }, []);
 
   // ── System 7: Fluid page transitions ──────────────────────────────
@@ -170,6 +208,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
         <ToastProvider />
         <KeyboardShortcuts />
         <ServiceWorkerRegistrar />
+        <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       </SidebarContext.Provider>
     </ThemeProvider>
   );
