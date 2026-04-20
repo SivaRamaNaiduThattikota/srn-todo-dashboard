@@ -129,7 +129,7 @@ export default function TodayPage() {
       <header className="mb-6 sm:mb-8 animate-fade-in-up">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight"
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight gltxt"
               style={{ color: "var(--text-primary)", fontFamily: "-apple-system, sans-serif", letterSpacing: "-0.025em" }}>
               {greeting}, SRN
             </h1>
@@ -140,10 +140,11 @@ export default function TodayPage() {
 
           {/* Daily Score Widget — links to Analytics */}
           <Link href="/analytics" style={{ textDecoration: "none" }}
-            className="flex-shrink-0 flex flex-col items-center px-4 py-2.5 rounded-[18px] hover-lift"
+            className="flex-shrink-0 flex flex-col items-center px-4 py-2.5 rounded-[18px] hover-lift prism ca-strong"
             style={{ background: "var(--glass-fill)", backdropFilter: "blur(20px)",
               border: `0.5px solid ${scoreColor}40`,
               boxShadow: `0 4px 16px ${scoreColor}18, inset 0 1px 0 rgba(255,255,255,0.15)` }}>
+            <div className="prism-border" style={{ borderRadius: "18px" }} />
             <span className="text-[28px] font-bold font-mono leading-none tracking-tight"
               style={{ color: scoreColor, textShadow: dailyScore >= 90 ? `0 0 20px ${scoreColor}60` : "none" }}>
               {dailyScore}
@@ -166,17 +167,17 @@ export default function TodayPage() {
         <div className="lg:col-span-2 space-y-4">
 
           {/* Daily habits */}
-          <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up">
+          <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up ca">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
                 Daily habits
               </h2>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono"
-                  style={{ color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "var(--text-muted)" }}>
-                  {habitsCompleted}/{habitsTotal}
+                style={{ color: habitsCompleted === habitsTotal && habitsTotal > 0 ? "#5ecf95" : "var(--text-muted)" }}>
+                {habitsCompleted}/{habitsTotal}
                 </span>
-                {currentStreak > 0 && (
+                   {currentStreak > 0 && (
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-[8px]"
                     style={{ background: "rgba(245,166,35,0.12)", color: "#f5a623", border: "0.5px solid rgba(245,166,35,0.22)" }}>
                     {currentStreak}d streak
@@ -192,7 +193,14 @@ export default function TodayPage() {
               ) : habits.map((h) => {
                 const done = todayLogs.some((l) => l.habit_id === h.id);
                 return (
-                  <button key={h.id} onClick={() => handleToggleHabit(h.id)} className="cc-habit p-3 sm:p-4 text-left"
+                  <button key={h.id} onClick={(e) => {
+                    handleToggleHabit(h.id);
+                    const el = e.currentTarget;
+                    el.classList.remove('haptic');
+                    void (el as HTMLElement).offsetWidth;
+                    el.classList.add('haptic');
+                    setTimeout(() => el.classList.remove('haptic'), 460);
+                  }} className="cc-habit p-3 sm:p-4 text-left"
                     style={{
                       background: done ? `linear-gradient(160deg, ${h.color}35 0%, ${h.color}20 100%)` : "var(--cc-glass-base)",
                       borderColor: done ? `${h.color}45` : "rgba(255,255,255,0.14)",
@@ -286,7 +294,8 @@ export default function TodayPage() {
 
           {/* Today's stats — compact pill row */}
           <div className="liquid-glass rounded-[22px] p-5 animate-fade-in-up" style={{ animationDelay: "40ms" }}>
-            <h2 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Today&apos;s stats</h2>
+            <div className="shim" style={{ borderRadius: "22px" }} />
+            <h2 className="text-sm font-medium mb-4 gltxt" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Today&apos;s stats</h2>
             <div className="space-y-3">
               {[
                 { label: "Tasks completed", value: todayDone.length, color: "#5ecf95" },

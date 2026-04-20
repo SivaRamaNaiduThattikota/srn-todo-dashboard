@@ -1148,3 +1148,493 @@ button, a, input, select, textarea {
   font-weight: 500; cursor: pointer;
   text-decoration: none;
 }
+
+
+/* ════════════════════════════════════════════════════════════════
+   iOS 26 Liquid Glass Kit — v5 CHERRY-PICK
+   6 additions that complement the existing SRN design system.
+   Everything else (dark mode, CSS vars, accent themes) unchanged.
+   ════════════════════════════════════════════════════════════════ */
+
+
+/* ── 1. NAMED EASING CURVES ──────────────────────────────────────
+   Use these vars instead of repeating raw bezier strings.
+   --sp  spring overshoot → settle  (buttons, habits, bouncy things)
+   --eo  ease-out decelerate        (page enters, modals opening)
+   --ei  ease-in accelerate         (page exits, closing)
+   --sm  smooth balanced            (subtle colour / opacity fades)
+   ─────────────────────────────────────────────────────────────── */
+:root {
+  --sp: cubic-bezier(.34, 1.56, .64, 1);
+  --eo: cubic-bezier(.22, 1,    .36, 1);
+  --ei: cubic-bezier(.55, 0,    1,   .45);
+  --sm: cubic-bezier(.25, .46,  .45, .94);
+}
+
+
+/* ── 2. PRISM CHROMATIC BORDER ───────────────────────────────────
+   Add class  .prism  to any .liquid-glass card for a rotating
+   rainbow edge. Use sparingly — score widget, streak hero, etc.
+   ─────────────────────────────────────────────────────────────── */
+.prism {
+  position: relative;
+  isolation: isolate;
+}
+.prism::before {
+  /* keep existing .liquid-glass::before specular — don't override */
+}
+.prism-border {
+  /* Separate pseudo-wrapper approach — safe with existing ::before/::after */
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg,
+    rgba(255,100,100,.50),
+    rgba(255,200, 80,.45),
+    rgba(100,255,180,.45),
+    rgba( 80,160,255,.50),
+    rgba(180, 80,255,.45),
+    rgba(255,100,200,.45),
+    rgba(255,100,100,.50)
+  );
+  z-index: 10;
+  mix-blend-mode: screen;
+  opacity: .40;
+  animation: prismRot 6s linear infinite;
+  /* mask: border only, no fill */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1.5px;
+}
+[data-mode="light"] .prism-border { opacity: .28; }
+
+@keyframes prismRot {
+  to { filter: hue-rotate(360deg); }
+}
+
+
+/* ── 3. IDLE SHIMMER SWEEP ───────────────────────────────────────
+   Add  <div class="shim"></div>  as first child inside any card
+   for a lazy repeating light sweep. Complements .liquid-glass-sweep
+   (which is hover-triggered). Use on static info cards.
+   Customise: style="--shim-dur:12s; --shim-delay:4s"
+   ─────────────────────────────────────────────────────────────── */
+.shim {
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    108deg,
+    transparent 28%,
+    rgba(255,255,255,.18) 50%,
+    transparent 72%
+  );
+  z-index: 8;
+  pointer-events: none;
+  border-radius: inherit;
+  animation: shimPass var(--shim-dur, 9s) var(--shim-delay, 2.5s) ease-in-out infinite;
+}
+[data-mode="light"] .shim {
+  background: linear-gradient(
+    108deg,
+    transparent 28%,
+    rgba(255,255,255,.50) 50%,
+    transparent 72%
+  );
+}
+@keyframes shimPass {
+  0%,  100% { left: -120%; opacity: 0; }
+  3%         { opacity: 1; }
+  20%        { left: 140%; opacity: 0; }
+}
+
+
+/* ── 4. GLASS MATERIALIZATION ────────────────────────────────────
+   Add class  .materialize  (or add/remove via JS on route change)
+   Glass blurs IN from nothing rather than a plain fade.
+   Use on page-load hero cards or modal entrances.
+   ─────────────────────────────────────────────────────────────── */
+.materialize {
+  animation: materializeIn .65s var(--eo) both;
+}
+@keyframes materializeIn {
+  0% {
+    backdrop-filter: blur(0px) saturate(1) brightness(1);
+    -webkit-backdrop-filter: blur(0px) saturate(1) brightness(1);
+    opacity: 0;
+    transform: scale(.97) translateY(8px);
+  }
+  45% { opacity: 1; }
+  100% {
+    backdrop-filter: var(--blur-md);
+    -webkit-backdrop-filter: var(--blur-md);
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
+/* ── 5. HAPTIC MICRO-BOUNCE ──────────────────────────────────────
+   Add/remove class  .haptic  via JS on tap for a spring bounce.
+   5-keyframe spring: compress → overshoot → settle.
+   More natural than a flat scale on :active.
+
+   JS usage (add to habit tiles, cc-buttons etc):
+     el.classList.remove('haptic');
+     void el.offsetWidth;
+     el.classList.add('haptic');
+     setTimeout(() => el.classList.remove('haptic'), 460);
+   ─────────────────────────────────────────────────────────────── */
+@keyframes hapticBounce {
+  0%   { transform: scale(1); }
+  14%  { transform: scale(.94); }
+  44%  { transform: scale(1.038); }
+  64%  { transform: scale(.988); }
+  80%  { transform: scale(1.014); }
+  100% { transform: scale(1); }
+}
+.haptic {
+  animation: hapticBounce .46s var(--sp) forwards !important;
+}
+
+
+/* ── 6. GLASS TEXT EFFECT ────────────────────────────────────────
+   Add  .gltxt  to headings inside glass cards.
+   Gives a raised, slightly luminous text feel — premium touch.
+   ─────────────────────────────────────────────────────────────── */
+.gltxt {
+  position: relative;
+  text-shadow:
+    0  1px 2px rgba(255,255,255,.32),
+    0 -1px 2px rgba(0, 20, 80,.12);
+  filter: drop-shadow(0 0 1px rgba(255,255,255,.22));
+}
+[data-mode="light"] .gltxt {
+  text-shadow:
+    0  1px 2px rgba(255,255,255,.80),
+    0 -1px 1px rgba(60, 60,120,.10);
+  filter: drop-shadow(0 0 1px rgba(255,255,255,.50));
+}
+
+
+/* ── BONUS: SWIPE TO DISMISS (notifications) ─────────────────────
+   Add  data-swipe="notif"  to notification items.
+   JS snippet in notification page handles the touch events.
+   ─────────────────────────────────────────────────────────────── */
+[data-swipe] {
+  transition:
+    transform .28s var(--eo),
+    opacity   .28s ease,
+    max-height .32s ease,
+    margin    .28s ease,
+    padding   .28s ease;
+  will-change: transform;
+}
+[data-swipe].dismissing {
+  transform: translateX(-105%);
+  opacity: 0;
+}
+[data-swipe].dismissed {
+  max-height: 0 !important;
+  padding:    0 !important;
+  margin:     0 !important;
+  overflow:   hidden;
+  pointer-events: none;
+  border: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   iOS 26 LIQUID GLASS — FULL UPGRADE  v12.5
+   7 systems: refraction · chromatic aberration · motion specular
+   depth layers · fluid morphing · liquid press · page transitions
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ── 1. REFRACTION (SVG feDisplacementMap) ──────────────────────────
+   The real iOS 26 thing: border lensing that distorts content below.
+   Applied via backdrop-filter: url(#lg-refract) on .liquid-glass.
+   Chrome/Edge: full refraction. Safari/Firefox: graceful blur fallback.
+   The SVG filter <defs> block lives in layout.tsx (injected once).
+   ──────────────────────────────────────────────────────────────────── */
+@supports (backdrop-filter: url(#x)) {
+  .liquid-glass,
+  .liquid-glass-sweep,
+  .cc-tile,
+  .cc-btn,
+  .glass-modal {
+    backdrop-filter:
+      url(#lg-refract)
+      blur(28px)
+      saturate(1.6);
+    -webkit-backdrop-filter:
+      blur(28px)
+      saturate(1.6);
+  }
+}
+
+
+/* ── 2. CHROMATIC ABERRATION on card edges ───────────────────────────
+   Thin RGB-split fringe along top/side edges of glass cards.
+   Simulates real glass dispersing light into colour channels.
+   Add class  .ca  to any .liquid-glass card to activate.
+   ──────────────────────────────────────────────────────────────────── */
+.ca { position: relative; isolation: isolate; }
+
+.ca::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* Red channel — offset left by 0.5px */
+  box-shadow:
+    inset  0.5px  0   0 0.5px rgba(255, 60, 60, .18),
+    inset -0.5px  0   0 0.5px rgba(60, 60, 255, .18);
+  pointer-events: none;
+  z-index: 5;
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  transition: opacity .3s ease;
+}
+.ca:hover::before { opacity: 1; }
+[data-mode="light"] .ca::before { opacity: 0.35; }
+[data-mode="light"] .ca:hover::before { opacity: 0.6; }
+
+/* Stronger CA for highlighted hero cards */
+.ca-strong::before {
+  box-shadow:
+    inset  1px  0   0 1px rgba(255, 40, 40, .28),
+    inset -1px  0   0 1px rgba(40,  40, 255, .28),
+    inset  0   -1px 0 1px rgba(40, 200, 80, .14);
+  opacity: 0.9;
+}
+
+
+/* ── 3. MOTION-REACTIVE SPECULAR (mouse tracking) ───────────────────
+   JS updates --mx / --my on :root (0–1 range) on mousemove.
+   The ::before specular arc repositions to follow the light source.
+   Makes every card feel like real glass reacting to ambient light.
+   ──────────────────────────────────────────────────────────────────── */
+:root {
+  --mx: 0.5;   /* cursor x: 0 = left, 1 = right */
+  --my: 0.0;   /* cursor y: 0 = top,  1 = bottom */
+}
+
+/* Override the static specular on .liquid-glass with a dynamic one */
+.liquid-glass::before,
+.liquid-glass-sweep::before {
+  background: radial-gradient(
+    ellipse 70% 45% at calc(var(--mx) * 100%) calc(var(--my) * 60% + 0%),
+    var(--specular-top) 0%,
+    rgba(255,255,255,.12) 45%,
+    transparent 75%
+  ) !important;
+  transition: background .08s linear;
+}
+
+/* Glass cards react to the same light but softer */
+.cc-tile::before,
+.cc-btn::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,var(--cc-specular-opacity)) 0%,
+    rgba(255,255,255,.18) 25%,
+    rgba(255,255,255,.06) 55%,
+    transparent 100%
+  );
+  opacity: calc(0.6 + var(--my) * 0.4);
+  transition: opacity .1s ease;
+}
+
+
+/* ── 4. DEPTH LAYERS (3-tier blur budget) ────────────────────────────
+   Background layer:  blur(4px)  — subtle environmental haze
+   Mid-tier cards:    blur(20px) — main content glass
+   Foreground/modals: blur(40px) — overlays, command palettes
+   CSS custom properties so blur scales consistently.
+   ──────────────────────────────────────────────────────────────────── */
+:root {
+  --blur-layer-bg:  blur(4px)  saturate(1.2);
+  --blur-layer-mid: blur(20px) saturate(1.55);
+  --blur-layer-top: blur(40px) saturate(1.8);
+}
+
+/* Sidebar gets background-layer blur (behind all content) */
+.glass-sidebar {
+  backdrop-filter: var(--blur-layer-bg) !important;
+  -webkit-backdrop-filter: var(--blur-layer-bg) !important;
+}
+
+/* Main cards get mid-layer */
+.liquid-glass,
+.liquid-glass-sweep {
+  backdrop-filter: var(--blur-layer-mid);
+  -webkit-backdrop-filter: var(--blur-layer-mid);
+}
+
+/* Modals / overlays get top-layer */
+.glass-modal,
+.spatial {
+  backdrop-filter: var(--blur-layer-top) !important;
+  -webkit-backdrop-filter: var(--blur-layer-top) !important;
+}
+
+
+/* ── 5. FLUID MORPHING TRANSITIONS ──────────────────────────────────
+   Liquid: elements don't snap, they flow.
+   clip-path morph on modal open/close.
+   height → auto transitions via grid trick.
+   Spring easing on all interactive transforms.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Spring-eased interactive elements */
+.cc-tile,
+.cc-btn,
+.cc-habit,
+.liquid-glass,
+.hover-lift {
+  transition:
+    transform   .32s var(--sp),
+    box-shadow  .32s var(--sm),
+    background  .22s var(--sm),
+    border-color .22s var(--sm),
+    opacity     .22s ease;
+  will-change: transform;
+}
+
+/* Modal morphs in from a circle at the bottom (like iOS sheet) */
+.modal-morph-enter {
+  animation: modalMorphIn .48s var(--sp) both;
+}
+.modal-morph-exit {
+  animation: modalMorphOut .32s var(--ei) both;
+}
+
+@keyframes modalMorphIn {
+  0% {
+    clip-path: inset(100% 20% 0% 20% round 24px);
+    opacity: 0;
+    transform: translateY(32px) scale(.96);
+  }
+  60% { opacity: 1; }
+  100% {
+    clip-path: inset(0% 0% 0% 0% round 0px);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalMorphOut {
+  0% {
+    clip-path: inset(0% 0% 0% 0% round 0px);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    clip-path: inset(100% 20% 0% 20% round 24px);
+    opacity: 0;
+    transform: translateY(32px) scale(.96);
+  }
+}
+
+/* Expandable card height morph (grid trick — works without JS height calc) */
+.expand-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .38s var(--sp);
+}
+.expand-grid.open {
+  grid-template-rows: 1fr;
+}
+.expand-grid > * { overflow: hidden; }
+
+
+/* ── 6. LIQUID PRESS (squish morphing on tap) ────────────────────────
+   Buttons squish horizontally on press — like pressing real material.
+   scaleX slightly wider, scaleY slightly shorter → spring back.
+   Replaces the flat scale(.93) with physics-accurate deformation.
+   ──────────────────────────────────────────────────────────────────── */
+.cc-tile:active,
+.cc-habit:active {
+  transform: scale(.94) !important;
+  transition-duration: .08s !important;
+}
+
+.cc-btn:active {
+  transform: scaleX(1.04) scaleY(.93) !important;
+  transition-duration: .07s !important;
+}
+
+/* Liquid press animation for elements with .lp class */
+@keyframes liquidPress {
+  0%   { transform: scale(1); }
+  12%  { transform: scaleX(1.06) scaleY(.92); }
+  30%  { transform: scaleX(.97) scaleY(1.04); }
+  52%  { transform: scaleX(1.02) scaleY(.98); }
+  70%  { transform: scaleX(.995) scaleY(1.005); }
+  100% { transform: scale(1); }
+}
+.lp-active {
+  animation: liquidPress .5s var(--sp) forwards !important;
+}
+
+
+/* ── 7. FLUID PAGE TRANSITIONS ───────────────────────────────────────
+   Route change: old page collapses into a circle at the nav click point,
+   new page expands from the same point (approximated from center-bottom).
+   Works with the existing Framer Motion PageTransition component.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Page exit: shrink toward click origin */
+.page-exit {
+  animation: pageExit .28s var(--ei) both;
+}
+@keyframes pageExit {
+  0%   { opacity: 1; transform: scale(1)    translateY(0);     filter: blur(0px);  }
+  100% { opacity: 0; transform: scale(.96)  translateY(8px);   filter: blur(4px);  }
+}
+
+/* Page enter: materialize from blur */
+.page-enter {
+  animation: pageEnter .42s var(--eo) both;
+}
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: scale(.97) translateY(12px);
+    filter: blur(8px);
+  }
+  55% { opacity: 1; filter: blur(2px); }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+/* Stagger children on page enter */
+.page-enter > * {
+  animation: childStagger .4s var(--sp) both;
+  animation-delay: calc(var(--stagger-i, 0) * 40ms + 80ms);
+}
+@keyframes childStagger {
+  from { opacity: 0; transform: translateY(10px) scale(.99); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Reduce motion: respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter, .page-exit,
+  .modal-morph-enter, .modal-morph-exit,
+  .lp-active, .haptic, .materialize {
+    animation: none !important;
+  }
+  .liquid-glass, .cc-tile, .cc-btn, .cc-habit, .hover-lift {
+    transition: opacity .15s ease !important;
+  }
+}

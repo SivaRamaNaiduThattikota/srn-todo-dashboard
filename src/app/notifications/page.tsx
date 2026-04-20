@@ -102,6 +102,38 @@ export default function NotificationsPage() {
   const unreadCount = useMemo(() => notifications.filter(n => !readIds.has(n.id)).length, [notifications, readIds]);
   const counts = { All: notifications.length, Tasks: notifications.filter(n => n.tab === "Tasks").length, System: notifications.filter(n => n.tab === "System").length };
 
+  // Swipe-to-dismiss touch handler
+  useEffect(() => {
+    if (loading) return;
+    const cards = document.querySelectorAll<HTMLElement>('[data-swipe="notif"]');
+    cards.forEach(card => {
+      let sx = 0, active = false;
+      const onStart = (e: TouchEvent) => { sx = e.touches[0].clientX; active = true; };
+      const onMove  = (e: TouchEvent) => {
+        if (!active) return;
+        const dx = e.touches[0].clientX - sx;
+        if (dx < -8) card.style.transform = `translateX(${dx}px)`;
+      };
+      const onEnd = (e: TouchEvent) => {
+        if (!active) { card.style.transform = ''; return; }
+        const dx = e.changedTouches[0].clientX - sx;
+        if (dx < -72) {
+          card.classList.add('dismissing');
+          setTimeout(() => card.classList.add('dismissed'), 300);
+        } else { card.style.transform = ''; }
+        active = false;
+      };
+      card.addEventListener('touchstart', onStart, { passive: true });
+      card.addEventListener('touchmove',  onMove,  { passive: true });
+      card.addEventListener('touchend',   onEnd);
+      return () => {
+        card.removeEventListener('touchstart', onStart);
+        card.removeEventListener('touchmove',  onMove);
+        card.removeEventListener('touchend',   onEnd);
+      };
+    });
+  }, [loading, grouped]);
+
   const markRead = (id: string) => {
     setReadIds(prev => {
       const next = new Set(prev);
@@ -172,6 +204,7 @@ export default function NotificationsPage() {
                   const isRead = readIds.has(notif.id);
                   return (
                     <div key={notif.id}
+                      data-swipe="notif"
                       onClick={() => markRead(notif.id)}
                       style={{ display: "flex", gap: "12px", padding: "12px 16px", borderBottom: i < items.length - 1 ? "0.5px solid var(--glass-border-subtle)" : "none", cursor: "pointer", transition: "background 0.15s", background: isRead ? "transparent" : "var(--accent-muted)", opacity: isRead ? 0.72 : 1, position: "relative" }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--glass-fill)")}
